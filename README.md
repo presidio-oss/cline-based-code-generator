@@ -120,7 +120,7 @@ Customize and seamlessly integrate advanced language and embedding models into y
 
 ## 🤝 Contributing
 
-To contribute to the project, start by exploring [open issues](https://github.com/presidio-oss/cline-based-code-generator) or checking our [feature request board](https://github.com/presidio-oss/cline-based-code-generator/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop).
+To contribute to the project, start by exploring [open issues](https://github.com/presidio-oss/cline-based-code-generator/issues) or checking our [feature request board](https://github.com/presidio-oss/cline-based-code-generator/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop).
 
 To get started with HAI Code Generator, follow these steps:
 
