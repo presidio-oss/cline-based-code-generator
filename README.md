@@ -66,7 +66,7 @@ By centralizing AI-driven tasks in HAI Code Generator, you can maintain an effic
 <br>
   
   <div align="center">
-    <img src="assets/gifs/hai-detailed-view.gif" alt="Tasks List Page with Tasks Loaded" width="80%" />
+    <img src="assets/gifs/hai-detailed-view.gif" alt="Tasks List Page with Tasks Loaded" />
     <p><i>Detailed View of HAI Tasks</i></p>
   </div>
 
@@ -85,7 +85,7 @@ By centralizing AI-driven tasks in HAI Code Generator, you can maintain an effic
 Enhanced file identification with intelligent discovery and retrieval:
 
   <div align="center">
-    <img src="assets/gifs/hai-find-files.gif" alt="File Identification" width="80%" />
+    <img src="assets/gifs/hai-find-files.gif" alt="File Identification" />
       <p><i>File Identification</i></p>
   </div>
 
@@ -114,7 +114,7 @@ Customize and seamlessly integrate advanced language and embedding models into y
 - **Embedding Configuration**  
   - Effortlessly configure and switch between supported embedding models, ensuring flexibility and adaptability for different use cases. Compatible embedding models include OpenAI-Compatible, OpenAI, and AWS Bedrock.
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/img/hai-settings.png" alt="Settings Interface Screenshot" width="80%" />
+  <img src="assets/img/hai-settings.png" alt="Settings Interface Screenshot" />
   <p><i>Settings Interface</i></p>
 </div>
 
