@@ -145,6 +145,9 @@ To get started with HAI Code Generator, follow these steps:
 4. Launch by pressing F5 (or Run -> Start Debugging) to open a new VSCode window with the extension loaded. (You may need to install the [esbuild problem matchers extension](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers) if you run into issues building the project.)
 
 </details>
+<br/>
+
+Please read our [Contributing Guidelines](./CONTRIBUTING.md) for more details.
 
 ## 📜 License
 

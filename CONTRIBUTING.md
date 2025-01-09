@@ -51,7 +51,7 @@ Before submitting a pull request, verify the changes in your local environment.
 
 ## Reporting Bugs
 
-Use the GitHub issue tracker at [open issues](https://github.com/presidio-oss/cline-based-code-generator) to report bugs. When filing an issue, please include:
+Use the GitHub issue tracker at [open issues](https://github.com/presidio-oss/cline-based-code-generator/issues) to report bugs. When filing an issue, please include:
 
 - A clear title and description.
 - As much relevant information as possible.
