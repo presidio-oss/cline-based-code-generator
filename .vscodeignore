@@ -1,0 +1,69 @@
+# Default
+.vscode/**
+.vscode-test/**
+out/**
+node_modules/**
+src/**
+.gitignore
+.yarnrc
+esbuild.js
+vsc-extension-quickstart.md
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+**/.vscode-test.*
+
+# Custom
+demo.gif
+.nvmrc
+.gitattributes
+.prettierignore
+
+# Ignore all webview-ui files except the build directory (https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/frameworks/hello-world-react-cra/.vscodeignore)
+webview-ui/src/**
+webview-ui/public/**
+webview-ui/scripts/**
+webview-ui/index.html
+webview-ui/README.md
+webview-ui/package.json
+webview-ui/package-lock.json
+webview-ui/node_modules/**
+webview-ui/.npm/**
+**/.gitignore
+
+.cache/**
+.npm/**
+assets/docs/**
+.gitlab-ci.yml
+commitlint.config.js
+.husky/**
+
+# Fix issue where codicons don't get packaged (https://github.com/microsoft/vscode-extension-samples/issues/692)
+!node_modules/@vscode/codicons/dist/codicon.css
+!node_modules/@vscode/codicons/dist/codicon.ttf
+
+# Include default themes JSON files used in getTheme
+!src/integrations/theme/default-themes/**
+
+# Include icons
+!assets/icons/**
+
+!node_modules/faiss-node/examples/**
+!node_modules/faiss-node/lib/**
+!node_modules/faiss-node/src/**
+!node_modules/faiss-node/test/**
+!node_modules/faiss-node/CMakeLists.txt
+!node_modules/faiss-node/LICENSE
+!node_modules/faiss-node/package.json
+!node_modules/faiss-node/README.md
+
+!node_modules/bindings/**
+!node_modules/file-uri-to-path/**
+
+.github/**
+scripts/**
+
+.hai/**
+
+CHANGELOG.md
