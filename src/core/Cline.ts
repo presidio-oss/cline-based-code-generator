@@ -817,10 +817,10 @@ export class Cline {
 			try {
 				const ruleFileContent = (await fs.readFile(clineRulesFilePath, "utf8")).trim()
 				if (ruleFileContent) {
-					clineRulesFileInstructions = `# .clinerules\n\nThe following is provided by a root-level .clinerules file where the user has specified instructions for this working directory (${cwd.toPosix()})\n\n${ruleFileContent}`
+					clineRulesFileInstructions = `# .hairules\n\nThe following is provided by a root-level .hairules file where the user has specified instructions for this working directory (${cwd.toPosix()})\n\n${ruleFileContent}`
 				}
 			} catch {
-				console.error(`Failed to read .clinerules file at ${clineRulesFilePath}`)
+				console.error(`Failed to read .hairules file at ${clineRulesFilePath}`)
 			}
 		}
 
