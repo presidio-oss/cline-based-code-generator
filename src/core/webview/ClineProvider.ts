@@ -1567,7 +1567,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetSecret("openRouterApiKey") as Promise<string | undefined>,
 			this.customGetSecret("awsAccessKey") as Promise<string | undefined>,
 			this.customGetSecret("awsSecretKey") as Promise<string | undefined>,
-			this.customGetSecret("awsSessionToken") as Promise<string | undefined>,
+			this.customGetSecret("awsSessionToken", false) as Promise<string | undefined>,
 			this.customGetState("awsRegion") as Promise<string | undefined>,
 			this.customGetState("awsUseCrossRegionInference") as Promise<boolean | undefined>,
 			this.customGetState("vertexProjectId") as Promise<string | undefined>,
@@ -1598,7 +1598,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("embeddingModelId") as Promise<string | undefined>,
 			this.customGetSecret("embeddingAwsAccessKey") as Promise<string | undefined>,
 			this.customGetSecret("embeddingAwsSecretKey") as Promise<string | undefined>,
-			this.customGetSecret("embeddingAwsSessionToken") as Promise<string | undefined>,
+			this.customGetSecret("embeddingAwsSessionToken", false) as Promise<string | undefined>,
 			this.customGetState("embeddingAwsRegion") as Promise<string | undefined>,
 			this.customGetState("embeddingOpenAiBaseUrl") as Promise<string | undefined>,
 			this.customGetSecret("embeddingOpenAiApiKey") as Promise<string | undefined>,
@@ -1758,8 +1758,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.storeSecret(`${this.workspaceId}-${key}` as SecretKey, value)
 	}
 
-	async customGetSecret(key: SecretKey) {
+	async customGetSecret(key: SecretKey, defaultGlobal: boolean = true) {
 		let workspaceSecret = await this.getSecret(`${this.workspaceId}-${key}` as SecretKey)
+		if (!defaultGlobal) {
+			return workspaceSecret;
+		}
+
 		if (!workspaceSecret) {
 			return await this.getSecret(key as SecretKey)
 		}
