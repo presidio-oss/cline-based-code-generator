@@ -305,7 +305,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, apiErrorMessage, 
 						style={{ width: "100%" }}
 						type="password"
 						onInput={handleInputChange("awsSessionToken")}
-						placeholder="Enter Session Token...">
+						placeholder="Enter Session Token (optional)...">
 						<span style={{ fontWeight: 500 }}>AWS Session Token</span>
 					</VSCodeTextField>
 					<div className="dropdown-container">
