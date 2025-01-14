@@ -61,6 +61,7 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(false)
+						vscode.postMessage({ type: "getExistingFiles" })
 						break
 					case "haiBuildTaskListClicked":
 						setShowSettings(false)

@@ -32,6 +32,35 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false);
 
+	const [uploadedFiles, setUploadedFiles] = useState<string[]>();
+
+    useEffect(() => {
+        const messageHandler = (event: MessageEvent) => {
+            const message = event.data;
+            switch (message.type) {
+                case 'existingFiles':
+                    setUploadedFiles(message.instructions.map((instruction: any) => (
+                        instruction.name
+                    )));
+                    break;
+            }
+        };
+
+        window.addEventListener('message', messageHandler);
+        return () => window.removeEventListener('message', messageHandler);
+    }, []);
+
+    useEffect(() => {
+        // Load existing files when component mounts
+        vscode.postMessage({ type: "getExistingFiles" });
+    }, []);
+
+    useEffect(() => {
+        setApiErrorMessage(undefined)
+        setModelIdErrorMessage(undefined)
+        setEmbeddingErrorMessage(undefined)
+    }, [apiConfiguration, embeddingConfiguration])
+
 	const handleSubmit = () => {
 		const apiValidationResult = validateApiConfiguration(apiConfiguration)
 		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
@@ -42,31 +71,43 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 		if (!apiValidationResult && !embeddingValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			vscode.postMessage({ type: "customInstructions", text: customInstructions })
 			vscode.postMessage({ type: "alwaysAllowReadOnly", bool: alwaysAllowReadOnly })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+			vscode.postMessage({ type: "customInstructions", text: customInstructions });
+			vscode.postMessage({ type: "getExistingFiles" });
 			onDone()
 		}
 	}
 
-	useEffect(() => {
-		setApiErrorMessage(undefined)
-		setModelIdErrorMessage(undefined)
-		setEmbeddingErrorMessage(undefined)
-	}, [apiConfiguration, embeddingConfiguration])
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            for (const file of Array.from(e.target.files)) {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result === "string") {
+                        vscode.postMessage({ 
+                            type: "uploadInstructions", 
+                            text: reader.result, 
+                            filename: file.name 
+                        });
+						setUploadedFiles(prev => [...(prev ?? []), file.name]);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+        // Reset file input
+        e.target.value = '';
+    };
 
-	// validate as soon as the component is mounted
-	/*
-	useEffect will use stale values of variables if they are not included in the dependency array. so trying to use useEffect with a dependency array of only one value for example will use any other variables' old values. In most cases you don't want this, and should opt to use react-use hooks.
-	
-	useEffect(() => {
-		// uses someVar and anotherVar
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [someVar])
-
-	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
-	*/
+    const handleDeleteFile = (filename: string) => {
+        vscode.postMessage({
+            type: "deleteFile",
+            filename: filename
+        });
+		setUploadedFiles(prev => (prev ?? []).filter(file => file !== filename));
+    };
 
 	const handleResetState = () => {
 		vscode.postMessage({ type: "resetState" })
@@ -129,8 +170,63 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
 						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
 					</VSCodeTextArea>
-					<p
-						style={{
+                    <VSCodeButton
+                        style={{
+                            width: "100%",
+                            marginTop: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                        onClick={() => document.getElementById('fileInput')?.click()}
+                    >
+                        <span className="codicon codicon-add" style={{ marginRight: "5px" }}></span>
+                        Upload Instruction File
+                    </VSCodeButton>
+                    <input
+                        id="fileInput"
+                        type="file"
+                        accept=".txt,.md"
+                        style={{ display: 'none' }}
+                        onChange={handleFileUpload}
+                        multiple
+                    />
+
+                    {uploadedFiles && (uploadedFiles.length) > 0 && (
+                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
+                            {uploadedFiles.map((file) => (
+                                <div
+                                    key={file}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        backgroundColor: 'var(--vscode-input-background)',
+                                        borderRadius: '3px',
+                                        color: 'var(--vscode-foreground)',
+                                    }}
+                                >
+                                    <span style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        marginRight: '10px'
+                                    }}>
+                                        {file}
+                                    </span>
+                                    <VSCodeButton
+                                        appearance="icon"
+                                        onClick={() => handleDeleteFile(file)}
+                                    >
+                                        <span className="codicon codicon-close"></span>
+                                    </VSCodeButton>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <p style={{
 							fontSize: "12px",
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",

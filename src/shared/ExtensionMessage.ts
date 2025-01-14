@@ -27,6 +27,7 @@ export interface ExtensionMessage {
 		| "apiKeyValidation"
 		| "embeddingValidation"
 		| "mcpServers"
+		| "existingFiles"
 	text?: string
 	action?:
 		| "chatButtonClicked"
@@ -47,12 +48,14 @@ export interface ExtensionMessage {
 	openRouterModels?: Record<string, ModelInfo>
 	haiConfig?: {}
 	mcpServers?: McpServer[]
+	instructions?: { name: string; enabled: boolean }[];
 }
 
 export interface ExtensionState {
 	version: string
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
+	isCustomInstructionsEnabled: boolean
 	alwaysAllowReadOnly?: boolean
 	uriScheme?: string
 	clineMessages: ClineMessage[]

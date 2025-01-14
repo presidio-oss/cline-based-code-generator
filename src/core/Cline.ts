@@ -74,6 +74,7 @@ export class Cline {
 	private browserSession: BrowserSession
 	private didEditFile: boolean = false
 	customInstructions?: string
+	isCustomInstructionsEnabled: boolean
 	alwaysAllowReadOnly: boolean
 	autoApprovalSettings: AutoApprovalSettings
 	apiConversationHistory: Anthropic.MessageParam[] = []
@@ -113,6 +114,7 @@ export class Cline {
 		embeddingConfiguration: EmbeddingConfiguration,
 		autoApprovalSettings: AutoApprovalSettings,
 		customInstructions?: string,
+		isCustomInstructionsEnabled: boolean = true,
 		alwaysAllowReadOnly?: boolean,
 		task?: string,
 		images?: string[],
@@ -125,6 +127,7 @@ export class Cline {
 		this.browserSession = new BrowserSession(provider.context)
 		this.diffViewProvider = new DiffViewProvider(cwd)
 		this.customInstructions = customInstructions
+		this.isCustomInstructionsEnabled = isCustomInstructionsEnabled
 		this.alwaysAllowReadOnly = alwaysAllowReadOnly ?? false
 		this.autoApprovalSettings = autoApprovalSettings
 		if (historyItem) {
@@ -810,7 +813,10 @@ export class Cline {
 		
 		const supportsCodeIndex = this.buildContextOptions?.useIndex ?? false
 		let systemPrompt = await SYSTEM_PROMPT(cwd, this.api.getModel().info.supportsComputerUse ?? false, supportsCodeIndex, mcpHub)
-		let settingsCustomInstructions = this.customInstructions?.trim()
+		let isCustomInstructionsEnabled = await this.providerRef.deref()?.customGetState("isCustomInstructionsEnabled") as any
+		let settingsCustomInstructions = isCustomInstructionsEnabled ? this.customInstructions?.trim() : undefined
+		let instructionStates = await this.providerRef.deref()?.customGetState("instructionStates") as any
+		let fileInstructions = await this.readInstructionsFromFiles(instructionStates);
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)
 		let clineRulesFileInstructions: string | undefined
 		if (await fileExistsAtPath(clineRulesFilePath)) {
@@ -824,9 +830,9 @@ export class Cline {
 			}
 		}
 
-		if (settingsCustomInstructions || clineRulesFileInstructions) {
+		if (settingsCustomInstructions || clineRulesFileInstructions || fileInstructions) {
 			// altering the system prompt mid-task will break the prompt cache, but in the grand scheme this will not change often so it's better to not pollute user messages with it the way we have to with <potentially relevant details>
-			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions)
+			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions, fileInstructions)
 		}
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
@@ -873,6 +879,26 @@ export class Cline {
 		// (needs to be placed outside of try/catch since it we want caller to handle errors not with api_req_failed as that is reserved for first chunk failures only)
 		// this delegates to another generator or iterable object. In this case, it's saying "yield all remaining values from this iterator". This effectively passes along all subsequent chunks from the original stream.
 		yield* iterator
+	}
+
+	async readInstructionsFromFiles(instructionStates: { name: string; enabled: boolean }[]): Promise<string | undefined> {
+		const instructionsDir = path.resolve(cwd, '.vscode/hai-instructions');
+		try {
+			const files = await fs.readdir(instructionsDir);
+			let instructions = '';
+			for (const file of files) {
+				const instructionState = instructionStates.find(state => state.name === file);
+				if (instructionState && instructionState.enabled) {
+					const filePath = path.join(instructionsDir, file);
+					const content = await fs.readFile(filePath, 'utf8');
+					instructions += `# ${file}\n\n${content}\n\n`;
+				}
+			}
+			return instructions.trim() || undefined;
+		} catch (error) {
+			console.error(`Failed to read instructions from ${instructionsDir}:`, error);
+			return undefined;
+		}
 	}
 
 	async presentAssistantMessage() {

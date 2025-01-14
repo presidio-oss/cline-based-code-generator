@@ -36,6 +36,11 @@ export interface WebviewMessage {
 		| "autoApprovalSettings"
 		| "openHistory"
 		| "openHaiTasks"
+		| "uploadInstructions"
+		| "deleteFile"
+		| "fetchExistingFiles"
+		| "getExistingFiles"
+		| "updateInstructionState"
 	text?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
@@ -44,6 +49,8 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	autoApprovalSettings?: AutoApprovalSettings
+	filename?: string
+	instructions?: { name: string; enabled: boolean }[];
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

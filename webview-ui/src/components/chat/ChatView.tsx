@@ -27,6 +27,7 @@ import { IHaiClineTask } from "../../interfaces/hai-task.interface"
 import CodeIndexWarning from "./CodeIndexWarning"
 import AutoApproveMenu from "./AutoApproveMenu"
 import QuickActions from "../welcome/QuickActions"
+import CustomInstructionsMenu from "./CustomInstructionsMenu"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -801,13 +802,16 @@ const ChatView = ({
 			//    but becomes scrollable when the viewport is too small
 			*/}
 			{!task && (
-				<AutoApproveMenu
-					style={{
-						marginBottom: -2,
-						flex: "0 1 auto", // flex-grow: 0, flex-shrink: 1, flex-basis: auto
-						minHeight: 0,
-					}}
-				/>
+				<>
+					<AutoApproveMenu
+						style={{
+							marginBottom: -2,
+							flex: "0 1 auto", // flex-grow: 0, flex-shrink: 1, flex-basis: auto
+							minHeight: 0,
+						}}
+					/>
+					<CustomInstructionsMenu/>
+				</>
 			)}
 
 			{task && (
@@ -840,6 +844,7 @@ const ChatView = ({
 						/>
 					</div>
 					<AutoApproveMenu />
+					<CustomInstructionsMenu />
 					{showScrollToBottom ? (
 						<div
 							style={{
