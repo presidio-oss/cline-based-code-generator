@@ -4,10 +4,14 @@ import styled from "styled-components";
 import { vscode } from "../../utils/vscode";
 import { useExtensionState } from '../../context/ExtensionStateContext';
 
-const CustomInstructionsMenu = () => {
+interface CustomInstructionsMenuProps {
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+}
+
+const CustomInstructionsMenu = ({ isExpanded, onToggleExpand }: CustomInstructionsMenuProps) => {
   const [instructions, setInstructions] = useState<{ name: string; enabled: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isExpanded, setIsExpanded] = useState(false);
   const [isHoveringCollapsibleSection, setIsHoveringCollapsibleSection] = useState(false);
   const { 
     isCustomInstructionsEnabled, 
@@ -139,7 +143,7 @@ const CustomInstructionsMenu = () => {
         }}
         onMouseEnter={() => setIsHoveringCollapsibleSection(true)}
         onMouseLeave={() => setIsHoveringCollapsibleSection(false)}
-        onClick={() => setIsExpanded((prev) => !prev)}
+        onClick={() => onToggleExpand()}
       >
         <VSCodeCheckbox
           style={{ pointerEvents: "auto" }}

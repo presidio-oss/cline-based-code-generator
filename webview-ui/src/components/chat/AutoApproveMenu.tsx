@@ -7,6 +7,8 @@ import { vscode } from "../../utils/vscode"
 
 interface AutoApproveMenuProps {
 	style?: React.CSSProperties
+	isExpanded: boolean;
+	onToggleExpand: () => void;  
 }
 
 const ACTION_METADATA: {
@@ -48,9 +50,8 @@ const ACTION_METADATA: {
 	},
 ]
 
-const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
+const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuProps) => {
 	const { autoApprovalSettings } = useExtensionState()
-	const [isExpanded, setIsExpanded] = useState(false)
 	const [isHoveringCollapsibleSection, setIsHoveringCollapsibleSection] = useState(false)
 
 	// Careful not to use partials to mutate since spread operator only does shallow copy
@@ -153,7 +154,7 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 				}}
 				onClick={() => {
 					if (!hasEnabledActions) {
-						setIsExpanded((prev) => !prev)
+						onToggleExpand()
 					}
 				}}>
 				<VSCodeCheckbox
@@ -179,7 +180,7 @@ const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 					onClick={() => {
 						// to prevent this from counteracting parent
 						if (hasEnabledActions) {
-							setIsExpanded((prev) => !prev)
+							onToggleExpand()
 						}
 					}}>
 					<span style={{ color: "var(--vscode-foreground)", whiteSpace: "nowrap" }}>Auto-approve:</span>
