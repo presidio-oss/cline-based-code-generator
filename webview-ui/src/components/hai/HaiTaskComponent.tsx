@@ -103,16 +103,6 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({id, name, descriptio
         >
         <span className="codicon codicon-play" style={{ fontSize: 14, cursor: 'pointer' }} />
         </VSCodeButton>
-        <VSCodeButton
-          appearance="icon"
-          title="View Task"
-          onClick={() => onTaskClick(task)}
-        >
-        <span
-          className="codicon codicon-eye"
-          style={{ fontSize: 14, cursor: "pointer" }}
-        />
-        </VSCodeButton>
         <CopyClipboard 
           title="Copy Task"
           onCopyContent={() => {
@@ -123,6 +113,16 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({id, name, descriptio
             + `Acceptance: ${description}` + '\n'
           }}
         />
+        <VSCodeButton
+          appearance="icon"
+          title="View Task"
+          onClick={() => onTaskClick(task)}
+        >
+        <span
+          className="codicon codicon-eye"
+          style={{ fontSize: 14, cursor: "pointer" }}
+        />
+        </VSCodeButton>
       </div>
     </div>
   );
