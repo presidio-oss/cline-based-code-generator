@@ -57,6 +57,7 @@ import { buildTreeString } from "../utils/customFs"
 import { FindFilesToEditAgent } from "../integrations/code-prep/FindFilesToEditAgent"
 import { CodeScanner } from "../integrations/security/code-scan"
 import { ToolUse } from "./assistant-message"
+import { readInstructionsFromFiles } from "../utils/getWorkspacePath"
 
 const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -816,7 +817,7 @@ export class Cline {
 		let isCustomInstructionsEnabled = await this.providerRef.deref()?.customGetState("isCustomInstructionsEnabled") as any
 		let settingsCustomInstructions = isCustomInstructionsEnabled ? this.customInstructions?.trim() : undefined
 		let instructionStates = await this.providerRef.deref()?.customGetState("instructionStates") as any
-		let fileInstructions = await this.readInstructionsFromFiles(instructionStates);
+		let fileInstructions = await readInstructionsFromFiles(instructionStates);
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)
 		let clineRulesFileInstructions: string | undefined
 		if (await fileExistsAtPath(clineRulesFilePath)) {
@@ -879,26 +880,6 @@ export class Cline {
 		// (needs to be placed outside of try/catch since it we want caller to handle errors not with api_req_failed as that is reserved for first chunk failures only)
 		// this delegates to another generator or iterable object. In this case, it's saying "yield all remaining values from this iterator". This effectively passes along all subsequent chunks from the original stream.
 		yield* iterator
-	}
-
-	async readInstructionsFromFiles(instructionStates: { name: string; enabled: boolean }[]): Promise<string | undefined> {
-		const instructionsDir = path.resolve(cwd, '.vscode/hai-instructions');
-		try {
-			const files = await fs.readdir(instructionsDir);
-			let instructions = '';
-			for (const file of files) {
-				const instructionState = instructionStates.find(state => state.name === file);
-				if (instructionState && instructionState.enabled) {
-					const filePath = path.join(instructionsDir, file);
-					const content = await fs.readFile(filePath, 'utf8');
-					instructions += `# ${file}\n\n${content}\n\n`;
-				}
-			}
-			return instructions.trim() || undefined;
-		} catch (error) {
-			console.error(`Failed to read instructions from ${instructionsDir}:`, error);
-			return undefined;
-		}
 	}
 
 	async presentAssistantMessage() {

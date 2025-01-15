@@ -778,7 +778,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						if (message.instructions) {
 							const instructions = message.instructions
 							await this.updateWorkspaceState("instructionStates", instructions);
-							console.log("JRV-828 from updateInstructionState " + JSON.stringify(instructions))
 							await this.postStateToWebview();
 						}
 						break;
@@ -786,10 +785,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, ".vscode", "hai-instructions");
 						try {
 							const files = await fs.readdir(instructionsDir);
-							// Get saved instruction states
 							const savedStates = await this.getWorkspaceState("instructionStates") as { name: string; enabled: boolean }[] | undefined;
 							
-							// Initialize new files as enabled and preserve existing states
 							const instructionStates = files.map(file => {
 								const existingState = savedStates?.find(state => state.name === file);
 								return existingState || { name: file, enabled: true };
@@ -797,7 +794,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					
 							this.postMessageToWebview({
 								type: "existingFiles",
-								instructions: instructionStates  // Send both files and their states
+								instructions: instructionStates 
 							});
 						} catch (error) {
 							console.error('Error reading hai-instructions directory:', error);
@@ -1949,26 +1946,5 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				haiTaskData: { tasks: res, folder: path, ts },
 			}).then()
 		})
-	}
-	async readInstructionsFromFiles(): Promise<string | undefined> {
-		const workspacePath = this.getWorkspacePath();
-		if (!workspacePath) {
-			console.log("Workspace path is undefined");
-			return
-		}
-		const instructionsDir = path.resolve(workspacePath, '.vscode/hai-instructions');
-		try {
-			const files = await fs.readdir(instructionsDir);
-			let instructions = '';
-			for (const file of files) {
-				const filePath = path.join(instructionsDir, file);
-				const content = await fs.readFile(filePath, 'utf8');
-				instructions += `# ${file}\n\n${content}\n\n`;
-			}
-			return instructions.trim() || undefined;
-		} catch (error) {
-			console.error(`Failed to read instructions from ${instructionsDir}:`, error);
-			return undefined;
-		}
 	}
 }
