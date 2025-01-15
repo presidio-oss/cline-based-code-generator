@@ -51,7 +51,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
     }, []);
 
     useEffect(() => {
-        // Load existing files when component mounts
         vscode.postMessage({ type: "getExistingFiles" });
     }, []);
 
@@ -83,6 +82,17 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             for (const file of Array.from(e.target.files)) {
+				const fileExtension = file.name.split('.').pop()?.toLowerCase();
+				const mimeType = file.type;
+		
+				if (fileExtension !== 'md' || mimeType !== 'text/markdown') {
+					vscode.postMessage({
+						type: "showToast",
+						toast: {"message": "Only markdown files are supported", "toastType": "error"}
+					});
+					return;
+				}
+		
                 const reader = new FileReader();
                 reader.onload = () => {
                     if (typeof reader.result === "string") {
@@ -96,8 +106,11 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                 };
                 reader.readAsText(file);
             }
+			vscode.postMessage({
+				type: "showToast",
+				toast: { "message": `${Array.from(e.target.files).length} files uploaded successfully`, "toastType": "error" }
+			});
         }
-        // Reset file input
         e.target.value = '';
     };
 
