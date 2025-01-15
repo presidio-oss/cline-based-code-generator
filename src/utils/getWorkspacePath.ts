@@ -22,10 +22,13 @@ export const readInstructionsFromFiles = async (instructionStates: { name: strin
 		const files = await fs.readdir(instructionsDir)
 		let instructions = ""
 		for (const file of files) {
-			const filePath = path.join(instructionsDir, file)
-			const content = await fs.readFile(filePath, "utf8")
-			instructions += `# ${file}\n\n${content}\n\n`
-		}
+            const instructionState = instructionStates.find(state => state.name === file);
+            if (instructionState && instructionState.enabled) {
+                const filePath = path.join(instructionsDir, file);
+                const content = await fs.readFile(filePath, 'utf8');
+                instructions += `# ${file}\n\n${content}\n\n`;
+            }
+        }
 		return instructions.trim() || undefined
 	} catch (error) {
 		console.error(`Failed to read instructions from ${instructionsDir}:`, error)
