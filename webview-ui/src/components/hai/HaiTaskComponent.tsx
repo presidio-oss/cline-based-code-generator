@@ -1,6 +1,7 @@
 import React from "react";
 import { IHaiClineTask, IHaiTask } from "../../interfaces/hai-task.interface";
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react";
+import CopyClipboard from "../common/CopyClipboard";
 
 interface HaiTaskComponentProps {
   id: string;
@@ -102,6 +103,16 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({id, name, descriptio
         >
         <span className="codicon codicon-play" style={{ fontSize: 14, cursor: 'pointer' }} />
         </VSCodeButton>
+        <CopyClipboard 
+          title="Copy Task"
+          onCopyContent={() => {
+            return `Task (${task.id}): ${task.list}` + '\n' 
+            + `Acceptance: ${task.acceptance}` + '\n\n'
+            + `Context:` + '\n'
+            + `Story (${id}): ${name}` + '\n'
+            + `Story Acceptance: ${description}` + '\n'
+          }}
+        />
         <VSCodeButton
           appearance="icon"
           title="View Task"
