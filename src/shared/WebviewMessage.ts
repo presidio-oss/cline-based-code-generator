@@ -41,6 +41,7 @@ export interface WebviewMessage {
 		| "fetchExistingFiles"
 		| "getExistingFiles"
 		| "updateInstructionState"
+		| "showToast"
 	text?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
@@ -51,6 +52,7 @@ export interface WebviewMessage {
 	autoApprovalSettings?: AutoApprovalSettings
 	filename?: string
 	instructions?: { name: string; enabled: boolean }[];
+	toast?: { message: string; toastType: "error" | "warning" | "info" } 
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

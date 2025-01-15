@@ -100,7 +100,7 @@ export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	uiMessages: "ui_messages.json",
 	openRouterModels: "openrouter_models.json",
-	mcpSettings: "cline_mcp_settings.json",
+	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
 }
 
@@ -770,7 +770,19 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.postStateToWebview()
 						break
-
+					case "showToast":
+						switch(message.toast?.toastType) {
+							case "info":
+								vscode.window.showInformationMessage(message.toast.message)
+								break
+							case "error":
+								vscode.window.showErrorMessage(message.toast.message)
+								break
+							case "warning":
+								vscode.window.showWarningMessage(message.toast.message)
+								break
+						}
+						break
 					case "customInstructions":
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
@@ -789,7 +801,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							
 							const instructionStates = files.map(file => {
 								const existingState = savedStates?.find(state => state.name === file);
-								return existingState || { name: file, enabled: true };
+								return existingState || { name: file, enabled: false };
 							});
 					
 							this.postMessageToWebview({
@@ -810,10 +822,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await fs.mkdir(instructionsDir, { recursive: true });
 							const filePath = path.join(instructionsDir, message.filename);
 							await fs.writeFile(filePath, message.text, "utf8");
-							vscode.window.showInformationMessage(message.filename + "  uploaded successfully.");
 						}
 						break;
-					case 'deleteFile':
+					case "deleteFile":
 						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, ".vscode", "hai-instructions");
 						if(message.filename) {
 							try {
