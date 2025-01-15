@@ -111,7 +111,9 @@ const CustomInstructionsMenu = () => {
             overflow: "hidden",
             textOverflow: "ellipsis",
           }}>
-            {instructions.length > 0 ? `${instructions.length} Available` : 'No instructions available'}
+            {(instructions.length > 0 || customInstructions) ? 
+              `${instructions.length + (customInstructions ? 1 : 0)} Available` : 
+              'No instructions available'}
           </span>
           <span
             className={`codicon codicon-chevron-${isExpanded ? "down" : "right"}`}

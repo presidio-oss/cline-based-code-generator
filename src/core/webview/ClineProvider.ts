@@ -1184,12 +1184,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async updateCustomInstructions(instructions?: string, enable?: boolean) {
-		// User may be clearing the field
+		const { isCustomInstructionsEnabled } = await this.getState();
+		enable = enable ?? isCustomInstructionsEnabled;
+
 		await this.customUpdateState("customInstructions", instructions)
 		await this.customUpdateState("isCustomInstructionsEnabled", enable)
 		if (this.cline) {
 			this.cline.customInstructions = instructions || undefined
-			this.cline.isCustomInstructionsEnabled = enable || true
+			this.cline.isCustomInstructionsEnabled = enable
 		}
 		await this.postStateToWebview()
 	}
