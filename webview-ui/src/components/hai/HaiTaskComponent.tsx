@@ -110,7 +110,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({id, name, descriptio
             + `Acceptance: ${task.acceptance}` + '\n\n'
             + `Context:` + '\n'
             + `Story (${id}): ${name}` + '\n'
-            + `Acceptance: ${description}` + '\n'
+            + `Story Acceptance: ${description}` + '\n'
           }}
         />
         <VSCodeButton

@@ -217,7 +217,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
                       + `Acceptance: ${task.acceptance}` + '\n\n'
                       + `Context:` + '\n'
                       + `Story (${story?.id}): ${story?.name}` + '\n'
-                      + `Acceptance: ${story?.description}` + '\n'
+                      + `Story Acceptance: ${story?.description}` + '\n'
                     }}
                   />
                   <VSCodeButton
