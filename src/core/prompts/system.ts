@@ -887,7 +887,7 @@ export function addUserInstructions(settingsCustomInstructions?: string, clineRu
 	if (clineRulesFileInstructions) {
 		customInstructions += clineRulesFileInstructions
 	}
-  if (fileInstructions) {
+	if (fileInstructions) {
 		customInstructions += fileInstructions
 	}
 
