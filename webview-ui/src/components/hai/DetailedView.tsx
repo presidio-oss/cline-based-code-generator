@@ -3,6 +3,7 @@ import Fuse from "fuse.js";
 import { IHaiTask, IHaiStory, IHaiClineTask } from "../../interfaces/hai-task.interface";
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react";
 import { addHighlighting } from "../../utils/add-highlighting";
+import CopyClipboard from "../common/CopyClipboard";
 
 interface DetailedViewProps {
   task: IHaiTask | null;
@@ -209,6 +210,16 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
                   >
                   <span className="codicon codicon-play" style={{ fontSize: 14, cursor: 'pointer' }} />
                   </VSCodeButton>
+                  <CopyClipboard
+                    title="Copy Task"
+                    onCopyContent={() => {
+                      return `Task (${task.id}): ${task.list}` + '\n' 
+                      + `Acceptance: ${task.acceptance}` + '\n\n'
+                      + `Context:` + '\n'
+                      + `Story (${story?.id}): ${story?.name}` + '\n'
+                      + `Acceptance: ${story?.description}` + '\n'
+                    }}
+                  />
                   <VSCodeButton
                     appearance="icon"
                     title="View Task"
