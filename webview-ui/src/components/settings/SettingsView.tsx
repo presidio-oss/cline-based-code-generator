@@ -31,8 +31,20 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
 	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false);
-
+	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set());
 	const [uploadedFiles, setUploadedFiles] = useState<string[]>();
+
+    const toggleTrashClicked = (filename: string) => {
+        setTrashClickedFiles(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(filename)) {
+                newSet.delete(filename);
+            } else {
+                newSet.add(filename);
+            }
+            return newSet;
+        });
+    };
 
     useEffect(() => {
         const messageHandler = (event: MessageEvent) => {
@@ -108,7 +120,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
             }
 			vscode.postMessage({
 				type: "showToast",
-				toast: { "message": `${Array.from(e.target.files).length} files uploaded successfully`, "toastType": "error" }
+				toast: { "message": `${Array.from(e.target.files).length} files uploaded successfully`, "toastType": "info" }
 			});
         }
         e.target.value = '';
@@ -183,6 +195,13 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
 						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
 					</VSCodeTextArea>
+					<p style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						These default instructions are added to the end of the system prompt sent with every request.
+					</p>
                     <VSCodeButton
                         style={{
                             width: "100%",
@@ -218,6 +237,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                                         backgroundColor: 'var(--vscode-input-background)',
                                         borderRadius: '3px',
                                         color: 'var(--vscode-foreground)',
+                                        opacity: 0.6
                                     }}
                                 >
                                     <span style={{
@@ -228,12 +248,32 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                                     }}>
                                         {file}
                                     </span>
-                                    <VSCodeButton
-                                        appearance="icon"
-                                        onClick={() => handleDeleteFile(file)}
-                                    >
-                                        <span className="codicon codicon-close"></span>
-                                    </VSCodeButton>
+                                    {!trashClickedFiles.has(file) ? (
+                                        <VSCodeButton
+                                            appearance="icon"
+                                            onClick={() => toggleTrashClicked(file)}
+                                        >
+                                            <span className="codicon codicon-trash"></span>
+                                        </VSCodeButton>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => toggleTrashClicked(file)}
+                                            >
+                                                <span className="codicon codicon-close"></span>
+                                            </VSCodeButton>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => {
+                                                    handleDeleteFile(file);
+                                                    toggleTrashClicked(file);
+                                                }}
+                                            >
+                                                <span className="codicon codicon-check"></span>
+                                            </VSCodeButton>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -244,7 +284,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						These instructions are added to the end of the system prompt sent with every request.
+						This supports uploading markdown (.md) files of instructions to be followed by the LLM ex. Coding conventions, task chat histories etc. The content will be appended to the end of the system prompt sent with every request.
 					</p>
 				</div>
 

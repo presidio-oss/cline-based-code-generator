@@ -220,6 +220,13 @@ const CustomInstructionsMenu = () => {
                 </VSCodeCheckbox>
               </div>
             )}
+            <p style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						  These default instructions are textual instructions provided in the settings, which are added to the end of the system prompt sent with every request.
+					  </p>
             {instructions.map((instruction, index) => (
               <div key={instruction.name} style={{ margin: "6px 0" }}>
                 <VSCodeCheckbox
