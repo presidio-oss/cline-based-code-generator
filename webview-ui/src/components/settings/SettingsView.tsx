@@ -102,15 +102,21 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				if (fileExtension !== 'md' || mimeType !== 'text/markdown') {
 					vscode.postMessage({
 						type: "showToast",
-						toast: {"message": "Only markdown files are supported", "toastType": "warning"}
+						toast: {
+							message: "Only markdown files are supported",
+							toastType: "warning",
+						}
 					});
 					return;
 				}
 		
 				if (existingFiles.has(file.name)) {
 					vscode.postMessage({
-					  type: "showToast",
-					  toast: { "message": `File ${file.name} already exists`, "toastType": "warning" }
+						type: "showToast",
+						toast: {
+							message: "Only markdown files are supported",
+							toastType: "warning",
+						}
 					});
 					return;
 				}
@@ -130,7 +136,10 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
             }
 			vscode.postMessage({
 				type: "showToast",
-				toast: { "message": `${newFiles.length} files uploaded successfully`, "toastType": "info" }
+				toast: { 
+					message: `${newFiles.length} files uploaded successfully`, 
+					toastType: "info" 
+				}
 			});
         }
         e.target.value = '';
