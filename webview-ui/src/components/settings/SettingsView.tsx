@@ -6,6 +6,8 @@ import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
+import { ACCEPTED_FILE_EXTENSIONS, ACCEPTED_MIME_TYPES } from "../../utils/constants"
+import { useEvent } from "react-use"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -31,6 +33,38 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
 	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false);
+	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set());
+	const [uploadedFiles, setUploadedFiles] = useState<string[]>();
+
+    const toggleTrashClicked = (filename: string) => {
+        setTrashClickedFiles(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(filename)) {
+                newSet.delete(filename);
+            } else {
+                newSet.add(filename);
+            }
+            return newSet;
+        });
+    };
+	const messageHandler = (event: MessageEvent) => {
+		const message = event.data;
+		switch (message.type) {
+			case 'existingFiles':
+				setUploadedFiles(message.instructions.map((instruction: any) => (
+					instruction.name
+				)));
+				break;
+		}
+	};
+
+	useEvent("message", messageHandler)
+
+    useEffect(() => {
+        setApiErrorMessage(undefined)
+        setModelIdErrorMessage(undefined)
+        setEmbeddingErrorMessage(undefined)
+    }, [apiConfiguration, embeddingConfiguration])
 
 	const handleSubmit = () => {
 		const apiValidationResult = validateApiConfiguration(apiConfiguration)
@@ -42,31 +76,66 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 		if (!apiValidationResult && !embeddingValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			vscode.postMessage({ type: "customInstructions", text: customInstructions })
 			vscode.postMessage({ type: "alwaysAllowReadOnly", bool: alwaysAllowReadOnly })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+			vscode.postMessage({ type: "customInstructions", text: customInstructions });
 			onDone()
 		}
 	}
 
-	useEffect(() => {
-		setApiErrorMessage(undefined)
-		setModelIdErrorMessage(undefined)
-		setEmbeddingErrorMessage(undefined)
-	}, [apiConfiguration, embeddingConfiguration])
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+			const newFiles = Array.from(e.target.files);
+			const existingFiles = new Set(uploadedFiles);		
+            for (const file of Array.from(e.target.files)) {
+				const fileExtension = file.name.split('.').pop()?.toLowerCase();
+				const mimeType = file.type;
+		
+				if ((fileExtension && !ACCEPTED_FILE_EXTENSIONS.includes(fileExtension)) || !ACCEPTED_MIME_TYPES.includes(mimeType)) {
+					vscode.postMessage({
+						type: "showToast",
+						toast: {
+							message: "Only markdown files are supported",
+							toastType: "warning",
+						}
+					});
+					return;
+				}
+		
+				if (existingFiles.has(file.name)) {
+					vscode.postMessage({
+						type: "showToast",
+						toast: {
+							message: `${file.name} already exists. Please upload a different file.`,
+							toastType: "warning",
+						}
+					});
+					return;
+				}
+			
+                const reader = new FileReader();
+                reader.onload = () => {
+                    if (typeof reader.result === "string") {
+						setUploadedFiles(prev => [...(prev ?? []), file.name]);
+                    }
+                };
+                reader.readAsText(file);
+            }
+			vscode.postMessage({
+				type: "showToast",
+				toast: { 
+					message: `${newFiles.length} files uploaded successfully`, 
+					toastType: "info" 
+				}
+			});
+        }
+        e.target.value = '';
+    };
 
-	// validate as soon as the component is mounted
-	/*
-	useEffect will use stale values of variables if they are not included in the dependency array. so trying to use useEffect with a dependency array of only one value for example will use any other variables' old values. In most cases you don't want this, and should opt to use react-use hooks.
-	
-	useEffect(() => {
-		// uses someVar and anotherVar
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [someVar])
-
-	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
-	*/
+    const handleDeleteFile = (filename: string) => {
+		setUploadedFiles(prev => (prev ?? []).filter(file => file !== filename));
+    };
 
 	const handleResetState = () => {
 		vscode.postMessage({ type: "resetState" })
@@ -129,13 +198,96 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
 						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
 					</VSCodeTextArea>
-					<p
-						style={{
+					<p style={{
 							fontSize: "12px",
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						These instructions are added to the end of the system prompt sent with every request.
+						These default instructions are added to the end of the system prompt sent with every request.
+					</p>
+                    <VSCodeButton
+                        style={{
+                            width: "100%",
+                            marginTop: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                        onClick={() => document.getElementById('fileInput')?.click()}
+                    >
+                        <span className="codicon codicon-add" style={{ marginRight: "5px" }}></span>
+                        Upload Instruction File
+                    </VSCodeButton>
+                    <input
+                        id="fileInput"
+                        type="file"
+                        accept=".md"
+                        style={{ display: 'none' }}
+                        onChange={handleFileUpload}
+                        multiple
+                    />
+
+                    {uploadedFiles && (uploadedFiles.length) > 0 && (
+                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
+                            {uploadedFiles.map((file) => (
+                                <div
+                                    key={file}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        backgroundColor: 'var(--vscode-input-background)',
+                                        borderRadius: '3px',
+                                        color: 'var(--vscode-foreground)',
+                                        opacity: 0.6
+                                    }}
+                                >
+                                    <span style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        marginRight: '10px'
+                                    }}>
+                                        {file}
+                                    </span>
+                                    {!trashClickedFiles.has(file) ? (
+                                        <VSCodeButton
+                                            appearance="icon"
+                                            onClick={() => toggleTrashClicked(file)}
+                                        >
+                                            <span className="codicon codicon-trash"></span>
+                                        </VSCodeButton>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => toggleTrashClicked(file)}
+                                            >
+                                                <span className="codicon codicon-close"></span>
+                                            </VSCodeButton>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => {
+                                                    handleDeleteFile(file);
+                                                    toggleTrashClicked(file);
+                                                }}
+                                            >
+                                                <span className="codicon codicon-check"></span>
+                                            </VSCodeButton>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <p style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						This supports uploading markdown (.md) files of instructions to be followed by the LLM ex. Coding conventions, task chat histories etc. The content will be appended to the end of the system prompt sent with every request. Additionally, to maintain a global file of instructions, create a .hairules file and have your instructions there.
 					</p>
 				</div>
 

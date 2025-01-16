@@ -27,6 +27,8 @@ import { IHaiClineTask } from "../../interfaces/hai-task.interface"
 import CodeIndexWarning from "./CodeIndexWarning"
 import AutoApproveMenu from "./AutoApproveMenu"
 import QuickActions from "../welcome/QuickActions"
+import CustomInstructionsMenu from "./CustomInstructionsMenu"
+
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -60,6 +62,23 @@ const ChatView = ({
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [textAreaDisabled, setTextAreaDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
+	const [isAutoApproveExpanded, setIsAutoApproveExpanded] = useState(false);
+	const [isCustomInstructionsExpanded, setIsCustomInstructionsExpanded] = useState(false);
+  
+	const handleToggleAutoApprove = useCallback(() => {
+	  setIsAutoApproveExpanded((prev) => {
+		if (!prev) setIsCustomInstructionsExpanded(false);
+		return !prev;
+	  });
+	}, []);
+  
+	const handleToggleCustomInstructions = useCallback(() => {
+	  setIsCustomInstructionsExpanded((prev) => {
+		if (!prev) setIsAutoApproveExpanded(false);
+		return !prev;
+	  });
+	}, []);
+  
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -801,13 +820,19 @@ const ChatView = ({
 			//    but becomes scrollable when the viewport is too small
 			*/}
 			{!task && (
-				<AutoApproveMenu
-					style={{
-						marginBottom: -2,
-						flex: "0 1 auto", // flex-grow: 0, flex-shrink: 1, flex-basis: auto
-						minHeight: 0,
-					}}
-				/>
+				<>
+					<AutoApproveMenu
+						style={{
+							marginBottom: -2,
+							flex: "0 1 auto", // flex-grow: 0, flex-shrink: 1, flex-basis: auto
+							minHeight: 0,
+						}}
+						isExpanded={isAutoApproveExpanded}
+						onToggleExpand={handleToggleAutoApprove}
+			
+					/>
+					<CustomInstructionsMenu isExpanded={isCustomInstructionsExpanded} onToggleExpand={handleToggleCustomInstructions} />
+					</>
 			)}
 
 			{task && (
@@ -839,7 +864,8 @@ const ChatView = ({
 							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
-					<AutoApproveMenu />
+					<AutoApproveMenu isExpanded={isAutoApproveExpanded} onToggleExpand={handleToggleAutoApprove}/>
+					<CustomInstructionsMenu isExpanded={isCustomInstructionsExpanded} onToggleExpand={handleToggleCustomInstructions} />
 					{showScrollToBottom ? (
 						<div
 							style={{

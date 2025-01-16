@@ -75,6 +75,7 @@ type GlobalStateKey =
 	| "vertexRegion"
 	| "lastShownAnnouncementId"
 	| "customInstructions"
+	| "isCustomInstructionsEnabled"
 	| "alwaysAllowReadOnly"
 	| "taskHistory"
 	| "openAiBaseUrl"
@@ -99,7 +100,7 @@ export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	uiMessages: "ui_messages.json",
 	openRouterModels: "openrouter_models.json",
-	mcpSettings: "cline_mcp_settings.json",
+	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
 }
 
@@ -530,6 +531,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			buildContextOptions,
 			autoApprovalSettings
@@ -540,6 +542,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			embeddingConfiguration,
 			autoApprovalSettings,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			task,
 			images
@@ -553,6 +556,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			autoApprovalSettings,
 			alwaysAllowReadOnly,
 			buildContextOptions,
@@ -563,6 +567,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			embeddingConfiguration,
 			autoApprovalSettings,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			undefined,
 			undefined,
@@ -765,9 +770,21 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.postStateToWebview()
 						break
-
+					case "showToast":
+						switch(message.toast?.toastType) {
+							case "info":
+								vscode.window.showInformationMessage(message.toast.message)
+								break
+							case "error":
+								vscode.window.showErrorMessage(message.toast.message)
+								break
+							case "warning":
+								vscode.window.showWarningMessage(message.toast.message)
+								break
+						}
+						break	
 					case "customInstructions":
-						await this.updateCustomInstructions(message.text)
+						await this.updateCustomInstructions(message.text, message.bool)
 						break
 					case "alwaysAllowReadOnly":
 						await this.customUpdateState("alwaysAllowReadOnly", message.bool ?? undefined)
@@ -1124,14 +1141,19 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
-	async updateCustomInstructions(instructions?: string) {
-		// User may be clearing the field
-		await this.customUpdateState("customInstructions", instructions || undefined)
+	async updateCustomInstructions(instructions?: string, enable?: boolean) {
+		const { isCustomInstructionsEnabled } = await this.getState();
+		enable = enable ?? isCustomInstructionsEnabled;
+
+		await this.customUpdateState("customInstructions", instructions)
+		await this.customUpdateState("isCustomInstructionsEnabled", enable)
 		if (this.cline) {
 			this.cline.customInstructions = instructions || undefined
+			this.cline.isCustomInstructionsEnabled = enable
 		}
 		await this.postStateToWebview()
 	}
+
 
 	// MCP
 
@@ -1436,6 +1458,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			taskHistory,
 			autoApprovalSettings,
@@ -1447,6 +1470,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			uriScheme: vscode.env.uriScheme,
 			clineMessages: this.cline?.clineMessages || [],
@@ -1538,6 +1562,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			openRouterModelInfo,
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled,
 			alwaysAllowReadOnly,
 			taskHistory,
 			buildContextOptions,
@@ -1587,6 +1612,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("openRouterModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("lastShownAnnouncementId") as Promise<string | undefined>,
 			this.customGetState("customInstructions") as Promise<string | undefined>,
+			this.customGetState("isCustomInstructionsEnabled") as Promise<boolean | undefined>,
 			this.customGetState("alwaysAllowReadOnly") as Promise<boolean | undefined>,
 			this.customGetState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.customGetState("buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
@@ -1679,6 +1705,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			},
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled: isCustomInstructionsEnabled ?? true,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
 			taskHistory,
 			buildContextOptions: buildContextOptions ?? {

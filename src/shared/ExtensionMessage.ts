@@ -53,6 +53,7 @@ export interface ExtensionState {
 	version: string
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
+	isCustomInstructionsEnabled: boolean
 	alwaysAllowReadOnly?: boolean
 	uriScheme?: string
 	clineMessages: ClineMessage[]

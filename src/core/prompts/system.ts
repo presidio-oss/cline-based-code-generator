@@ -879,13 +879,16 @@ You accomplish a given task iteratively, breaking it down into clear steps and w
 5. The user may provide feedback, which you can use to make improvements and try again. But DO NOT continue in pointless back and forth conversations, i.e. don't end your responses with questions or offers for further assistance.
 ${customObjectivePrompt(supportsCodeIndex)}`
 
-export function addUserInstructions(settingsCustomInstructions?: string, clineRulesFileInstructions?: string) {
+export function addUserInstructions(settingsCustomInstructions?: string, clineRulesFileInstructions?: string, fileInstructions?: string) {
 	let customInstructions = ""
 	if (settingsCustomInstructions) {
 		customInstructions += settingsCustomInstructions + "\n\n"
 	}
 	if (clineRulesFileInstructions) {
 		customInstructions += clineRulesFileInstructions
+	}
+  if (fileInstructions) {
+		customInstructions += fileInstructions
 	}
 
 	return `

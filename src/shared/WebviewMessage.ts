@@ -36,6 +36,7 @@ export interface WebviewMessage {
 		| "autoApprovalSettings"
 		| "openHistory"
 		| "openHaiTasks"
+		| "showToast"
 	text?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
@@ -44,6 +45,7 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	autoApprovalSettings?: AutoApprovalSettings
+	toast?: { message: string; toastType: "error" | "warning" | "info" } 
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
