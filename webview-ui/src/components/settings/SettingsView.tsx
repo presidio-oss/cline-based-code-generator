@@ -93,6 +93,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
+			const newFiles = Array.from(e.target.files);
+			const existingFiles = new Set(uploadedFiles);		
             for (const file of Array.from(e.target.files)) {
 				const fileExtension = file.name.split('.').pop()?.toLowerCase();
 				const mimeType = file.type;
@@ -100,11 +102,19 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				if (fileExtension !== 'md' || mimeType !== 'text/markdown') {
 					vscode.postMessage({
 						type: "showToast",
-						toast: {"message": "Only markdown files are supported", "toastType": "error"}
+						toast: {"message": "Only markdown files are supported", "toastType": "warning"}
 					});
 					return;
 				}
 		
+				if (existingFiles.has(file.name)) {
+					vscode.postMessage({
+					  type: "showToast",
+					  toast: { "message": `File ${file.name} already exists`, "toastType": "warning" }
+					});
+					return;
+				}
+			
                 const reader = new FileReader();
                 reader.onload = () => {
                     if (typeof reader.result === "string") {
@@ -120,7 +130,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
             }
 			vscode.postMessage({
 				type: "showToast",
-				toast: { "message": `${Array.from(e.target.files).length} files uploaded successfully`, "toastType": "info" }
+				toast: { "message": `${newFiles.length} files uploaded successfully`, "toastType": "info" }
 			});
         }
         e.target.value = '';
@@ -284,7 +294,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						This supports uploading markdown (.md) files of instructions to be followed by the LLM ex. Coding conventions, task chat histories etc. The content will be appended to the end of the system prompt sent with every request.
+						This supports uploading markdown (.md) files of instructions to be followed by the LLM ex. Coding conventions, task chat histories etc. The content will be appended to the end of the system prompt sent with every request. Additionally, to maintain a global file of instructions, create a .hairules file and have your instructions there.
 					</p>
 				</div>
 
