@@ -238,7 +238,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                     <input
                         id="fileInput"
                         type="file"
-                        accept=".txt,.md"
+                        accept=".md"
                         style={{ display: 'none' }}
                         onChange={handleFileUpload}
                         multiple
