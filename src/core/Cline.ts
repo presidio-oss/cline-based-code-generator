@@ -57,7 +57,7 @@ import { buildTreeString } from "../utils/customFs"
 import { FindFilesToEditAgent } from "../integrations/code-prep/FindFilesToEditAgent"
 import { CodeScanner } from "../integrations/security/code-scan"
 import { ToolUse } from "./assistant-message"
-import { readInstructionsFromFiles } from "../utils/getWorkspacePath"
+import { readInstructionsFromFiles } from "../utils/instructions"
 
 const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -835,6 +835,7 @@ export class Cline {
 			// altering the system prompt mid-task will break the prompt cache, but in the grand scheme this will not change often so it's better to not pollute user messages with it the way we have to with <potentially relevant details>
 			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions, fileInstructions)
 		}
+		console.log("JRV-828 systemPrompt", systemPrompt)
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
 		if (previousApiReqIndex >= 0) {
