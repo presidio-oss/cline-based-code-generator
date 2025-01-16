@@ -19,6 +19,7 @@ export class AnthropicHandler implements ApiHandler {
 		this.client = new Anthropic({
 			apiKey: this.options.apiKey,
 			baseURL: this.options.anthropicBaseUrl || undefined,
+			maxRetries: this.options.maxRetries
 		})
 	}
 
@@ -172,5 +173,21 @@ export class AnthropicHandler implements ApiHandler {
 			return { id, info: anthropicModels[id] }
 		}
 		return { id: anthropicDefaultModelId, info: anthropicModels[anthropicDefaultModelId] }
+	}
+
+	async validateAPIKey(): Promise<boolean> {
+		try {
+			await this.client.messages.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				temperature: 0,
+				messages: [{ role: "user", content: "Test" }],
+				stream: false
+			})
+			return true
+		} catch (error) {
+			console.error("Error validating Anthropic credentials: ", error)
+			return false
+		}
 	}
 }

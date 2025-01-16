@@ -23,11 +23,13 @@ export class OpenAiHandler implements ApiHandler {
 				deployment: this.options.openAiModelId,
 				apiKey: this.options.openAiApiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
+				maxRetries: this.options.maxRetries
 			})
 		} else {
 			this.client = new OpenAI({
 				baseURL: this.options.openAiBaseUrl,
 				apiKey: this.options.openAiApiKey,
+				maxRetries: this.options.maxRetries
 			})
 		}
 	}
@@ -68,24 +70,23 @@ export class OpenAiHandler implements ApiHandler {
 			info: openAiModelInfoSaneDefaults,
 		}
 	}
-	async validateApiKey(): Promise<boolean> {
+	
+	async validateAPIKey(): Promise<boolean> {
 		try {
 			if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com") && !this.options.openAiModelId) {
 				return false;
 			}
 
-			const response = await this.client.models.list()
-			if (!response?.data || !Array.isArray(response.data) || response.data.length === 0) {
-				return false
-			}
-	
-			if (this.options.openAiModelId) {
-				return response.data.some(model => model.id === this.options.openAiModelId)
-			}
-	
-			return true
+			await this.client.chat.completions.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "Test" }],
+				temperature: 0,
+				stream: false
+			})
+			return true;
 		} catch (error) {
-			console.error("Error validating API key: ", error)
+			console.error("Error validating OpenAI credentials: ", error)
 			return false
 		}
 	}

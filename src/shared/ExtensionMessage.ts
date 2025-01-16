@@ -24,10 +24,11 @@ export interface ExtensionMessage {
 		| "haiTaskData"
 		| "haiAction"
 		| "haiConfig"
-		| "apiKeyValidation"
-		| "embeddingValidation"
+		| "llmConfigValidation"
+		| "embeddingConfigValidation"
 		| "mcpServers"
 	text?: string
+	bool?: boolean
 	action?:
 		| "chatButtonClicked"
 		| "mcpButtonClicked"

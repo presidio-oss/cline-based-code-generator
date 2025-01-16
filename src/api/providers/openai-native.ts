@@ -19,6 +19,7 @@ export class OpenAiNativeHandler implements ApiHandler {
 		this.options = options
 		this.client = new OpenAI({
 			apiKey: this.options.openAiNativeApiKey,
+			maxRetries: this.options.maxRetries
 		})
 	}
 
@@ -82,11 +83,19 @@ export class OpenAiNativeHandler implements ApiHandler {
 		}
 		return { id: openAiNativeDefaultModelId, info: openAiNativeModels[openAiNativeDefaultModelId] }
 	}
-	async validateApiKey(): Promise<boolean> {
+
+	async validateAPIKey(): Promise<boolean> {
 		try {
-			const response = await this.client.models.list()
-			return response?.data && Array.isArray(response.data) && response.data.length > 0
+			await this.client.chat.completions.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "Test" }],
+				temperature: 0,
+				stream: false
+			})
+			return true;
 		} catch (error) {
+			console.error("Error validating OpenAI Native credentials: ", error)
 			return false
 		}
 	}

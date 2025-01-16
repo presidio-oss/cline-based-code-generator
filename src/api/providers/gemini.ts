@@ -54,18 +54,19 @@ export class GeminiHandler implements ApiHandler {
 		return { id: geminiDefaultModelId, info: geminiModels[geminiDefaultModelId] }
 	}
 
-	async validateApiKey(): Promise<boolean> {
+	async validateAPIKey(): Promise<boolean> {
 		try {
 			const model = this.client.getGenerativeModel({
 				model: this.getModel().id,
 			})
+
 			const contents = [
 				{
 					role: "user",
-					parts: [{ text: "." }],
+					parts: [{ text: "Test" }],
 				},
 			]
-			const result = await model.generateContent({
+			await model.generateContent({
 				contents,
 				generationConfig: {
 					temperature: 0,
@@ -73,9 +74,9 @@ export class GeminiHandler implements ApiHandler {
 				},
 			})
 			
-			return !!result.response?.candidates?.[0]?.content
+			return true;
 		} catch (error) {
-			console.error("Error validating Gemini API key:", error)
+			console.error("Error validating Gemini credentials: ", error)
 			return false
 		}
 	}
