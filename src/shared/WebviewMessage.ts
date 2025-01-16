@@ -38,7 +38,6 @@ export interface WebviewMessage {
 		| "openHaiTasks"
 		| "uploadInstructions"
 		| "deleteInstruction"
-		| "fetchExistingFiles"
 		| "getExistingFiles"
 		| "updateInstructionState"
 		| "showToast"
