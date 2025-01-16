@@ -6,6 +6,7 @@ import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
+import { ACCEPTED_FILE_EXTENSIONS, ACCEPTED_MIME_TYPES } from "../../utils/constants"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -99,7 +100,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				const fileExtension = file.name.split('.').pop()?.toLowerCase();
 				const mimeType = file.type;
 		
-				if (fileExtension !== 'md' || mimeType !== 'text/markdown') {
+				if ((fileExtension && !ACCEPTED_FILE_EXTENSIONS.includes(fileExtension)) || !ACCEPTED_MIME_TYPES.includes(mimeType)) {
 					vscode.postMessage({
 						type: "showToast",
 						toast: {
