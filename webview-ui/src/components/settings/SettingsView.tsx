@@ -7,6 +7,7 @@ import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import { ACCEPTED_FILE_EXTENSIONS, ACCEPTED_MIME_TYPES } from "../../utils/constants"
+import { useEvent } from "react-use"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -46,22 +47,18 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
             return newSet;
         });
     };
+	const messageHandler = (event: MessageEvent) => {
+		const message = event.data;
+		switch (message.type) {
+			case 'existingFiles':
+				setUploadedFiles(message.instructions.map((instruction: any) => (
+					instruction.name
+				)));
+				break;
+		}
+	};
 
-    useEffect(() => {
-        const messageHandler = (event: MessageEvent) => {
-            const message = event.data;
-            switch (message.type) {
-                case 'existingFiles':
-                    setUploadedFiles(message.instructions.map((instruction: any) => (
-                        instruction.name
-                    )));
-                    break;
-            }
-        };
-
-        window.addEventListener('message', messageHandler);
-        return () => window.removeEventListener('message', messageHandler);
-    }, []);
+	useEvent("message", messageHandler)
 
     useEffect(() => {
         vscode.postMessage({ type: "getExistingFiles" });
@@ -115,7 +112,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					vscode.postMessage({
 						type: "showToast",
 						toast: {
-							message: "Only markdown files are supported",
+							message: `${file.name} already exists. Please upload a different file.`,
 							toastType: "warning",
 						}
 					});
