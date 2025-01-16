@@ -145,7 +145,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
     const handleDeleteFile = (filename: string) => {
         vscode.postMessage({
-            type: "deleteFile",
+            type: "deleteInstruction",
             filename: filename
         });
 		setUploadedFiles(prev => (prev ?? []).filter(file => file !== filename));

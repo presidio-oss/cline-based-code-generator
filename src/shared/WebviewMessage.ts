@@ -37,7 +37,7 @@ export interface WebviewMessage {
 		| "openHistory"
 		| "openHaiTasks"
 		| "uploadInstructions"
-		| "deleteFile"
+		| "deleteInstruction"
 		| "fetchExistingFiles"
 		| "getExistingFiles"
 		| "updateInstructionState"

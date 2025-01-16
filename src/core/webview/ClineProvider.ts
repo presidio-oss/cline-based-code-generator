@@ -824,7 +824,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await fs.writeFile(filePath, message.text, "utf8");
 						}
 						break;
-					case "deleteFile":
+					case "deleteInstruction":
 						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, ".vscode", "hai-instructions");
 						if(message.filename) {
 							try {
