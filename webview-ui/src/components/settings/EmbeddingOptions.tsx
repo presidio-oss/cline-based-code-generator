@@ -13,8 +13,9 @@ import {
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
-import { useEvent } from "react-use"
+import { useDebounce, useEvent } from "react-use"
 import Info, { InfoStatus } from "../common/Info"
+import { validateEmbeddingConfiguration } from "../../utils/validate"
 
 interface EmbeddingOptionsProps {
 	showModelOptions: boolean
@@ -29,12 +30,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 	const [azureOpenAIApiVersionSelected, setAzureOpenAIApiVersionSelected] = useState(!!embeddingConfiguration?.azureOpenAIApiVersion)
 	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-
-	useEffect(() => {
-		setIsEmbeddingValid(false);
-		setIsLoading(true);
-		vscode.postMessage({ type: "validateEmbeddingKey", embeddingConfiguration })
-	}, [embeddingConfiguration])
+	const [validateEmbedding, setValidateEmbedding] = useState<EmbeddingConfiguration | undefined>(undefined);
 
     useEffect(() => {
         if (!apiConfiguration || !buildContextOptions?.useSyncWithApi) return
@@ -67,16 +63,37 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
     }, [apiConfiguration, buildContextOptions?.useSyncWithApi])
 
 	const handleInputChange = (field: keyof EmbeddingConfiguration) => (event: any) => {
-		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }
+		if (field === 'provider') {
+			// Reset the validation message
+			setIsEmbeddingValid(null);
+		}
+
+		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }		
 		setEmbeddingConfiguration(newEmbeddingConfiguration)
-		setIsEmbeddingValid(false);
-		setIsLoading(true);
-		vscode.postMessage({ type: "validateEmbeddingKey", embeddingConfiguration: newEmbeddingConfiguration })
 	}
+
+	useEffect(() => {
+		const error = validateEmbeddingConfiguration(embeddingConfiguration);
+		if (!error) {
+			setValidateEmbedding(embeddingConfiguration);
+		} else {
+			setIsEmbeddingValid(null);
+		}
+
+	}, [embeddingConfiguration]);
+
+	useDebounce(() => {
+		if (validateEmbedding) {
+			setIsEmbeddingValid(false);
+			setIsLoading(true);
+			vscode.postMessage({ type: 'validateEmbeddingConfig', embeddingConfiguration: validateEmbedding })
+		}
+	}, 500, [validateEmbedding])
+
 	const handleApiKey = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
-		if (message.type === "embeddingValidation") {
-			setIsEmbeddingValid(message.text === "valid")
+		if (message.type === 'embeddingConfigValidation') {
+			setIsEmbeddingValid(!!message.bool)
 			setIsLoading(false)
 		}
 	}, [])
@@ -117,6 +134,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 					id="embedding-provider"
 					value={selectedProvider}
 					onChange={handleInputChange("provider")}
+					disabled={isLoading}
 					style={{ minWidth: 130, position: "relative" }}>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
 					<VSCodeOption value="openai-native">OpenAI</VSCodeOption>
@@ -322,20 +340,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 				</div>
 			)}
 
-			{errorMessage && (
-				<p
-					style={{
-						margin: "5px 0",
-						fontSize: 12,
-						color: "var(--vscode-errorForeground)",
-					}}>
-					{errorMessage}
-				</p>
-			)}
-
 			<VSCodeCheckbox
 				style={{
-					marginBottom: '12px'
+					marginBottom: '10px'
 				}}
 				checked={buildContextOptions?.useSyncWithApi}
 				onChange={(e: any) => {
@@ -346,6 +353,17 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 				}}>
 				Same as LLM API configuration
 			</VSCodeCheckbox>
+
+			{errorMessage && (
+				<p
+					style={{
+						margin: "5px 0",
+						fontSize: 12,
+						color: "var(--vscode-errorForeground)",
+					}}>
+					{errorMessage}
+				</p>
+			)}
 
 			{showModelError && isEmbeddingValid !== null &&
 				<Info

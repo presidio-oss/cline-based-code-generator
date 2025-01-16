@@ -20,6 +20,7 @@ export class OpenRouterHandler implements ApiHandler {
 				"HTTP-Referer": "https://cline.bot", // Optional, for including your app on openrouter.ai rankings.
 				"X-Title": "Cline", // Optional. Shows in rankings on openrouter.ai.
 			},
+			maxRetries: this.options.maxRetries
 		})
 	}
 
@@ -167,5 +168,21 @@ export class OpenRouterHandler implements ApiHandler {
 			return { id: modelId, info: modelInfo }
 		}
 		return { id: openRouterDefaultModelId, info: openRouterDefaultModelInfo }
+	}
+
+	async validateAPIKey(): Promise<boolean> {
+		try {
+			await this.client.chat.completions.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "Test" }],
+				temperature: 0,
+				stream: false
+			})
+			return true;
+		} catch (error) {
+			console.error("Error validating OpenRouter credentials: ", error)
+			return false
+		}
 	}
 }

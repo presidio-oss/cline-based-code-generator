@@ -8,7 +8,7 @@ import {
 	VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react"
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react"
-import { useEvent, useInterval } from "react-use"
+import { useDebounce, useEvent, useInterval } from "react-use"
 import {
 	ApiConfiguration,
 	ModelInfo,
@@ -36,6 +36,7 @@ import OpenRouterModelPicker, {
 	OPENROUTER_MODEL_PICKER_Z_INDEX,
 } from "./OpenRouterModelPicker"
 import Info, { InfoStatus } from "../common/Info"
+import { validateApiConfiguration } from "../../utils/validate"
 
 interface ApiOptionsProps {
 	showModelOptions: boolean
@@ -54,25 +55,40 @@ const ApiOptions = ({ showModelOptions, showModelError = true, apiErrorMessage, 
 	const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 	const [isKeyValid, setIsKeyValid] = useState<boolean | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-
-	useEffect(() => {
-		setIsKeyValid(false);
-		setIsLoading(true);
-		vscode.postMessage({ type: "validateApiKey", apiConfiguration })
-	}, [apiConfiguration])
-
+	const [validateLLM, setValidateLLM] = useState<ApiConfiguration | undefined>(undefined);
+	
 	const handleInputChange = (field: keyof ApiConfiguration) => (event: any) => {
+		if (field === 'apiProvider') {
+			// Reset the validation message
+			setIsKeyValid(null);
+		}
+
 		const newApiConfiguration = { ...apiConfiguration, [field]: event.target.value }
 		setApiConfiguration(newApiConfiguration)
-		setIsKeyValid(false);
-		setIsLoading(true);
-		vscode.postMessage({ type: "validateApiKey", apiConfiguration: newApiConfiguration })
 	}
+
+	useEffect(() => {
+		const error = validateApiConfiguration(apiConfiguration);
+		if (!error) {
+			setValidateLLM(apiConfiguration);
+		} else {
+			setIsKeyValid(null);
+		}
+
+	}, [apiConfiguration]);
+
+	useDebounce(() => {
+		if (validateLLM) {
+			setIsKeyValid(false);
+			setIsLoading(true);
+			vscode.postMessage({ type: 'validateLLMConfig', apiConfiguration: validateLLM });
+		}
+	}, 500, [validateLLM])
 
 	const handleApiKey = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
-		if (message.type === "apiKeyValidation") {
-			setIsKeyValid(message.text === "valid")
+		if (message.type === 'llmConfigValidation') {
+			setIsKeyValid(!!message.bool)
 			setIsLoading(false)
 		}
 	}, [])
@@ -154,6 +170,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, apiErrorMessage, 
 					id="api-provider"
 					value={selectedProvider}
 					onChange={handleInputChange("apiProvider")}
+					disabled={isLoading}
 					style={{ minWidth: 130, position: "relative", zIndex: OPENROUTER_MODEL_PICKER_Z_INDEX + 1 }}>
 					<VSCodeOption value="openrouter">OpenRouter</VSCodeOption>
 					<VSCodeOption value="anthropic">Anthropic</VSCodeOption>
@@ -632,17 +649,6 @@ const ApiOptions = ({ showModelOptions, showModelError = true, apiErrorMessage, 
 				</div>
 			)}
 
-			{apiErrorMessage && (
-				<p
-					style={{
-						margin: "-10px 0 4px 0",
-						fontSize: 12,
-						color: "var(--vscode-errorForeground)",
-					}}>
-					{apiErrorMessage}
-				</p>
-			)}
-
 			{selectedProvider === "openrouter" && showModelOptions && <OpenRouterModelPicker />}
 
 			{selectedProvider !== "openrouter" &&
@@ -670,6 +676,17 @@ const ApiOptions = ({ showModelOptions, showModelError = true, apiErrorMessage, 
 						/>
 					</>
 				)}
+
+			{apiErrorMessage && (
+				<p
+					style={{
+						margin: "-10px 0 4px 0",
+						fontSize: 12,
+						color: "var(--vscode-errorForeground)",
+					}}>
+					{apiErrorMessage}
+				</p>
+			)}
 
 			{modelIdErrorMessage && (
 				<p

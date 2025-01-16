@@ -12,16 +12,8 @@ const WelcomeView = () => {
 	const { apiConfiguration, embeddingConfiguration , buildContextOptions, buildIndexProgress } = useExtensionState()
 
 	const [apiValid, setApiValid] = useState<boolean>(false)
-	const [embeddingValid, setEmbeddingValid] = useState<boolean>(false)
-	const [showModelError, setShowModelError] = useState<boolean>(false);
 
 	const handleSubmit = () => {
-		if (!(apiValid || embeddingValid)) {
-			setShowModelError(true);
-			return;		
-		}
-
-		setShowModelError(false);
 		vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
 		vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
 	}
@@ -55,14 +47,14 @@ const WelcomeView = () => {
 				
 					<div>
 						<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-						<ApiOptions showModelError={showModelError} showModelOptions={true} onValid={(isValid) => setApiValid(isValid)} />
+						<ApiOptions showModelOptions={true} onValid={(isValid) => setApiValid(isValid)} />
 					</div>
 
 					<div style={{ marginBottom: 10 }}>
 						<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-						<EmbeddingOptions showModelError={showModelError} showModelOptions={true} onValid={(isValid) => setEmbeddingValid(isValid)} />
+						<EmbeddingOptions showModelOptions={true} />
 					</div>
-					<VSCodeButton onClick={handleSubmit} style={{ marginTop: "3px", width: "max-content" }}>
+					<VSCodeButton disabled={!apiValid} onClick={handleSubmit} style={{ marginTop: "10px", width: "max-content" }}>
 						Let's go!
 					</VSCodeButton>
 				</div>
