@@ -14,6 +14,7 @@ export class LmStudioHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 			apiKey: "noop",
+			maxRetries: this.options.maxRetries
 		})
 	}
 
@@ -51,6 +52,22 @@ export class LmStudioHandler implements ApiHandler {
 		return {
 			id: this.options.lmStudioModelId || "",
 			info: openAiModelInfoSaneDefaults,
+		}
+	}
+
+	async validateAPIKey(): Promise<boolean> {
+		try {
+			await this.client.chat.completions.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "Test" }],
+				temperature: 0,
+				stream: false
+			})
+			return true
+		} catch (error) {
+			console.error("Error validating LM Studio credentials: ", error)
+			return false
 		}
 	}
 }

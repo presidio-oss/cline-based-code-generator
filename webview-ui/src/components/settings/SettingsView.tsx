@@ -63,7 +63,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		setApiErrorMessage(apiValidationResult)
 		setEmbeddingErrorMessage(embeddingValidationResult)
 
-		if (!apiValidationResult && !embeddingValidationResult && !modelIdValidationResult) {
+		if (!apiValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
 			vscode.postMessage({ type: "alwaysAllowReadOnly", bool: alwaysAllowReadOnly })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })

@@ -19,6 +19,7 @@ export interface EmbeddingHandlerOptions {
 	azureOpenAIApiInstanceName?: string
 	azureOpenAIApiEmbeddingsDeploymentName?: string
 	azureOpenAIApiVersion?: string
+	maxRetries?: number
 }
 
 export type EmbeddingConfiguration = EmbeddingHandlerOptions & {

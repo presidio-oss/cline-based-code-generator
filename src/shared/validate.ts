@@ -63,7 +63,7 @@ export function validateEmbeddingConfiguration(config?: EmbeddingConfiguration):
 		switch (config.provider) {
 			case "openai-native":
 				if (!config.openAiNativeApiKey) {
-					return "OpenAI API key is required"
+					return "You must provide a valid API key."
 				}
 				break
 			case "bedrock":

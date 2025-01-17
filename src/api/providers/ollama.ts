@@ -14,6 +14,7 @@ export class OllamaHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: (this.options.ollamaBaseUrl || "http://localhost:11434") + "/v1",
 			apiKey: "ollama",
+			maxRetries: this.options.maxRetries
 		})
 	}
 
@@ -47,12 +48,18 @@ export class OllamaHandler implements ApiHandler {
 		}
 	}
 
-	async validateApiKey(): Promise<boolean> {
+	async validateAPIKey(): Promise<boolean> {
 		try {
-			const response = await this.client.models.list()
-			return Array.isArray(response?.data)
+			await this.client.chat.completions.create({
+				model: this.getModel().id,
+				max_tokens: 1,
+				messages: [{ role: "user", content: "Test" }],
+				temperature: 0,
+				stream: false
+			})
+			return true;
 		} catch (error) {
-			console.error("API Key validation failed:", error)
+			console.error("Error validating Ollama credentials: ", error)
 			return false
 		}
 	}

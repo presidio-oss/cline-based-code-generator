@@ -22,9 +22,6 @@ import { Cline } from "../Cline"
 import { openMention } from "../mentions"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
-import { OpenAiNativeHandler } from "../../api/providers/openai-native"
-import { OpenAiHandler } from "../../api/providers/openai"
-import { OllamaHandler } from "../../api/providers/ollama"
 import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "../../shared/customApi"
 import { IHaiStory } from "../../../webview-ui/src/interfaces/hai-task.interface"
 import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
@@ -35,16 +32,14 @@ import { validateApiConfiguration, validateEmbeddingConfiguration } from "../../
 import { getFormattedDateTime } from "../../utils/date"
 import { EmbeddingProvider } from "../../shared/embeddings"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
-import { ApiHandlerOptions } from "../../shared/api"
 import { FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
-import { AwsBedrockHandler } from "../../api/providers/bedrock"
-import { GeminiHandler } from "../../api/providers/gemini"
 import delay from "delay"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import chokidar, { FSWatcher } from "chokidar"
+import { buildEmbeddingHandler } from "../../embedding"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -983,167 +978,41 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.postStateToWebview()
 						break
-					case "validateApiKey":
-						const apiProvider = message.apiConfiguration?.apiProvider
-						let isApiValid = false;
-
-						switch (apiProvider) {
-							case "openai-native":
-								isApiValid = false;
-								try {
-									const openAiNativeHandler = new OpenAiNativeHandler({
-										openAiNativeApiKey: message.apiConfiguration?.openAiNativeApiKey,
-									})
-									isApiValid = await openAiNativeHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "apiKeyValidation",
-									text: isApiValid ? "valid" : "invalid",
-								});
-								break
-							case "openai":
-								isApiValid = false;
-								try {
-									const options: ApiHandlerOptions = {
-										openAiBaseUrl: message.apiConfiguration?.openAiBaseUrl,
-										openAiApiKey: message.apiConfiguration?.openAiApiKey,
-										openAiModelId: message.apiConfiguration?.openAiModelId,
-										azureApiVersion: message.apiConfiguration?.azureApiVersion,
-									}
-									const openAiHandler = new OpenAiHandler(options)
-									isApiValid = await openAiHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "apiKeyValidation",
-									text: isApiValid ? "valid" : "invalid",
-								});
-								break
-							case "ollama":
-								isApiValid = false;
-								try {
-									const ollamaHandler = new OllamaHandler({
-										ollamaBaseUrl: message.apiConfiguration?.ollamaBaseUrl,
-										ollamaModelId: message.apiConfiguration?.ollamaModelId,
-									})
-									isApiValid = await ollamaHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "apiKeyValidation",
-									text: isApiValid ? "valid" : "invalid",
-								});
-								break
-							case "bedrock":
-								isApiValid = false;
-								try {
-									const bedRockHandler = new AwsBedrockHandler({
-										awsAccessKey: message.apiConfiguration?.awsAccessKey,
-										awsSecretKey: message.apiConfiguration?.awsSecretKey,
-										awsSessionToken: message.apiConfiguration?.awsSessionToken,
-										awsRegion: message.apiConfiguration?.awsRegion,
-										apiModelId: message.apiConfiguration?.apiModelId,
-										awsUseCrossRegionInference: message.apiConfiguration?.awsUseCrossRegionInference
-									})
-									isApiValid = await bedRockHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "apiKeyValidation",
-									text: isApiValid ? "valid" : "invalid",
-								});
-								break
-							case "gemini":
-								isApiValid = false;
-								try {
-									const geminiHandler = new GeminiHandler({
-										geminiApiKey: message.apiConfiguration?.geminiApiKey,
-										apiModelId: message.apiConfiguration?.apiModelId,
-									})
-									isApiValid = await geminiHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "apiKeyValidation",
-									text: isApiValid ? "valid" : "invalid",
-								});
-								break
+					case 'validateLLMConfig':
+						let isValid = false;
+						if (message.apiConfiguration) {
+							try {
+								const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
+								isValid = await apiHandler.validateAPIKey();
+							} catch (error) {
+								vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
+							}
 						}
-						await this.customUpdateState("isApiConfigurationValid", isApiValid)
+
+						this.postMessageToWebview({
+							type: 'llmConfigValidation',
+							bool: isValid
+						});
+						await this.customUpdateState("isApiConfigurationValid", isValid)
+
 						break
-					case "validateEmbeddingKey":
-						const embeddingProvider = message.embeddingConfiguration?.provider
+					case 'validateEmbeddingConfig':
 						let isEmbeddingValid = false;
-
-						switch (embeddingProvider) {
-							case "openai-native":
-								isEmbeddingValid = false;
-								try {
-									const openAiNativeHandler = new OpenAiNativeHandler({
-										openAiNativeApiKey: message.embeddingConfiguration?.openAiNativeApiKey,
-									})
-									isEmbeddingValid = await openAiNativeHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`Embedding validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "embeddingValidation",
-									text: isEmbeddingValid ? "valid" : "invalid",
-								});
-								break
-							case "bedrock":
-								isEmbeddingValid = false;
-								try {
-									const bedRockHandler = new AwsBedrockHandler({
-										awsAccessKey: message.embeddingConfiguration?.awsAccessKey,
-										awsSecretKey: message.embeddingConfiguration?.awsSecretKey,
-										awsSessionToken: message.embeddingConfiguration?.awsSessionToken,
-										awsRegion: message.embeddingConfiguration?.awsRegion,
-										apiModelId: message.embeddingConfiguration?.modelId,
-									})
-									isEmbeddingValid = await bedRockHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`Embedding validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "embeddingValidation",
-									text: isEmbeddingValid ? "valid" : "invalid",
-								});
-								break
-							case "openai":
-								isEmbeddingValid = false;
-								try {
-									const openAiHandler = new OpenAiHandler({
-										openAiBaseUrl: message.embeddingConfiguration?.openAiBaseUrl,
-										openAiApiKey: message.embeddingConfiguration?.openAiApiKey,
-										openAiModelId: message.embeddingConfiguration?.openAiModelId,
-										azureApiVersion: message.embeddingConfiguration?.azureOpenAIApiVersion,
-									})
-									isEmbeddingValid = await openAiHandler.validateApiKey()
-								} catch (error) {
-									vscode.window.showErrorMessage(`Embedding validation failed: ${error}`);
-								}
-
-								this.postMessageToWebview({
-									type: "embeddingValidation",
-									text: isEmbeddingValid ? "valid" : "invalid",
-								});
-								break
+						if (message.embeddingConfiguration) {
+							try {
+								const embeddingHandler = buildEmbeddingHandler({ ...message.embeddingConfiguration, maxRetries: 0 })
+								isEmbeddingValid = await embeddingHandler.validateAPIKey();
+							} catch (error) {
+								vscode.window.showErrorMessage(`Embedding validation failed: ${error}`);
+							}
 						}
+
+						this.postMessageToWebview({
+							type: 'embeddingConfigValidation',
+							bool: isEmbeddingValid
+						});
 						await this.customUpdateState("isEmbeddingConfigurationValid", isEmbeddingValid)
+						
 						break
 					case "openHistory":
 						this.postMessageToWebview({ type: "action", action: "historyButtonClicked" })

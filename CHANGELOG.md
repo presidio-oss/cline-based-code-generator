@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.0.2] - YYYY-MM-DD
+
+### Added
+
+- Added copy to clipboard for HAI tasks
+
+### Fixed
+
+- Fixed AWS Bedrock session token preserved in the global state
+
 ## [3.0.1] - 2024-12-20
 
 ### Added
