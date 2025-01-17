@@ -7,7 +7,6 @@ import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import { ACCEPTED_FILE_EXTENSIONS, ACCEPTED_MIME_TYPES } from "../../utils/constants"
-import { useEvent } from "react-use"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -28,13 +27,14 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		setBuildContextOptions,
 		buildIndexProgress,
 		embeddingConfiguration,
+		fileInstructions,
+		setFileInstructions
 	} = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
 	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false);
 	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set());
-	const [uploadedFiles, setUploadedFiles] = useState<string[]>();
 
     const toggleTrashClicked = (filename: string) => {
         setTrashClickedFiles(prev => {
@@ -47,18 +47,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
             return newSet;
         });
     };
-	const messageHandler = (event: MessageEvent) => {
-		const message = event.data;
-		switch (message.type) {
-			case 'existingFiles':
-				setUploadedFiles(message.instructions.map((instruction: any) => (
-					instruction.name
-				)));
-				break;
-		}
-	};
-
-	useEvent("message", messageHandler)
 
     useEffect(() => {
         setApiErrorMessage(undefined)
@@ -87,7 +75,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
 			const newFiles = Array.from(e.target.files);
-			const existingFiles = new Set(uploadedFiles);		
+			const existingFiles = new Set(fileInstructions?.map(file => file.name));		
             for (const file of Array.from(e.target.files)) {
 				const fileExtension = file.name.split('.').pop()?.toLowerCase();
 				const mimeType = file.type;
@@ -117,7 +105,23 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                 const reader = new FileReader();
                 reader.onload = () => {
                     if (typeof reader.result === "string") {
-						setUploadedFiles(prev => [...(prev ?? []), file.name]);
+						vscode.postMessage({
+							type: "uploadInstruction",
+							fileInstructions: [{
+								name: file.name,
+								content: reader.result,
+								enabled: false
+							}],
+						});
+						let newFileInstruction = { name: file.name, content: reader.result, enabled: false };
+						fileInstructions?.push(newFileInstruction) 
+						let newFileInstructionsList = fileInstructions ?? [newFileInstruction];
+						setFileInstructions(newFileInstructionsList);
+						vscode.postMessage({
+							type: "fileInstructions",
+							fileInstructions: fileInstructions,
+						});			
+						console.log('JRV-828 ' + JSON.stringify(fileInstructions));
                     }
                 };
                 reader.readAsText(file);
@@ -134,7 +138,20 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
     };
 
     const handleDeleteFile = (filename: string) => {
-		setUploadedFiles(prev => (prev ?? []).filter(file => file !== filename));
+		vscode.postMessage({
+			type: "deleteInstruction",
+			text: filename
+		});
+		
+		let newFileInstructions = fileInstructions?.filter(file => file.name !== filename);
+		console.log("JRV-828 " + JSON.stringify(newFileInstructions))
+		if (newFileInstructions){
+			vscode.postMessage({
+				type: "fileInstructions",
+				fileInstructions: newFileInstructions
+			});
+			setFileInstructions(newFileInstructions);
+		}
     };
 
 	const handleResetState = () => {
@@ -227,11 +244,11 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                         multiple
                     />
 
-                    {uploadedFiles && (uploadedFiles.length) > 0 && (
+                    {fileInstructions && (fileInstructions.length) > 0 && (
                         <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
-                            {uploadedFiles.map((file) => (
+                            {fileInstructions.map((file) => (
                                 <div
-                                    key={file}
+                                    key={file.name}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -249,12 +266,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                                         whiteSpace: 'nowrap',
                                         marginRight: '10px'
                                     }}>
-                                        {file}
+                                        {file.name}
                                     </span>
-                                    {!trashClickedFiles.has(file) ? (
+                                    {!trashClickedFiles.has(file.name) ? (
                                         <VSCodeButton
                                             appearance="icon"
-                                            onClick={() => toggleTrashClicked(file)}
+                                            onClick={() => toggleTrashClicked(file.name)}
                                         >
                                             <span className="codicon codicon-trash"></span>
                                         </VSCodeButton>
@@ -262,15 +279,15 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
                                         <div style={{ display: 'flex', gap: '4px' }}>
                                             <VSCodeButton
                                                 appearance="icon"
-                                                onClick={() => toggleTrashClicked(file)}
+                                                onClick={() => toggleTrashClicked(file.name)}
                                             >
                                                 <span className="codicon codicon-close"></span>
                                             </VSCodeButton>
                                             <VSCodeButton
                                                 appearance="icon"
                                                 onClick={() => {
-                                                    handleDeleteFile(file);
-                                                    toggleTrashClicked(file);
+                                                    handleDeleteFile(file.name);
+                                                    toggleTrashClicked(file.name);
                                                 }}
                                             >
                                                 <span className="codicon codicon-check"></span>

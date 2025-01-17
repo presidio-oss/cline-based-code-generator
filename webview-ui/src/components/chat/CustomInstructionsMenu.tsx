@@ -3,7 +3,6 @@ import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react";
 import styled from "styled-components";
 import { vscode } from "../../utils/vscode";
 import { useExtensionState } from "../../context/ExtensionStateContext";
-import { useEvent } from "react-use";
 
 interface CustomInstructionsMenuProps {
   isExpanded: boolean;
@@ -14,49 +13,33 @@ const CustomInstructionsMenu = ({
   isExpanded,
   onToggleExpand,
 }: CustomInstructionsMenuProps) => {
-  const [instructions, setInstructions] = useState<
-    { name: string; enabled: boolean }[]
-  >([]);
-  const [isLoading, setIsLoading] = useState(true);
+
   const [
     isHoveringCollapsibleSection,
     setIsHoveringCollapsibleSection,
   ] = useState(false);
+
   const {
     isCustomInstructionsEnabled,
     customInstructions,
     setIsCustomInstructionsEnabled,
+    fileInstructions,
+    setFileInstructions
   } = useExtensionState();
 
   const allInstructionsEnabled =
-    instructions.every((i) => i.enabled) &&
+  (fileInstructions?.every((i) => i.enabled) ?? false) &&
     (!customInstructions || isCustomInstructionsEnabled);
 
-  const messageHandler = (event: MessageEvent) => {
-    const message = event.data;
-    if (message.type === "existingFiles") {
-      const instructionFiles = message.instructions.map((instruction: any) => ({
-        name: instruction.name,
-        enabled: instruction.enabled,
-      }));
-      setInstructions(instructionFiles);
-
-      setIsLoading(false);
-    }
-  };
-
-  useEvent("message", messageHandler);
-
   const toggleInstruction = (index: number) => {
-    setInstructions((prevInstructions) => {
-      const newInstructions = prevInstructions.map((instruction, i) =>
-        i === index
-          ? { ...instruction, enabled: !instruction.enabled }
-          : instruction
-      );
+    const updatedInstructions = fileInstructions ? [...fileInstructions] : [];
+    updatedInstructions[index] = {
+      ...updatedInstructions[index],
+      enabled: !updatedInstructions[index].enabled,
+    };
+    setFileInstructions(updatedInstructions);
+    vscode.postMessage({ type: "fileInstructions", fileInstructions: updatedInstructions }); 
 
-      return newInstructions;
-    });
   };
 
   const toggleTextInstruction = () => {
@@ -78,37 +61,14 @@ const CustomInstructionsMenu = ({
       text: customInstructions,
       bool: newValue,
     });
-
-    setInstructions((prevInstructions) => {
-      const newInstructions = prevInstructions.map((instruction) => ({
+    setFileInstructions(
+      fileInstructions?.map((instruction) => ({
         ...instruction,
         enabled: newValue,
-      }));
-      return newInstructions;
-    });
-  };
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          padding: "0 15px",
-          userSelect: "none",
-          borderTop:
-            "0.5px solid color-mix(in srgb, var(--vscode-titleBar-inactiveForeground) 20%, transparent)",
-        }}
-      >
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-gray-200 rounded w-1/4"></div>
-          <div className="space-y-3">
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-          </div>
-        </div>
-      </div>
+      })) || []
     );
-  }
+    vscode.postMessage({ type: "fileInstructions", fileInstructions: fileInstructions }); 
+  };
 
   return (
     <div
@@ -157,13 +117,13 @@ const CustomInstructionsMenu = ({
               textOverflow: "ellipsis",
             }}
           >
-            {instructions.filter((i) => i.enabled).length > 0 ||
+            {(fileInstructions ?? []).filter((i) => i.enabled).length > 0 ||
             (customInstructions && isCustomInstructionsEnabled)
-              ? `${instructions
+              ? `${fileInstructions?.filter((i) => i.enabled)
                   .filter((i) => i.enabled)
                   .map((i) => i.name)
                   .join(", ")}${
-                  instructions.filter((i) => i.enabled).length > 0 &&
+                    (fileInstructions?.filter((i) => i.enabled).length ?? 0) > 0 &&
                   customInstructions &&
                   isCustomInstructionsEnabled
                     ? ", "
@@ -223,7 +183,7 @@ const CustomInstructionsMenu = ({
               the settings, which are added to the end of the system prompt sent
               with every request.
             </p>
-            {instructions.map((instruction, index) => (
+            {fileInstructions?.map((instruction, index) => (
               <div key={instruction.name} style={{ margin: "6px 0" }}>
                 <VSCodeCheckbox
                   checked={instruction.enabled}

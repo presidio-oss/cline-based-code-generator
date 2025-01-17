@@ -3,7 +3,7 @@
 import { ApiConfiguration, ModelInfo } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { HistoryItem } from "./HistoryItem"
-import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
+import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "./customApi"
 import { IHaiStory } from "../../webview-ui/src/interfaces/hai-task.interface"
 import { EmbeddingConfiguration } from "./embeddings"
 import { McpServer } from "./mcp"
@@ -54,6 +54,7 @@ export interface ExtensionState {
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
 	isCustomInstructionsEnabled: boolean
+	fileInstructions?: HaiInstructionFile[]
 	alwaysAllowReadOnly?: boolean
 	uriScheme?: string
 	clineMessages: ClineMessage[]
