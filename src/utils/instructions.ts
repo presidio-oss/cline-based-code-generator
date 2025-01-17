@@ -2,6 +2,7 @@ import * as path from "path"
 import fs from "fs/promises"
 import { getWorkspacePath } from "./path"
 import { HaiInstructionFile } from "../shared/customApi"
+import { HaiBuildDefaults } from "../shared/haiDefaults"
 
 export const readInstructionsFromFiles = async (
 	instructionStates: HaiInstructionFile[],
@@ -11,7 +12,7 @@ export const readInstructionsFromFiles = async (
 		console.log("Workspace path is undefined")
 		return
 	}
-	const instructionsDir = path.resolve(workspacePath, ".vscode/hai-instructions")
+	const instructionsDir = path.resolve(workspacePath, HaiBuildDefaults.defaultInstructionsDirectory)
 	try {
 		const files = await fs.readdir(instructionsDir)
 		let instructions = ""
@@ -36,7 +37,7 @@ export const uploadInstructionFile = async (fileName: string, fileContents: stri
 		console.log("Workspace path is undefined")
 		return
 	}
-	const instructionsDir = path.resolve(workspacePath, ".vscode/hai-instructions")
+	const instructionsDir = path.resolve(workspacePath, HaiBuildDefaults.defaultInstructionsDirectory)
 	await fs.mkdir(instructionsDir, { recursive: true })
 	const filePath = path.join(instructionsDir, fileName)
 	await fs.writeFile(filePath, fileContents, "utf8")
@@ -48,7 +49,7 @@ export const deleteInstructionFile = async (fileName: string) => {
 		console.log("Workspace path is undefined")
 		return
 	}
-	const instructionsDir = path.resolve(workspacePath, ".vscode/hai-instructions")
+	const instructionsDir = path.resolve(workspacePath, HaiBuildDefaults.defaultInstructionsDirectory)
 	try {
 		const filePath = path.join(instructionsDir, fileName)
 		await fs.unlink(filePath)

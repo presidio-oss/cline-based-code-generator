@@ -40,5 +40,6 @@ Do not include additional context, information or explanation in response.`,
 		"Pods",
         ".git",
     ],
-	defaultRepoHashFileName: 'hai.repo.hash'
+	defaultRepoHashFileName: 'hai.repo.hash',
+	defaultInstructionsDirectory: '.vscode/hai-instructions',
 };

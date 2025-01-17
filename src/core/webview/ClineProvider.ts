@@ -43,6 +43,7 @@ import { AwsBedrockHandler } from "../../api/providers/bedrock"
 import { GeminiHandler } from "../../api/providers/gemini"
 import delay from "delay"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
+import { HaiBuildDefaults } from "../../shared/haiDefaults"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -793,7 +794,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "uploadInstruction":
 						if (message.fileInstructions) {
-							const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, ".vscode", "hai-instructions");
+							const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
 							await fs.mkdir(instructionsDir, { recursive: true });
 							const filePath = path.join(instructionsDir, message.fileInstructions[0].name);
 							if(message.fileInstructions[0].content) {
@@ -802,7 +803,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						break;
 					case "deleteInstruction":
-						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, ".vscode", "hai-instructions");
+						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
 						if(message.text) {
 							try {
 								const filePath = path.join(dir, message.text);
