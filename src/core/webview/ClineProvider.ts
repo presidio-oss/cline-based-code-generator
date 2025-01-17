@@ -44,6 +44,7 @@ import { GeminiHandler } from "../../api/providers/gemini"
 import delay from "delay"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
+import chokidar, { FSWatcher } from "chokidar"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -680,6 +681,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				switch (message.type) {
 					case "webviewDidLaunch":
 						this.postStateToWebview()
+						this.setupInstructionWatcher()
+						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.initializeFilePaths() // don't await
 						getTheme().then((theme) =>
 							this.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }),
@@ -1161,6 +1164,94 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.cline.fileInstructions = fileInstructions
 		}
 		await this.postStateToWebview()
+	}
+
+	private setupInstructionWatcher() {
+		const mainFolder = this.getWorkspacePath()
+		if(!mainFolder) { return }
+		let filePath = path.join(mainFolder, HaiBuildDefaults.defaultInstructionsDirectory)
+		if (filePath) {
+			const watcher = chokidar.watch(filePath, {
+				awaitWriteFinish: true, 
+				ignoreInitial: true
+			})
+			watcher.on("add", path => {this.addFileInstruction([path])
+				console.log(`Detected add in ${filePath}. Restarting server...`)
+			})
+			watcher.on("unlink", path => {this.removeFromFileInstructions([path])
+				console.log(`Detected unlink in ${filePath}. Restarting server...`)
+			})
+		}
+	}
+
+	async removeFromFileInstructions(deletedFiles: string[]) {
+		const fileInstructions = (await this.getState()).fileInstructions;
+		const deletedFileNames = deletedFiles.map(path => path.split('/').pop());
+		const updatedFileInstructions = fileInstructions?.filter(
+			(instruction) => !deletedFileNames.includes(instruction.name)
+		);
+		this.updateFileInstructions(updatedFileInstructions)
+	}
+
+	async addFileInstruction(filePaths: string[]) {
+		const fileInstructions = (await this.getState()).fileInstructions;
+			const newInstructions = await Promise.all(filePaths.map(async (filePath) => ({
+			name: filePath.split("/").pop(),
+			enabled: false,
+			content: await fs.readFile(filePath, 'utf8')
+		})));
+	
+		newInstructions.forEach((instruction) => {
+			if (instruction.name) {
+				fileInstructions?.push(instruction as HaiInstructionFile);
+			}
+		});
+		
+		await this.updateFileInstructions(fileInstructions);
+	}
+	async checkInstructionFilesFromFileSystem() {
+		const workspaceFolder = this.getWorkspacePath();
+		if (!workspaceFolder) { return; }
+	
+		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
+	
+		try {
+			// Get current files from .vscode/hai-instructions directory
+			const files = await fs.readdir(instructionsPath);
+			const filesInSystem = files.filter(file => file.endsWith('.md'));
+			
+			// Get current state
+			const currentState = await this.getState();
+			const fileInstructions = currentState.fileInstructions || [];
+			const stateFileNames = fileInstructions.map(instruction => instruction.name);
+			
+			// Find new files (files in system but not in state)
+			const newFiles = filesInSystem.filter(file => !stateFileNames.includes(file));
+			
+			// Find deleted files (files in state but not in system)
+			const deletedFiles = stateFileNames.filter(name => !filesInSystem.includes(name));
+			
+			// Handle new files - read their content and add to state
+			const newInstructions = newFiles.map(file => ({
+				name: file,
+				enabled: false
+			}))
+			
+			// Create updated instructions list
+			const updatedInstructions = [
+				...fileInstructions.filter(instruction => !deletedFiles.includes(instruction.name)),
+				...newInstructions
+			];
+			
+			// Update state
+			await this.updateFileInstructions(updatedInstructions);
+			
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				return;
+			}
+			console.error('Error checking instruction files:', error);
+		}
 	}
 
 	async customWebViewMessageHandlers(message: WebviewMessage) {

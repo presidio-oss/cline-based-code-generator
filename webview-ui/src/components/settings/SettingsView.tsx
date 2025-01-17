@@ -112,15 +112,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 								content: reader.result,
 								enabled: false
 							}],
-						});
-						let newFileInstruction = { name: file.name, content: reader.result, enabled: false };
-						fileInstructions?.push(newFileInstruction) 
-						let newFileInstructionsList = fileInstructions ?? [newFileInstruction];
-						setFileInstructions(newFileInstructionsList);
-						vscode.postMessage({
-							type: "fileInstructions",
-							fileInstructions: fileInstructions,
-						});			
+						});	
                     }
                 };
                 reader.readAsText(file);
@@ -144,10 +136,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		
 		let newFileInstructions = fileInstructions?.filter(file => file.name !== filename);
 		if (newFileInstructions){
-			vscode.postMessage({
-				type: "fileInstructions",
-				fileInstructions: newFileInstructions
-			});
 			setFileInstructions(newFileInstructions);
 		}
     };
