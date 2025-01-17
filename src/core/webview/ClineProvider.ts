@@ -799,9 +799,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						if (message.fileInstructions) {
 							const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
 							await fs.mkdir(instructionsDir, { recursive: true });
-							const filePath = path.join(instructionsDir, message.fileInstructions[0].name);
-							if(message.fileInstructions[0].content) {
-								await fs.writeFile(filePath, message.fileInstructions[0].content, "utf8");
+							for(const fileInstruction of message.fileInstructions) {
+								const filePath = path.join(instructionsDir, fileInstruction.name);
+								if (fileInstruction.content) {
+									await fs.writeFile(filePath, fileInstruction.content, "utf8");
+								}
 							}
 						}
 						break;
@@ -1206,9 +1208,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				fileInstructions?.push(instruction as HaiInstructionFile);
 			}
 		});
-		
 		await this.updateFileInstructions(fileInstructions);
 	}
+
 	async checkInstructionFilesFromFileSystem() {
 		const workspaceFolder = this.getWorkspacePath();
 		if (!workspaceFolder) { return; }

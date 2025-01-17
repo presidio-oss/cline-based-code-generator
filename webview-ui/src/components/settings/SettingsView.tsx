@@ -7,6 +7,7 @@ import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import { ACCEPTED_FILE_EXTENSIONS, ACCEPTED_MIME_TYPES } from "../../utils/constants"
+import { HaiInstructionFile } from "../../../../src/shared/customApi"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -72,11 +73,13 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
+	const [fileInput, setFileInput] = useState<HaiInstructionFile[]>([]);
+
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files) {
 			const newFiles = Array.from(e.target.files);
-			const existingFiles = new Set(fileInstructions?.map(file => file.name));		
-            for (const file of Array.from(e.target.files)) {
+			const existingFiles = new Set(fileInstructions?.map(file => file.name));
+			for (const file of newFiles) {
 				const fileExtension = file.name.split('.').pop()?.toLowerCase();
 				const mimeType = file.type;
 		
@@ -101,32 +104,43 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					});
 					return;
 				}
-			
-                const reader = new FileReader();
-                reader.onload = () => {
-                    if (typeof reader.result === "string") {
-						vscode.postMessage({
-							type: "uploadInstruction",
-							fileInstructions: [{
-								name: file.name,
-								content: reader.result,
-								enabled: false
-							}],
-						});	
-                    }
-                };
-                reader.readAsText(file);
-            }
-			vscode.postMessage({
-				type: "showToast",
-				toast: { 
-					message: `${newFiles.length} files uploaded successfully`, 
-					toastType: "info" 
-				}
-			});
-        }
-        e.target.value = '';
-    };
+	
+				const content = await new Promise<string>((resolve) => {
+					const reader = new FileReader();
+					reader.onload = () => {
+						if (typeof reader.result === "string") {
+							resolve(reader.result);
+						}
+					};
+					reader.readAsText(file);
+				});
+	
+				fileInput.push({
+					name: file.name,
+					content: content,
+					enabled: false
+				});
+				setFileInput(fileInput)
+			}
+	
+			if (fileInput.length > 0) {
+				vscode.postMessage({
+					type: "uploadInstruction",
+					fileInstructions: fileInput
+				});
+	
+				vscode.postMessage({
+					type: "showToast",
+					toast: {
+						message: `${fileInput.length} files uploaded successfully`,
+						toastType: "info"
+					}
+				});
+			}
+		}
+		setFileInput([])
+		e.target.value = '';
+	};
 
     const handleDeleteFile = (filename: string) => {
 		vscode.postMessage({
