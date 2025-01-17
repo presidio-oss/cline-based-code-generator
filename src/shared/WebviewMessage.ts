@@ -1,5 +1,5 @@
 import { ApiConfiguration, ApiProvider } from "./api"
-import { HaiBuildContextOptions } from "./customApi"
+import { HaiBuildContextOptions, HaiInstructionFile } from "./customApi"
 import { EmbeddingConfiguration } from "./embeddings"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 
@@ -36,11 +36,10 @@ export interface WebviewMessage {
 		| "autoApprovalSettings"
 		| "openHistory"
 		| "openHaiTasks"
-		| "uploadInstructions"
-		| "deleteInstruction"
-		| "getExistingFiles"
-		| "updateInstructionState"
 		| "showToast"
+		| "uploadInstruction"
+		| "deleteInstruction"
+		| "fileInstructions"
 	text?: string
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
@@ -49,8 +48,7 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	autoApprovalSettings?: AutoApprovalSettings
-	filename?: string
-	instructions?: { name: string; enabled: boolean }[];
+	fileInstructions? : HaiInstructionFile[]
 	toast?: { message: string; toastType: "error" | "warning" | "info" } 
 }
 

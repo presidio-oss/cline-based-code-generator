@@ -1,9 +1,10 @@
 import * as path from "path"
 import fs from "fs/promises"
 import { getWorkspacePath } from "./path"
+import { HaiInstructionFile } from "../shared/customApi"
 
 export const readInstructionsFromFiles = async (
-	instructionStates: { name: string; enabled: boolean }[],
+	instructionStates: HaiInstructionFile[],
 ): Promise<string | undefined> => {
 	const workspacePath = getWorkspacePath()
 	if (!workspacePath) {
