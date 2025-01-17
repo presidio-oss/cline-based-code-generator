@@ -121,7 +121,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							type: "fileInstructions",
 							fileInstructions: fileInstructions,
 						});			
-						console.log('JRV-828 ' + JSON.stringify(fileInstructions));
                     }
                 };
                 reader.readAsText(file);
@@ -144,7 +143,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		});
 		
 		let newFileInstructions = fileInstructions?.filter(file => file.name !== filename);
-		console.log("JRV-828 " + JSON.stringify(newFileInstructions))
 		if (newFileInstructions){
 			vscode.postMessage({
 				type: "fileInstructions",

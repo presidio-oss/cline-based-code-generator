@@ -1156,7 +1156,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 	async updateFileInstructions(fileInstructions: HaiInstructionFile[] | undefined) {
 		await this.customUpdateState("fileInstructions", fileInstructions)
-		console.log("JRV-828 " + JSON.stringify(fileInstructions))
 		if (this.cline) {
 			this.cline.fileInstructions = fileInstructions
 		}
