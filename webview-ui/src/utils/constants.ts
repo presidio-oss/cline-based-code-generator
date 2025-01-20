@@ -40,5 +40,3 @@ export const FEATURE_TILES = [
     },
 ]
 export const ACCEPTED_FILE_EXTENSIONS = ['md'];
-
-export const ACCEPTED_MIME_TYPES = ['text/markdown'];
