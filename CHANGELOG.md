@@ -5,6 +5,8 @@
 ### Added
 
 - Added copy to clipboard for HAI tasks
+- Added ability to add custom instruction markdown files to the workspace
+- Added ability to dynamically choose custom instructions while conversing
 
 ### Fixed
 
