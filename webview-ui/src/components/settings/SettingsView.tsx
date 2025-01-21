@@ -353,7 +353,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 								{showCopied ? 'Copied!' : 'Copy'}
 							</VSCodeButton>
 							<pre style={{ color: "#e8912d", backgroundColor: "#2b2d30", padding: "10px", borderRadius: "5px", border: "2px solid #333", whiteSpace: "pre-wrap", wordWrap: "break-word", overflowWrap: "break-word"  }}>
-								{JSON.stringify({ buildContextOptions, buildIndexProgress, apiConfiguration, embeddingConfiguration }, null, 2)}
+								{JSON.stringify({ buildContextOptions, buildIndexProgress, apiConfiguration, embeddingConfiguration, fileInstructions }, null, 2)}
 							</pre>
 						</div>
 					</>
