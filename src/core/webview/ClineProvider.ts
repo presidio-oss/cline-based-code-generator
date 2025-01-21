@@ -1039,7 +1039,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 	private setupInstructionWatcher() {
 		const mainFolder = this.getWorkspacePath()
-		if(!mainFolder) { return }
+		if (!mainFolder) { return }
 		let filePath = path.join(mainFolder, HaiBuildDefaults.defaultInstructionsDirectory)
 		if (filePath) {
 			const watcher = chokidar.watch(filePath, {
@@ -1087,38 +1087,26 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
 	
 		try {
-			// Get current files from .vscode/hai-instructions directory
 			const files = await fs.readdir(instructionsPath);
-			const filesInSystem = files.filter(file => file.endsWith('.md'));
+			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));
 			
-			// Get current state
 			const currentState = await this.getState();
 			const fileInstructions = currentState.fileInstructions || [];
-			const stateFileNames = fileInstructions.map(instruction => instruction.name);
 			
-			// Find new files (files in system but not in state)
-			const newFiles = filesInSystem.filter(file => !stateFileNames.includes(file));
+			const existingInstructionsMap = new Map(
+				fileInstructions.map(instruction => [instruction.name, instruction.enabled])
+			);
 			
-			// Find deleted files (files in state but not in system)
-			const deletedFiles = stateFileNames.filter(name => !filesInSystem.includes(name));
+			const updatedInstructions = Array.from(filesInSystemSet, name => ({
+				name,
+				enabled: existingInstructionsMap.get(name) || false
+			}));
 			
-			// Handle new files - read their content and add to state
-			const newInstructions = newFiles.map(file => ({
-				name: file,
-				enabled: false
-			}))
-			
-			// Create updated instructions list
-			const updatedInstructions = [
-				...fileInstructions.filter(instruction => !deletedFiles.includes(instruction.name)),
-				...newInstructions
-			];
-			
-			// Update state
 			await this.updateFileInstructions(updatedInstructions);
 			
 		} catch (error) {
 			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				await this.updateFileInstructions([]);
 				return;
 			}
 			console.error('Error checking instruction files:', error);

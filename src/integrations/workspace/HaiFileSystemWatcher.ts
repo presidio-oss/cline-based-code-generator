@@ -5,6 +5,7 @@ import ignore from "ignore";
 import { HaiBuildDefaults } from "../../shared/haiDefaults";
 import { ClineProvider } from "../../core/webview/ClineProvider";
 import { FileOperations } from "../../utils/constants";
+import c from "../../services/tree-sitter/queries/c";
 
 class HaiFileSystemWatcher {
     private sourceFolder: string;
@@ -34,7 +35,7 @@ class HaiFileSystemWatcher {
         }
 
         // Add default exclusions
-        this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory]);
+        this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory, HaiBuildDefaults.defaultInstructionsDirectory]);
     }
 
     private async initializeWatcher() {
@@ -84,6 +85,21 @@ class HaiFileSystemWatcher {
             console.log("HaiFileSystemWatcher File changes", filePath);
             this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change);
         });
+
+        watcher.on("addDir", filePath => {
+            let value = filePath.split('/').pop() === ".vscode" || filePath.split('/').pop() === "hai-instructions" 
+            console.log("HaiFileSystemWatcher Folder added", value);
+            this.providerRef.deref()?.checkInstructionFilesFromFileSystem();
+        });
+
+        watcher.on("unlinkDir", filePath => {
+            let value = filePath.split('/').pop() === ".vscode" || filePath.split('/').pop() === "hai-instructions" 
+            console.log("HaiFileSystemWatcher Folder deleted", value);
+            if (value) {
+                this.providerRef.deref()?.updateFileInstructions([]);
+            }
+        });
+
     }
 }
 
