@@ -1,0 +1,71 @@
+name: Sync GitHub to GitLab
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - '*'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout GitHub repository with full history
+      - name: Checkout GitHub Repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0  # Fetch the full history to ensure full context
+
+      # Step 2: Configure Git identity
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions-bot@github.com"
+
+      # Step 3: Setup SSH for GitLab
+      - name: Setup SSH for GitLab
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GITLAB_SSH_KEY }}
+          
+      # Step 4: Add GitLab remote
+      - name: Add GitLab remote
+        run: git remote add gitlab ${{ env.GITLAB_REPO_URI }}
+
+      # Step 5: Fetch GitLab branch
+      - name: Fetch GitLab branch
+        run: |
+          BRANCH_NAME="${{ env.GITLAB_BRANCH_NAME || 'main' }}"
+          echo "Fetching GitLab branch: $BRANCH_NAME"
+
+          if ! git fetch gitlab $BRANCH_NAME; then
+            echo "Failed to fetch GitLab branch"
+            exit 1
+          fi
+
+      # Step 6: Reconcile Divergent Histories
+      - name: Reconcile Divergent Histories
+        run: |
+          BRANCH_NAME="${{ env.GITLAB_BRANCH_NAME || 'main' }}"
+          echo "Merging GitLab branch: $BRANCH_NAME"
+
+          if ! git merge gitlab/$BRANCH_NAME --allow-unrelated-histories --strategy-option=theirs; then
+            echo "Failed to merge GitLab branch"
+            exit 1
+          fi
+
+      # Step 7: Push Final Changes
+      - name: Push Final Changes
+        run: |
+          BRANCH_NAME="${{ env.GITLAB_BRANCH_NAME || 'main' }}"
+          echo "Pushing changes to GitLab branch: $BRANCH_NAME"
+          
+          if ! git push gitlab $BRANCH_NAME; then
+            echo "Normal push failed, attempting force push for branch"
+            if ! git push --force gitlab $BRANCH_NAME; then
+              echo "Failed to push changes to GitLab"
+              exit 1
+            fi
+          fi
