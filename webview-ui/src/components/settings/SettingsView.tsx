@@ -90,7 +90,9 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							toastType: "warning",
 						}
 					});
-					return;
+					e.target.value = "";
+					e.target.files = null;
+					continue;
 				}
 		
 				if (existingFiles.has(file.name)) {
@@ -101,7 +103,9 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							toastType: "warning",
 						}
 					});
-					return;
+					e.target.value = "";
+					e.target.files = null;
+					continue;
 				}
 	
 				const content = await new Promise<string>((resolve) => {
@@ -121,7 +125,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				});
 				setFileInput(fileInput)
 			}
-	
+			console.log(`FILE: ${fileInput.length}`)
 			if (fileInput.length > 0) {
 				vscode.postMessage({
 					type: "uploadInstruction",
@@ -138,7 +142,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			}
 		}
 		setFileInput([])
-		e.target.value = '';
+		e.target.value = "";
+		e.target.files = null;
 	};
 
     const handleDeleteFile = (filename: string) => {
@@ -374,5 +379,4 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		</div>
 	)
 }
-
 export default memo(SettingsView)

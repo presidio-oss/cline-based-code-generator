@@ -40,6 +40,7 @@ import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shar
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import chokidar, { FSWatcher } from "chokidar"
 import { buildEmbeddingHandler } from "../../embedding"
+import { existsSync } from "fs"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -676,7 +677,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				switch (message.type) {
 					case "webviewDidLaunch":
 						this.postStateToWebview()
-						this.setupInstructionWatcher()
+						// this.setupInstructionWatcher()
 						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.initializeFilePaths() // don't await
 						getTheme().then((theme) =>
@@ -1037,7 +1038,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.postStateToWebview()
 	}
 
-	private setupInstructionWatcher() {
+	async setupInstructionWatcher() {
 		const mainFolder = this.getWorkspacePath()
 		if (!mainFolder) { return }
 		let filePath = path.join(mainFolder, HaiBuildDefaults.defaultInstructionsDirectory)
@@ -1047,10 +1048,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				ignoreInitial: true
 			})
 			watcher.on("add", path => {this.addFileInstruction([path])
-				console.log(`Detected add in ${filePath}. Restarting server...`)
+				console.log(`Detected add in ${filePath}`)
 			})
 			watcher.on("unlink", path => {this.removeFromFileInstructions([path])
-				console.log(`Detected unlink in ${filePath}. Restarting server...`)
+				console.log(`Detected unlink in ${filePath}`)
+			})
+			watcher.on("ready", () => {
+				console.log(`Starting Instruction Watcher...`)
 			})
 		}
 	}
@@ -1085,7 +1089,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		if (!workspaceFolder) { return; }
 	
 		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
-	
+		let instructionPathExists = existsSync(instructionsPath);
+		if (instructionPathExists) {
+			await this.setupInstructionWatcher()
+		}
 		try {
 			const files = await fs.readdir(instructionsPath);
 			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));
