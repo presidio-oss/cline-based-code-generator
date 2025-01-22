@@ -106,11 +106,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({id, name, descriptio
         <CopyClipboard 
           title="Copy Task"
           onCopyContent={() => {
-            return `Task (${task.id}): ${task.list}` + '\n' 
-            + `Acceptance: ${task.acceptance}` + '\n\n'
-            + `Context:` + '\n'
-            + `Story (${id}): ${name}` + '\n'
-            + `Story Acceptance: ${description}` + '\n'
+            return `Task (${task.id}): ${task.list}\nAcceptance: ${task.acceptance}\n\nContext:\nStory (${id}): ${name}\nStory Acceptance: ${description}\n`
           }}
         />
         <VSCodeButton

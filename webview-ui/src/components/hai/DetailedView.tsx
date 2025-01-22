@@ -213,11 +213,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
                   <CopyClipboard
                     title="Copy Task"
                     onCopyContent={() => {
-                      return `Task (${task.id}): ${task.list}` + '\n' 
-                      + `Acceptance: ${task.acceptance}` + '\n\n'
-                      + `Context:` + '\n'
-                      + `Story (${story?.id}): ${story?.name}` + '\n'
-                      + `Story Acceptance: ${story?.description}` + '\n'
+                      return `Task (${task.id}): ${task.list}\nAcceptance: ${task.acceptance}\n\nContext:\nStory (${story?.id}): ${story?.name}\nStory Acceptance: ${story?.description}\n`
                     }}
                   />
                   <VSCodeButton
