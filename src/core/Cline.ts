@@ -838,7 +838,6 @@ export class Cline {
 			// altering the system prompt mid-task will break the prompt cache, but in the grand scheme this will not change often so it's better to not pollute user messages with it the way we have to with <potentially relevant details>
 			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions, fileInstructions)
 		}
-		console.log("JRV-828 systemPrompt", systemPrompt)
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
 		if (previousApiReqIndex >= 0) {
