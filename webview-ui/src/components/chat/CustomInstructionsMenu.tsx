@@ -183,6 +183,16 @@ const CustomInstructionsMenu = ({
             conversation with the AI.
           </div>
           <div className="space-y-2">
+            {fileInstructions?.map((instruction, index) => (
+              <div key={instruction.name} style={{ margin: "6px 0" }}>
+                <VSCodeCheckbox
+                  checked={instruction.enabled}
+                  onClick={() => toggleInstruction(index)}
+                >
+                  {instruction.name}
+                </VSCodeCheckbox>
+              </div>
+            ))}
             {customInstructions && (
               <div key={customInstructions} style={{ margin: "6px 0" }}>
                 <VSCodeCheckbox
@@ -204,16 +214,6 @@ const CustomInstructionsMenu = ({
               the settings, which are added to the end of the system prompt sent
               with every request.
             </p>
-            {fileInstructions?.map((instruction, index) => (
-              <div key={instruction.name} style={{ margin: "6px 0" }}>
-                <VSCodeCheckbox
-                  checked={instruction.enabled}
-                  onClick={() => toggleInstruction(index)}
-                >
-                  {instruction.name}
-                </VSCodeCheckbox>
-              </div>
-            ))}
           </div>
         </div>
       )}

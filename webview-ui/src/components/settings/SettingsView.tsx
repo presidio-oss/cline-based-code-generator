@@ -65,10 +65,10 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 		if (!apiValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
+			vscode.postMessage({ type: "customInstructions", text: customInstructions });
 			vscode.postMessage({ type: "alwaysAllowReadOnly", bool: alwaysAllowReadOnly })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
-			vscode.postMessage({ type: "customInstructions", text: customInstructions });
 			onDone()
 		}
 	}
@@ -125,7 +125,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				});
 				setFileInput(fileInput)
 			}
-			console.log(`FILE: ${fileInput.length}`)
 			if (fileInput.length > 0) {
 				vscode.postMessage({
 					type: "uploadInstruction",
@@ -224,7 +223,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						These default instructions are added to the end of the system prompt sent with every request.
+						The default instructions are added to the end of the system prompt sent with every request.
 					</p>
                     <VSCodeButton
                         style={{
@@ -308,8 +307,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						This supports uploading markdown (.md) files of instructions to be followed by the LLM ex. Coding conventions, task chat histories etc. The content will be appended to the end of the system prompt sent with every request. Additionally, to maintain a global file of instructions, create a .hairules file and have your instructions there.
-					</p>
+					This feature enables the addition of markdown (.md) instruction files that provide specific behavioral guidelines to the LLM [ex: "always write tests first", "follow BEM naming for CSS"]. Each enabled instruction file's content is automatically appended to the system prompt for every API request. For workspace-wide instructions that apply across all directories, create a .hairules file in your root directory [ex: global code style preferences, project-specific documentation requirements].					</p>
 				</div>
 
 				<div style={{ marginBottom: 5 }}>

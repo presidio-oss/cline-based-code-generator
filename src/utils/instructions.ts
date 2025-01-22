@@ -13,11 +13,12 @@ export const readInstructionsFromFiles = async (
 		return
 	}
 	const instructionsDir = path.resolve(workspacePath, HaiBuildDefaults.defaultInstructionsDirectory)
+	const instructionsMap = new Map(instructionStates.map(state => [state.name, state]))
 	try {
 		const files = await fs.readdir(instructionsDir)
 		let instructions = ""
 		for (const file of files) {
-			const instructionState = instructionStates.find((state) => state.name === file)
+            const instructionState = instructionsMap.get(file)
 			if (instructionState && instructionState.enabled) {
 				const filePath = path.join(instructionsDir, file)
 				const content = await fs.readFile(filePath, "utf8")

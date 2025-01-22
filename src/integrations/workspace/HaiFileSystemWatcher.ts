@@ -1,107 +1,108 @@
-import Watcher from "watcher";
-import * as path from "path";
-import * as fs from "fs/promises";
-import ignore from "ignore";
-import { HaiBuildDefaults } from "../../shared/haiDefaults";
-import { ClineProvider } from "../../core/webview/ClineProvider";
-import { FileOperations } from "../../utils/constants";
+import Watcher from "watcher"
+import * as path from "path"
+import * as fs from "fs/promises"
+import ignore from "ignore"
+import { HaiBuildDefaults } from "../../shared/haiDefaults"
+import { ClineProvider } from "../../core/webview/ClineProvider"
+import { FileOperations } from "../../utils/constants"
 
 class HaiFileSystemWatcher {
-    private sourceFolder: string;
-    private ig: ReturnType<typeof ignore>;
-    private providerRef: WeakRef<ClineProvider>
+	private sourceFolder: string
+	private ig: ReturnType<typeof ignore>
+	private providerRef: WeakRef<ClineProvider>
+	private watcher: Watcher
 
-    constructor(provider: ClineProvider, sourceFolder: string) {
-        this.sourceFolder = sourceFolder;
-        this.providerRef = new WeakRef(provider)
-        this.ig = ignore();
-        this.initializeWatcher().then();
-    }
+	constructor(provider: ClineProvider, sourceFolder: string) {
+		this.sourceFolder = sourceFolder
+		this.providerRef = new WeakRef(provider)
+		this.ig = ignore()
+		this.watcher = new Watcher(this.sourceFolder, {
+			recursive: true,
+			debounce: 3000,
+			ignoreInitial: true,
+			ignore: (targetPath: string) => {
+				if (!targetPath || targetPath.trim() === "") {
+					console.warn("HaiFileSystemWatcher Ignoring empty or invalid path.")
+					return true
+				}
 
-    private async loadGitIgnore() {
-        try {
-            const gitignorePath = path.join(this.sourceFolder, ".gitignore");
-            const content = await fs.readFile(gitignorePath, "utf-8");
+				const relativePath = path.relative(this.sourceFolder, targetPath)
+				if (relativePath.startsWith("..")) {
+					console.warn(`HaiFileSystemWatcher Path ${targetPath} is outside the workspace folder.`)
+					return true
+				}
 
-            // Add patterns from .gitignore
-            this.ig.add(
-                content
-                    .split("\n")
-                    .filter((line) => line.trim() && !line.startsWith("#"))
-            )
-        } catch (error) {
-            console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.");
-        }
+				if (relativePath === "") {
+					return false
+				}
 
-        // Add default exclusions
-        this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory]);
-    }
+				const isIgnored = this.ig.ignores(relativePath)
+				return isIgnored
+			},
+		})
+		this.initializeWatcher().then()
+	}
 
-    private async initializeWatcher() {
-        await this.loadGitIgnore();
+	private async loadGitIgnore() {
+		try {
+			const gitignorePath = path.join(this.sourceFolder, ".gitignore")
+			const content = await fs.readFile(gitignorePath, "utf-8")
 
-        const watcher = new Watcher(this.sourceFolder, {
-            recursive: true,
-            debounce: 3000,
-            ignoreInitial: true,
-            ignore: (targetPath: string) => {
-                if (!targetPath || targetPath.trim() === "") {
-                    console.warn("HaiFileSystemWatcher Ignoring empty or invalid path.");
-                    return true; // Exclude invalid paths
-                }
-    
-                const relativePath = path.relative(this.sourceFolder, targetPath);
-    
-                // Ensure the path is inside the workspace folder
-                if (relativePath.startsWith("..")) {
-                    console.warn(`HaiFileSystemWatcher Path ${targetPath} is outside the workspace folder.`);
-                    return true; // Ignore paths outside the workspace
-                }
-    
-                // Handle workspace folder itself
-                if (relativePath === "") {
-                    return false; // Don't ignore the root workspace folder
-                }
-    
-                // Use the ignore package to check for excluded paths
-                const isIgnored = this.ig.ignores(relativePath);
-                // console.debug(`HaiFileSystemWatcher Path ${relativePath} ignored: ${isIgnored}`);
-                return isIgnored;
-            },
-        });
-    
-        watcher.on("unlink", filePath => {
-            console.log("HaiFileSystemWatcher File deleted", filePath);
-            this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete);
-        });
+			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#")))
+		} catch (error) {
+			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
+		}
 
-        watcher.on("add", filePath => {
-            console.log("HaiFileSystemWatcher File added", filePath);
-            this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create);
-        });
+		this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory])
+	}
 
-        watcher.on("change", filePath => {
-            console.log("HaiFileSystemWatcher File changes", filePath);
-            this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change);
-        });
+	private async initializeWatcher() {
+		await this.loadGitIgnore()
 
-        watcher.on("addDir", filePath => {
-            let value = filePath.split('/').pop() === HaiBuildDefaults.defaultInstructionsDirectory
-            console.log("HaiFileSystemWatcher Folder added", value);
-            if (value) {
-                this.providerRef.deref()?.checkInstructionFilesFromFileSystem();
-            }
-        });
+		this.watcher.on("unlink", (filePath) => {
+			console.log("HaiFileSystemWatcher File deleted", filePath)
+            if (filePath.includes("hai-instructions")) {
+				this.providerRef.deref()?.removeFromFileInstructions([filePath])
+			} else {
+				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
+			}
+			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete)
+		})
 
-        watcher.on("unlinkDir", filePath => {
-            let value = filePath.split('/').pop() === ".vscode" || filePath.split('/').pop() === HaiBuildDefaults.defaultInstructionsDirectory
-            console.log("HaiFileSystemWatcher Folder deleted", value);
-            if (value) {
-                this.providerRef.deref()?.updateFileInstructions([]);
-            }
-        });
+		this.watcher.on("add", (filePath) => {
+			console.log("HaiFileSystemWatcher File added", filePath)
+			if (filePath.includes("hai-instructions")) {
+				this.providerRef.deref()?.addFileInstruction([filePath])
+			} else {
+				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
+			}
+		})
 
-    }
+		this.watcher.on("change", (filePath) => {
+			console.log("HaiFileSystemWatcher File changes", filePath)
+			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
+		})
+
+		this.watcher.on("addDir", (filePath) => {
+			let value = filePath.split("/").pop() === "hai-instructions"
+			console.log("HaiFileSystemWatcher Folder added", value)
+			if (value) {
+				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
+			}
+		})
+
+		this.watcher.on("unlinkDir", (filePath) => {
+			let value = filePath.split("/").pop() === ".vscode" || filePath.split("/").pop() === "hai-instructions"
+			console.log("HaiFileSystemWatcher Folder deleted", value)
+			if (value) {
+				this.providerRef.deref()?.updateFileInstructions([])
+			}
+		})
+	}
+
+	async dispose() {
+		this.watcher.close()
+	}
 }
 
-export default HaiFileSystemWatcher;
+export default HaiFileSystemWatcher

@@ -439,6 +439,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = undefined
 		this.mcpHub?.dispose()
 		this.mcpHub = undefined
+		this.fileSystemWatcher.dispose()
 		this.outputChannel.appendLine("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 	}
@@ -677,7 +678,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				switch (message.type) {
 					case "webviewDidLaunch":
 						this.postStateToWebview()
-						// this.setupInstructionWatcher()
 						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.initializeFilePaths() // don't await
 						getTheme().then((theme) =>
@@ -1038,42 +1038,20 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.postStateToWebview()
 	}
 
-	async setupInstructionWatcher() {
-		const mainFolder = this.getWorkspacePath()
-		if (!mainFolder) { return }
-		let filePath = path.join(mainFolder, HaiBuildDefaults.defaultInstructionsDirectory)
-		if (filePath) {
-			const watcher = chokidar.watch(filePath, {
-				awaitWriteFinish: true, 
-				ignoreInitial: true
-			})
-			watcher.on("add", path => {this.addFileInstruction([path])
-				console.log(`Detected add in ${filePath}`)
-			})
-			watcher.on("unlink", path => {this.removeFromFileInstructions([path])
-				console.log(`Detected unlink in ${filePath}`)
-			})
-			watcher.on("ready", () => {
-				console.log(`Starting Instruction Watcher...`)
-			})
-		}
-	}
-
 	async removeFromFileInstructions(deletedFiles: string[]) {
-		const fileInstructions = (await this.getState()).fileInstructions;
+		const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];
 		const deletedFileNames = deletedFiles.map(path => path.split('/').pop());
 		const updatedFileInstructions = fileInstructions?.filter(
 			(instruction) => !deletedFileNames.includes(instruction.name)
 		);
-		this.updateFileInstructions(updatedFileInstructions)
+		this.updateFileInstructions(updatedFileInstructions);
 	}
 
 	async addFileInstruction(filePaths: string[]) {
-		const fileInstructions = (await this.getState()).fileInstructions;
+		const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];
 			const newInstructions = await Promise.all(filePaths.map(async (filePath) => ({
 			name: filePath.split("/").pop(),
 			enabled: false,
-			content: await fs.readFile(filePath, 'utf8')
 		})));
 	
 		newInstructions.forEach((instruction) => {
@@ -1087,12 +1065,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	async checkInstructionFilesFromFileSystem() {
 		const workspaceFolder = this.getWorkspacePath();
 		if (!workspaceFolder) { return; }
-	
 		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
-		let instructionPathExists = existsSync(instructionsPath);
-		if (instructionPathExists) {
-			await this.setupInstructionWatcher()
-		}
 		try {
 			const files = await fs.readdir(instructionsPath);
 			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));
@@ -1824,6 +1797,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		for (const key of this.context.globalState.keys()) {
 			await this.context.globalState.update(key, undefined)
 		}
+
+		let workspaceName = this.getWorkspacePath()
+		if (workspaceName) {
+			let instructionsDir = path.join(workspaceName, HaiBuildDefaults.defaultInstructionsDirectory)
+			fs.rmdir(instructionsDir, { recursive: true })
+		}
+
 		const secretKeys: SecretKey[] = [
 			"apiKey",
 			"openRouterApiKey",
