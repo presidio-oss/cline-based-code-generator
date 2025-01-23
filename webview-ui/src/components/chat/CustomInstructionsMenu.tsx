@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react";
 import styled from "styled-components";
 import { vscode } from "../../utils/vscode";
@@ -33,6 +33,14 @@ const CustomInstructionsMenu = ({
       ? true
       : false
   );
+  
+  useEffect(() => {
+    setAllInstructionsEnabled(
+      (fileInstructions?.every((i) => i.enabled === true) ?? false) &&
+        customInstructions !== undefined &&
+        isCustomInstructionsEnabled
+    );
+  }, [fileInstructions, customInstructions, isCustomInstructionsEnabled]);
 
   const toggleInstruction = (index: number) => {
     const updatedInstructions = fileInstructions ? [...fileInstructions] : [];

@@ -38,9 +38,7 @@ import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import delay from "delay"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
-import chokidar, { FSWatcher } from "chokidar"
 import { buildEmbeddingHandler } from "../../embedding"
-import { existsSync } from "fs"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -801,6 +799,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									await fs.writeFile(filePath, fileInstruction.content, "utf8");
 								}
 							}
+							vscode.window.showInformationMessage(`${message.fileInstructions.length} files uploaded successfully`);
 						}
 						break;
 					case "deleteInstruction":
@@ -808,6 +807,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						if(message.text) {
 							try {
 								const filePath = path.join(dir, message.text);
+								let doesFileExist = await fileExistsAtPath(filePath);
+								if (!doesFileExist) {
+									vscode.window.showErrorMessage(`${message.text} does not exist.`);
+									break;
+								}
 								await fs.unlink(filePath);
 								vscode.window.showInformationMessage(message.text + " has been deleted.");
 							} catch (error) {
@@ -1038,43 +1042,16 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.postStateToWebview()
 	}
 
-	async removeFromFileInstructions(deletedFiles: string[]) {
-		const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];
-		const deletedFileNames = deletedFiles.map(path => path.split('/').pop());
-		const updatedFileInstructions = fileInstructions?.filter(
-			(instruction) => !deletedFileNames.includes(instruction.name)
-		);
-		this.updateFileInstructions(updatedFileInstructions);
-	}
-
-	async addFileInstruction(filePaths: string[]) {
-		const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];
-			const newInstructions = await Promise.all(filePaths.map(async (filePath) => ({
-			name: filePath.split("/").pop(),
-			enabled: false,
-		})));
-	
-		newInstructions.forEach((instruction) => {
-			if (instruction.name) {
-				fileInstructions?.push(instruction as HaiInstructionFile);
-			}
-		});
-		await this.updateFileInstructions(fileInstructions);
-	}
-
 	async checkInstructionFilesFromFileSystem() {
 		const workspaceFolder = this.getWorkspacePath();
 		if (!workspaceFolder) { return; }
 		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
 		try {
 			const files = await fs.readdir(instructionsPath);
-			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));
-			
-			const currentState = await this.getState();
-			const fileInstructions = currentState.fileInstructions || [];
-			
+			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));			
+			const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];		
 			const existingInstructionsMap = new Map(
-				fileInstructions.map(instruction => [instruction.name, instruction.enabled])
+				fileInstructions?.map(instruction => [instruction.name, instruction.enabled])
 			);
 			
 			const updatedInstructions = Array.from(filesInSystemSet, name => ({
@@ -1798,12 +1775,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			await this.context.globalState.update(key, undefined)
 		}
 
-		let workspaceName = this.getWorkspacePath()
-		if (workspaceName) {
-			let instructionsDir = path.join(workspaceName, HaiBuildDefaults.defaultInstructionsDirectory)
-			fs.rmdir(instructionsDir, { recursive: true })
-		}
-
 		const secretKeys: SecretKey[] = [
 			"apiKey",
 			"openRouterApiKey",
@@ -1829,6 +1800,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.cline = undefined
 		}
 		vscode.window.showInformationMessage("State reset")
+		await this.checkInstructionFilesFromFileSystem()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 	}

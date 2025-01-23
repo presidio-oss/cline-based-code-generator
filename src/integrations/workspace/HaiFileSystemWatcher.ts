@@ -11,14 +11,17 @@ class HaiFileSystemWatcher {
 	private ig: ReturnType<typeof ignore>
 	private providerRef: WeakRef<ClineProvider>
 	private watcher: Watcher
+	private instructionsDir: string
 
 	constructor(provider: ClineProvider, sourceFolder: string) {
 		this.sourceFolder = sourceFolder
 		this.providerRef = new WeakRef(provider)
 		this.ig = ignore()
+		this.instructionsDir = path.join(this.sourceFolder, HaiBuildDefaults.defaultInstructionsDirectory)
+
 		this.watcher = new Watcher(this.sourceFolder, {
 			recursive: true,
-			debounce: 3000,
+			debounce: 1000,
 			ignoreInitial: true,
 			ignore: (targetPath: string) => {
 				if (!targetPath || targetPath.trim() === "") {
@@ -48,7 +51,7 @@ class HaiFileSystemWatcher {
 			const gitignorePath = path.join(this.sourceFolder, ".gitignore")
 			const content = await fs.readFile(gitignorePath, "utf-8")
 
-			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#")))
+			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#") && !line.includes(".vscode")))
 		} catch (error) {
 			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
 		}
@@ -61,18 +64,17 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("unlink", (filePath) => {
 			console.log("HaiFileSystemWatcher File deleted", filePath)
-            if (filePath.includes("hai-instructions")) {
-				this.providerRef.deref()?.removeFromFileInstructions([filePath])
+			if (filePath.includes(this.instructionsDir)) {
+				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
 			} else {
-				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
+				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete)
 			}
-			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete)
 		})
 
 		this.watcher.on("add", (filePath) => {
 			console.log("HaiFileSystemWatcher File added", filePath)
-			if (filePath.includes("hai-instructions")) {
-				this.providerRef.deref()?.addFileInstruction([filePath])
+			if (filePath.includes(this.instructionsDir)) {
+				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
 			} else {
 				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
 			}
@@ -80,22 +82,10 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("change", (filePath) => {
 			console.log("HaiFileSystemWatcher File changes", filePath)
-			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
-		})
-
-		this.watcher.on("addDir", (filePath) => {
-			let value = filePath.split("/").pop() === "hai-instructions"
-			console.log("HaiFileSystemWatcher Folder added", value)
-			if (value) {
+			if (filePath.includes(this.instructionsDir)) {
 				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
-			}
-		})
-
-		this.watcher.on("unlinkDir", (filePath) => {
-			let value = filePath.split("/").pop() === ".vscode" || filePath.split("/").pop() === "hai-instructions"
-			console.log("HaiFileSystemWatcher Folder deleted", value)
-			if (value) {
-				this.providerRef.deref()?.updateFileInstructions([])
+			} else {
+				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
 			}
 		})
 	}
