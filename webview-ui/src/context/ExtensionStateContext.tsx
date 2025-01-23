@@ -12,7 +12,7 @@ import { EmbeddingConfiguration } from "../../../src/shared/embeddings"
 import { vscode } from "../utils/vscode"
 import { convertTextMateToHljs } from "../utils/textMateToHljs"
 import { findLastIndex } from "../../../src/shared/array"
-import { HaiBuildContextOptions } from "../../../src/shared/customApi"
+import { HaiBuildContextOptions, HaiInstructionFile } from "../../../src/shared/customApi"
 import { McpServer } from "../../../src/shared/mcp"
 
 interface ExtensionStateContextType extends ExtensionState {
@@ -24,6 +24,8 @@ interface ExtensionStateContextType extends ExtensionState {
 	filePaths: string[]
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
+	setFileInstructions: (value: HaiInstructionFile[]) => void
+	setIsCustomInstructionsEnabled: (value: boolean) => void
 	setAlwaysAllowReadOnly: (value: boolean) => void
 	setShowAnnouncement: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
@@ -40,6 +42,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		clineMessages: [],
 		taskHistory: [],
 		shouldShowAnnouncement: false,
+		isCustomInstructionsEnabled: true,
 		autoApprovalSettings: DEFAULT_AUTO_APPROVAL_SETTINGS,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
@@ -145,6 +148,8 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setHaiConfig: (value) => setHaiConfig((prevState) => ({ ...prevState, ...value })),
 		setApiConfiguration: (value) => setState((prevState) => ({ ...prevState, apiConfiguration: value })),
 		setCustomInstructions: (value) => setState((prevState) => ({ ...prevState, customInstructions: value })),
+		setIsCustomInstructionsEnabled: (value) => setState((prevState) => ({ ...prevState, isCustomInstructionsEnabled: value })),
+		setFileInstructions: (value) => setState((prevState) => ({ ...prevState, fileInstructions: value })),
 		setAlwaysAllowReadOnly: (value) => setState((prevState) => ({ ...prevState, alwaysAllowReadOnly: value })),
 		setShowAnnouncement: (value) => setState((prevState) => ({ ...prevState, shouldShowAnnouncement: value })),
 		setBuildContextOptions: (value) => setState((prevState) => ({...prevState, buildContextOptions: value })),

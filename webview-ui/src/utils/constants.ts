@@ -39,3 +39,4 @@ export const FEATURE_TILES = [
         context: "Generate unit tests focusing on edge cases, error handling, and business logic validation. Include tests for different input scenarios, boundary conditions, and error paths. Consider integration points, mocking strategies, and test coverage goals. Follow testing best practices for the specific framework or language being used."
     },
 ]
+export const ACCEPTED_FILE_EXTENSIONS = ['md'];

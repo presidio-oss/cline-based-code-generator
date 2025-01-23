@@ -52,11 +52,12 @@ import { truncateHalfConversation } from "./sliding-window"
 import { ClineProvider, GlobalFileNames } from "./webview/ClineProvider"
 import { showSystemNotification } from "../integrations/notifications"
 
-import { HaiBuildContextOptions } from "../shared/customApi"
+import { HaiBuildContextOptions, HaiInstructionFile } from "../shared/customApi"
 import { buildTreeString } from "../utils/customFs"
 import { FindFilesToEditAgent } from "../integrations/code-prep/FindFilesToEditAgent"
 import { CodeScanner } from "../integrations/security/code-scan"
 import { ToolUse } from "./assistant-message"
+import { readInstructionsFromFiles } from "../utils/instructions"
 
 const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -74,6 +75,7 @@ export class Cline {
 	private browserSession: BrowserSession
 	private didEditFile: boolean = false
 	customInstructions?: string
+	isCustomInstructionsEnabled: boolean
 	alwaysAllowReadOnly: boolean
 	autoApprovalSettings: AutoApprovalSettings
 	apiConversationHistory: Anthropic.MessageParam[] = []
@@ -106,6 +108,7 @@ export class Cline {
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
+	fileInstructions: HaiInstructionFile[] | undefined
 
 	constructor(
 		provider: ClineProvider,
@@ -113,6 +116,8 @@ export class Cline {
 		embeddingConfiguration: EmbeddingConfiguration,
 		autoApprovalSettings: AutoApprovalSettings,
 		customInstructions?: string,
+		isCustomInstructionsEnabled: boolean = true,
+		fileInstructions?: HaiInstructionFile[],
 		alwaysAllowReadOnly?: boolean,
 		task?: string,
 		images?: string[],
@@ -125,6 +130,8 @@ export class Cline {
 		this.browserSession = new BrowserSession(provider.context)
 		this.diffViewProvider = new DiffViewProvider(cwd)
 		this.customInstructions = customInstructions
+		this.isCustomInstructionsEnabled = isCustomInstructionsEnabled
+		this.fileInstructions = fileInstructions
 		this.alwaysAllowReadOnly = alwaysAllowReadOnly ?? false
 		this.autoApprovalSettings = autoApprovalSettings
 		if (historyItem) {
@@ -810,7 +817,10 @@ export class Cline {
 		
 		const supportsCodeIndex = this.buildContextOptions?.useIndex ?? false
 		let systemPrompt = await SYSTEM_PROMPT(cwd, this.api.getModel().info.supportsComputerUse ?? false, supportsCodeIndex, mcpHub)
-		let settingsCustomInstructions = this.customInstructions?.trim()
+		let isCustomInstructionsEnabled = await this.providerRef.deref()?.customGetState("isCustomInstructionsEnabled") as any
+		let settingsCustomInstructions = isCustomInstructionsEnabled ? this.customInstructions?.trim() : undefined
+		let instructionStates = await this.providerRef.deref()?.customGetState("fileInstructions") as any
+		let fileInstructions = await readInstructionsFromFiles(instructionStates);
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)
 		let clineRulesFileInstructions: string | undefined
 		if (await fileExistsAtPath(clineRulesFilePath)) {
@@ -824,9 +834,9 @@ export class Cline {
 			}
 		}
 
-		if (settingsCustomInstructions || clineRulesFileInstructions) {
+		if (settingsCustomInstructions || clineRulesFileInstructions || fileInstructions) {
 			// altering the system prompt mid-task will break the prompt cache, but in the grand scheme this will not change often so it's better to not pollute user messages with it the way we have to with <potentially relevant details>
-			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions)
+			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions, fileInstructions)
 		}
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request

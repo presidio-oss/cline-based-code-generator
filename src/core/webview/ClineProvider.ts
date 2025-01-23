@@ -22,7 +22,7 @@ import { Cline } from "../Cline"
 import { openMention } from "../mentions"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
-import { HaiBuildContextOptions, HaiBuildIndexProgress } from "../../shared/customApi"
+import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "../../shared/customApi"
 import { IHaiStory } from "../../../webview-ui/src/interfaces/hai-task.interface"
 import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
 import { VectorizeCodeAgent } from "../../integrations/code-prep/VectorizeCodeAgent"
@@ -32,11 +32,12 @@ import { validateApiConfiguration, validateEmbeddingConfiguration } from "../../
 import { getFormattedDateTime } from "../../utils/date"
 import { EmbeddingProvider } from "../../shared/embeddings"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
-import { FileOperations } from "../../utils/constants"
+import { ACCEPTED_FILE_EXTENSIONS, FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import delay from "delay"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
+import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { buildEmbeddingHandler } from "../../embedding"
 
 /*
@@ -70,6 +71,7 @@ type GlobalStateKey =
 	| "vertexRegion"
 	| "lastShownAnnouncementId"
 	| "customInstructions"
+	| "isCustomInstructionsEnabled"
 	| "alwaysAllowReadOnly"
 	| "taskHistory"
 	| "openAiBaseUrl"
@@ -89,12 +91,13 @@ type GlobalStateKey =
 	| "embeddingOpenAiBaseUrl"
 	| "embeddingOpenAiModelId"
 	| "autoApprovalSettings"
+	| "fileInstructions"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
 	uiMessages: "ui_messages.json",
 	openRouterModels: "openrouter_models.json",
-	mcpSettings: "cline_mcp_settings.json",
+	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
 }
 
@@ -434,6 +437,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = undefined
 		this.mcpHub?.dispose()
 		this.mcpHub = undefined
+		this.fileSystemWatcher.dispose()
 		this.outputChannel.appendLine("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 	}
@@ -525,6 +529,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			buildContextOptions,
 			autoApprovalSettings
@@ -535,6 +541,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			embeddingConfiguration,
 			autoApprovalSettings,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			task,
 			images
@@ -548,6 +556,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			autoApprovalSettings,
 			alwaysAllowReadOnly,
 			buildContextOptions,
@@ -558,6 +568,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			embeddingConfiguration,
 			autoApprovalSettings,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			undefined,
 			undefined,
@@ -664,6 +676,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				switch (message.type) {
 					case "webviewDidLaunch":
 						this.postStateToWebview()
+						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.initializeFilePaths() // don't await
 						getTheme().then((theme) =>
 							this.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }),
@@ -760,9 +773,54 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.postStateToWebview()
 						break
-
+					case "showToast":
+						switch(message.toast?.toastType) {
+							case "info":
+								vscode.window.showInformationMessage(message.toast.message)
+								break
+							case "error":
+								vscode.window.showErrorMessage(message.toast.message)
+								break
+							case "warning":
+								vscode.window.showWarningMessage(message.toast.message)
+								break
+						}
+						break	
 					case "customInstructions":
-						await this.updateCustomInstructions(message.text)
+						await this.updateCustomInstructions(message.text, message.bool)
+						break
+					case "uploadInstruction":
+						if (message.fileInstructions) {
+							const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
+							await fs.mkdir(instructionsDir, { recursive: true });
+							for(const fileInstruction of message.fileInstructions) {
+								const filePath = path.join(instructionsDir, fileInstruction.name);
+								if (fileInstruction.content) {
+									await fs.writeFile(filePath, fileInstruction.content, "utf8");
+								}
+							}
+							vscode.window.showInformationMessage(`${message.fileInstructions.length} files uploaded successfully`);
+						}
+						break;
+					case "deleteInstruction":
+						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
+						if(message.text) {
+							try {
+								const filePath = path.join(dir, message.text);
+								let doesFileExist = await fileExistsAtPath(filePath);
+								if (!doesFileExist) {
+									vscode.window.showErrorMessage(`${message.text} does not exist.`);
+									break;
+								}
+								await fs.unlink(filePath);
+								vscode.window.showInformationMessage(message.text + " has been deleted.");
+							} catch (error) {
+								console.error(`Failed to delete file ${message.text}:`, error);
+							}
+						}
+						break;
+					case "fileInstructions":
+						await this.updateFileInstructions(message.fileInstructions)
 						break
 					case "alwaysAllowReadOnly":
 						await this.customUpdateState("alwaysAllowReadOnly", message.bool ?? undefined)
@@ -976,7 +1034,44 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.disposables,
 		)
 	}
+	async updateFileInstructions(fileInstructions: HaiInstructionFile[] | undefined) {
+		await this.customUpdateState("fileInstructions", fileInstructions)
+		if (this.cline) {
+			this.cline.fileInstructions = fileInstructions
+		}
+		await this.postStateToWebview()
+	}
 
+	async checkInstructionFilesFromFileSystem() {
+		const workspaceFolder = this.getWorkspacePath();
+		if (!workspaceFolder) { return; }
+		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
+		try {
+			const files = await fs.readdir(instructionsPath);
+			const filesInSystemSet = new Set(files.filter(file => {
+				const extension = file.split('.').pop()?.trim().toLowerCase();
+				return extension ? ACCEPTED_FILE_EXTENSIONS.includes(extension) : false;
+			}));
+			const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];		
+			const existingInstructionsMap = new Map(
+				fileInstructions?.map(instruction => [instruction.name, instruction.enabled])
+			);
+			
+			const updatedInstructions = Array.from(filesInSystemSet, name => ({
+				name,
+				enabled: existingInstructionsMap.get(name) || false
+			}));
+			
+			await this.updateFileInstructions(updatedInstructions);
+			
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+				await this.updateFileInstructions([]);
+				return;
+			}
+			console.error('Error checking instruction files:', error);
+		}
+	}
 	async customWebViewMessageHandlers(message: WebviewMessage) {
 		switch (message.type) {
 			case "onHaiConfigure":
@@ -993,14 +1088,19 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
-	async updateCustomInstructions(instructions?: string) {
-		// User may be clearing the field
-		await this.customUpdateState("customInstructions", instructions || undefined)
+	async updateCustomInstructions(instructions?: string, enable?: boolean) {
+		const { isCustomInstructionsEnabled } = await this.getState();
+		enable = enable ?? isCustomInstructionsEnabled;
+
+		await this.customUpdateState("customInstructions", instructions)
+		await this.customUpdateState("isCustomInstructionsEnabled", enable)
 		if (this.cline) {
 			this.cline.customInstructions = instructions || undefined
+			this.cline.isCustomInstructionsEnabled = enable
 		}
 		await this.postStateToWebview()
 	}
+
 
 	// MCP
 
@@ -1305,6 +1405,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			taskHistory,
 			autoApprovalSettings,
@@ -1316,6 +1418,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			uriScheme: vscode.env.uriScheme,
 			clineMessages: this.cline?.clineMessages || [],
@@ -1407,6 +1511,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			openRouterModelInfo,
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled,
+			fileInstructions,
 			alwaysAllowReadOnly,
 			taskHistory,
 			buildContextOptions,
@@ -1456,6 +1562,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("openRouterModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("lastShownAnnouncementId") as Promise<string | undefined>,
 			this.customGetState("customInstructions") as Promise<string | undefined>,
+			this.customGetState("isCustomInstructionsEnabled") as Promise<boolean | undefined>,
+			this.customGetState("fileInstructions") as Promise<HaiInstructionFile[] | undefined>,
 			this.customGetState("alwaysAllowReadOnly") as Promise<boolean | undefined>,
 			this.customGetState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.customGetState("buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
@@ -1548,6 +1656,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			},
 			lastShownAnnouncementId,
 			customInstructions,
+			isCustomInstructionsEnabled: isCustomInstructionsEnabled ?? true,
+			fileInstructions,
 			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
 			taskHistory,
 			buildContextOptions: buildContextOptions ?? {
@@ -1666,6 +1776,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		for (const key of this.context.globalState.keys()) {
 			await this.context.globalState.update(key, undefined)
 		}
+
 		const secretKeys: SecretKey[] = [
 			"apiKey",
 			"openRouterApiKey",
@@ -1691,6 +1802,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.cline = undefined
 		}
 		vscode.window.showInformationMessage("State reset")
+		await this.checkInstructionFilesFromFileSystem()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
 	}

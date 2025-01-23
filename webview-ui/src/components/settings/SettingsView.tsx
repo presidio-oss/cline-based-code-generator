@@ -6,6 +6,8 @@ import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
+import { ACCEPTED_FILE_EXTENSIONS } from "../../utils/constants"
+import { HaiInstructionFile } from "../../../../src/shared/customApi"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -26,11 +28,32 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		setBuildContextOptions,
 		buildIndexProgress,
 		embeddingConfiguration,
+		fileInstructions,
+		setFileInstructions
 	} = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
 	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false);
+	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set());
+
+    const toggleTrashClicked = (filename: string) => {
+        setTrashClickedFiles(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(filename)) {
+                newSet.delete(filename);
+            } else {
+                newSet.add(filename);
+            }
+            return newSet;
+        });
+    };
+
+    useEffect(() => {
+        setApiErrorMessage(undefined)
+        setModelIdErrorMessage(undefined)
+        setEmbeddingErrorMessage(undefined)
+    }, [apiConfiguration, embeddingConfiguration])
 
 	const handleSubmit = () => {
 		const apiValidationResult = validateApiConfiguration(apiConfiguration)
@@ -42,7 +65,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 		if (!apiValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			vscode.postMessage({ type: "customInstructions", text: customInstructions })
+			vscode.postMessage({ type: "customInstructions", text: customInstructions });
 			vscode.postMessage({ type: "alwaysAllowReadOnly", bool: alwaysAllowReadOnly })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
@@ -50,23 +73,81 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-	useEffect(() => {
-		setApiErrorMessage(undefined)
-		setModelIdErrorMessage(undefined)
-		setEmbeddingErrorMessage(undefined)
-	}, [apiConfiguration, embeddingConfiguration])
+	const [fileInput, setFileInput] = useState<HaiInstructionFile[]>([]);
 
-	// validate as soon as the component is mounted
-	/*
-	useEffect will use stale values of variables if they are not included in the dependency array. so trying to use useEffect with a dependency array of only one value for example will use any other variables' old values. In most cases you don't want this, and should opt to use react-use hooks.
+	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+		if (e.target.files) {
+			const newFiles = Array.from(e.target.files);
+			const existingFiles = new Set(fileInstructions?.map(file => file.name));
+			for (const file of newFiles) {
+				const fileExtension = file.name.split('.').pop()?.toLowerCase();
+
+				if ((!fileExtension || !ACCEPTED_FILE_EXTENSIONS.includes(fileExtension))) {
+					vscode.postMessage({
+						type: "showToast",
+						toast: {
+							message: "Only markdown files are supported",
+							toastType: "warning",
+						}
+					});
+					e.target.value = "";
+					e.target.files = null;
+					continue;
+				}
+		
+				if (existingFiles.has(file.name)) {
+					vscode.postMessage({
+						type: "showToast",
+						toast: {
+							message: `${file.name} already exists. Please upload a different file.`,
+							toastType: "warning",
+						}
+					});
+					e.target.value = "";
+					e.target.files = null;
+					continue;
+				}
 	
-	useEffect(() => {
-		// uses someVar and anotherVar
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [someVar])
+				const content = await new Promise<string>((resolve) => {
+					const reader = new FileReader();
+					reader.onload = () => {
+						if (typeof reader.result === "string") {
+							resolve(reader.result);
+						}
+					};
+					reader.readAsText(file);
+				});
+	
+				fileInput.push({
+					name: file.name,
+					content: content,
+					enabled: false
+				});
+				setFileInput(fileInput)
+			}
+			if (fileInput.length > 0) {
+				vscode.postMessage({
+					type: "uploadInstruction",
+					fileInstructions: fileInput
+				});
+			}
+		}
+		setFileInput([])
+		e.target.value = "";
+		e.target.files = null;
+	};
 
-	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
-	*/
+    const handleDeleteFile = (filename: string) => {
+		vscode.postMessage({
+			type: "deleteInstruction",
+			text: filename
+		});
+		
+		let newFileInstructions = fileInstructions?.filter(file => file.name !== filename);
+		if (newFileInstructions){
+			setFileInstructions(newFileInstructions);
+		}
+    };
 
 	const handleResetState = () => {
 		vscode.postMessage({ type: "resetState" })
@@ -129,14 +210,96 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
 						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
 					</VSCodeTextArea>
-					<p
-						style={{
+					<p style={{
 							fontSize: "12px",
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						These instructions are added to the end of the system prompt sent with every request.
+						The default instructions are added to the end of the system prompt sent with every request.
 					</p>
+                    <VSCodeButton
+                        style={{
+                            width: "100%",
+                            marginTop: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                        }}
+                        onClick={() => document.getElementById('fileInput')?.click()}
+                    >
+                        <span className="codicon codicon-add" style={{ marginRight: "5px" }}></span>
+                        Upload Instruction File
+                    </VSCodeButton>
+                    <input
+                        id="fileInput"
+                        type="file"
+                        accept=".md"
+                        style={{ display: 'none' }}
+                        onChange={handleFileUpload}
+                        multiple
+                    />
+
+                    {fileInstructions && (fileInstructions.length) > 0 && (
+                        <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
+                            {fileInstructions.map((file) => (
+                                <div
+                                    key={file.name}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '8px',
+                                        backgroundColor: 'var(--vscode-input-background)',
+                                        borderRadius: '3px',
+                                        color: 'var(--vscode-foreground)',
+                                        opacity: 0.6
+                                    }}
+                                >
+                                    <span style={{
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        marginRight: '10px'
+                                    }}>
+                                        {file.name}
+                                    </span>
+                                    {!trashClickedFiles.has(file.name) ? (
+                                        <VSCodeButton
+                                            appearance="icon"
+                                            onClick={() => toggleTrashClicked(file.name)}
+                                        >
+                                            <span className="codicon codicon-trash"></span>
+                                        </VSCodeButton>
+                                    ) : (
+                                        <div style={{ display: 'flex', gap: '4px' }}>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => toggleTrashClicked(file.name)}
+                                            >
+                                                <span className="codicon codicon-close"></span>
+                                            </VSCodeButton>
+                                            <VSCodeButton
+                                                appearance="icon"
+                                                onClick={() => {
+                                                    handleDeleteFile(file.name);
+                                                    toggleTrashClicked(file.name);
+                                                }}
+                                            >
+                                                <span className="codicon codicon-check"></span>
+                                            </VSCodeButton>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <p style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+					This feature enables the addition of markdown (.md) instruction files that provide specific behavioral guidelines to the LLM [ex: "always write tests first", "follow BEM naming for CSS"]. Each enabled instruction file's content is automatically appended to the system prompt for every API request. For workspace-wide instructions that apply across all directories, create a .hairules file in your root directory [ex: global code style preferences, project-specific documentation requirements].					</p>
 				</div>
 
 				<div style={{ marginBottom: 5 }}>
@@ -185,7 +348,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 								{showCopied ? 'Copied!' : 'Copy'}
 							</VSCodeButton>
 							<pre style={{ color: "#e8912d", backgroundColor: "#2b2d30", padding: "10px", borderRadius: "5px", border: "2px solid #333", whiteSpace: "pre-wrap", wordWrap: "break-word", overflowWrap: "break-word"  }}>
-								{JSON.stringify({ buildContextOptions, buildIndexProgress, apiConfiguration, embeddingConfiguration }, null, 2)}
+								{JSON.stringify({ buildContextOptions, buildIndexProgress, apiConfiguration, embeddingConfiguration, fileInstructions }, null, 2)}
 							</pre>
 						</div>
 					</>
@@ -206,5 +369,4 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		</div>
 	)
 }
-
 export default memo(SettingsView)
