@@ -130,14 +130,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					type: "uploadInstruction",
 					fileInstructions: fileInput
 				});
-	
-				vscode.postMessage({
-					type: "showToast",
-					toast: {
-						message: `${fileInput.length} files uploaded successfully`,
-						toastType: "info"
-					}
-				});
 			}
 		}
 		setFileInput([])
