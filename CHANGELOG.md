@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.2] - YYYY-MM-DD
+## [3.0.2] - Unreleased
 
 ### Added
 

@@ -32,7 +32,14 @@ jobs:
           
       # Step 4: Add GitLab remote
       - name: Add GitLab remote
-        run: git remote add gitlab ${{ env.GITLAB_REPO_URI }}
+        run: |
+          # Remove the remote if it already exists
+          if git remote get-url gitlab &>/dev/null; then
+            git remote remove gitlab
+          fi
+
+          # Add the gitlab remote
+          git remote add gitlab ${{ env.GITLAB_REPO_URI }}
 
       # Step 5: Fetch GitLab branch
       - name: Fetch GitLab branch
@@ -45,23 +52,36 @@ jobs:
             exit 1
           fi
 
-      # Step 6: Reconcile Divergent Histories
-      - name: Reconcile Divergent Histories
+      # Step 6: Reconcile and Push Changes
+      - name: Reconcile and Push Changes
         run: |
           BRANCH_NAME="${{ env.GITLAB_BRANCH_NAME || 'main' }}"
-          echo "Merging GitLab branch: $BRANCH_NAME"
 
-          if ! git merge gitlab/$BRANCH_NAME --allow-unrelated-histories --strategy-option=theirs; then
+          echo "Checkout Gitlab branch: $BRANCH_NAME"
+          if ! git checkout gitlab/$BRANCH_NAME; then
+            echo "Failed to checkout GitLab branch"
+            exit 1
+          fi
+          
+          # Compare branches
+          echo "Checking for changes between gitlab:$BRANCH_NAME and current:$CI_COMMIT_REF_NAME"
+          CHANGES=$(git diff --name-only origin/$CI_COMMIT_REF_NAME HEAD)
+
+          if [ -z "$CHANGES" ]; then
+            echo "No changes detected. Exiting."
+            exit 0
+          fi
+          echo "Changes detected: $CHANGES"
+          
+          # Merge those changes to the current repo
+          echo "Merging changes from current:$CI_COMMIT_REF_NAME to the gitlab:$BRANCH_NAME"
+          if ! git merge origin/$CI_COMMIT_REF_NAME --no-edit --allow-unrelated-histories --strategy-option=theirs; then
             echo "Failed to merge GitLab branch"
             exit 1
           fi
 
-      # Step 7: Push Final Changes
-      - name: Push Final Changes
-        run: |
-          BRANCH_NAME="${{ env.GITLAB_BRANCH_NAME || 'main' }}"
+          # Push all the latest changes
           echo "Pushing changes to GitLab branch: $BRANCH_NAME"
-          
           if ! git push gitlab $BRANCH_NAME; then
             echo "Normal push failed, attempting force push for branch"
             if ! git push --force gitlab $BRANCH_NAME; then
