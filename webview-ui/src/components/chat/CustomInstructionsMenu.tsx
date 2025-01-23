@@ -202,26 +202,39 @@ const CustomInstructionsMenu = ({
               </div>
             ))}
             {customInstructions && (
-              <div key={customInstructions} style={{ margin: "6px 0" }}>
-                <VSCodeCheckbox
-                  checked={isCustomInstructionsEnabled}
-                  onClick={toggleTextInstruction}
+              <>
+                <div key={customInstructions} style={{ margin: "6px 0" }}>
+                  <VSCodeCheckbox
+                    checked={isCustomInstructionsEnabled}
+                    onClick={toggleTextInstruction}
+                  >
+                    Default Instructions
+                  </VSCodeCheckbox>
+                </div>
+                <p
+                  style={{
+                    fontSize: "12px",
+                    marginTop: "5px",
+                    color: "var(--vscode-descriptionForeground)",
+                  }}
                 >
-                  Default Instructions
-                </VSCodeCheckbox>
-              </div>
+                  These default instructions are textual instructions provided
+                  in the settings, which are added to the end of the system
+                  prompt sent with every request.
+                </p>
+              </>
             )}
-            <p
-              style={{
-                fontSize: "12px",
-                marginTop: "5px",
-                color: "var(--vscode-descriptionForeground)",
-              }}
-            >
-              These default instructions are textual instructions provided in
-              the settings, which are added to the end of the system prompt sent
-              with every request.
-            </p>
+            {!customInstructions && (!fileInstructions || fileInstructions.length < 1) && (
+              <p
+                style={{
+                  fontSize: "12px",
+                  marginTop: "5px",
+                  color: "var(--vscode-descriptionForeground)",
+                }}
+              >
+                To leverage capabilities, configure instructions via the settings page "Custom Instructions" field or by uploading .md files [ex: place coding-style.md in the .hai/instructions folder].
+              </p>
+            )}
           </div>
         </div>
       )}
