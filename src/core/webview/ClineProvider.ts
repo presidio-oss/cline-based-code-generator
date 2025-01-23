@@ -32,7 +32,7 @@ import { validateApiConfiguration, validateEmbeddingConfiguration } from "../../
 import { getFormattedDateTime } from "../../utils/date"
 import { EmbeddingProvider } from "../../shared/embeddings"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
-import { FileOperations } from "../../utils/constants"
+import { ACCEPTED_FILE_EXTENSIONS, FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import delay from "delay"
@@ -1048,7 +1048,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
 		try {
 			const files = await fs.readdir(instructionsPath);
-			const filesInSystemSet = new Set(files.filter(file => file.endsWith('.md')));			
+			const filesInSystemSet = new Set(files.filter(file => {
+				const extension = file.split('.').pop()?.trim().toLowerCase();
+				return extension ? ACCEPTED_FILE_EXTENSIONS.includes(extension) : false;
+			}));
 			const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];		
 			const existingInstructionsMap = new Map(
 				fileInstructions?.map(instruction => [instruction.name, instruction.enabled])
@@ -1069,7 +1072,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			console.error('Error checking instruction files:', error);
 		}
 	}
-
 	async customWebViewMessageHandlers(message: WebviewMessage) {
 		switch (message.type) {
 			case "onHaiConfigure":
