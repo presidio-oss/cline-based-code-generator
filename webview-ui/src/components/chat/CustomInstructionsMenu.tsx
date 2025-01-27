@@ -26,20 +26,28 @@ const CustomInstructionsMenu = ({
     setFileInstructions,
   } = useExtensionState();
 
-  const [allInstructionsEnabled, setAllInstructionsEnabled] = useState<boolean>(
-    (fileInstructions?.every((i) => i.enabled === true) ?? false) &&
-      customInstructions !== undefined &&
-      isCustomInstructionsEnabled
-      ? true
-      : false
-  );
-  
-  useEffect(() => {
-    setAllInstructionsEnabled(
-      (fileInstructions?.every((i) => i.enabled === true) ?? false) &&
-        customInstructions !== undefined &&
+  const isAllInstructionsEnabled = () => {
+    if (fileInstructions && customInstructions) {
+      return (
+        fileInstructions.every((i) => i.enabled === true) &&
         isCustomInstructionsEnabled
-    );
+      );
+    } else if (fileInstructions && !customInstructions) {
+      return fileInstructions.every((i) => i.enabled === true);
+    } else if (!fileInstructions && customInstructions) {
+      return isCustomInstructionsEnabled;
+    } else {
+      return false;
+    }
+  };
+
+  const [allInstructionsEnabled, setAllInstructionsEnabled] = useState<boolean>(
+    isAllInstructionsEnabled()
+  );
+
+  useEffect(() => {
+    setAllInstructionsEnabled(isAllInstructionsEnabled());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fileInstructions, customInstructions, isCustomInstructionsEnabled]);
 
   const toggleInstruction = (index: number) => {
@@ -53,11 +61,7 @@ const CustomInstructionsMenu = ({
       type: "fileInstructions",
       fileInstructions: updatedInstructions,
     });
-    setAllInstructionsEnabled(
-      (updatedInstructions?.every((i) => i.enabled === true) ?? false) &&
-        customInstructions !== undefined &&
-        isCustomInstructionsEnabled
-    );
+    setAllInstructionsEnabled(isAllInstructionsEnabled());
   };
 
   const toggleTextInstruction = () => {
@@ -68,11 +72,7 @@ const CustomInstructionsMenu = ({
       text: customInstructions,
       bool: value,
     });
-    setAllInstructionsEnabled(
-      (fileInstructions?.every((i) => i.enabled === true) ?? false) &&
-        customInstructions !== undefined &&
-        value
-    );
+    setAllInstructionsEnabled(isAllInstructionsEnabled());
   };
 
   const toggleAllInstructions = () => {
@@ -88,7 +88,7 @@ const CustomInstructionsMenu = ({
         fileInstructions: updatedInstructions,
       });
     }
-    setAllInstructionsEnabled(newValue);
+    setAllInstructionsEnabled(isAllInstructionsEnabled());
     setIsCustomInstructionsEnabled(newValue);
     vscode.postMessage({
       type: "customInstructions",
