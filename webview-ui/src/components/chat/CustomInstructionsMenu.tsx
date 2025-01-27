@@ -27,14 +27,14 @@ const CustomInstructionsMenu = ({
   } = useExtensionState();
 
   const isAllInstructionsEnabled = () => {
-    if (fileInstructions && customInstructions) {
+    if (fileInstructions && fileInstructions && fileInstructions.length > 0 && customInstructions) {
       return (
         fileInstructions.every((i) => i.enabled === true) &&
         isCustomInstructionsEnabled
       );
-    } else if (fileInstructions && !customInstructions) {
+    } else if (fileInstructions && fileInstructions.length > 0 && !customInstructions) {
       return fileInstructions.every((i) => i.enabled === true);
-    } else if (!fileInstructions && customInstructions) {
+    } else if ((!fileInstructions || fileInstructions.length <= 0) && customInstructions) {
       return isCustomInstructionsEnabled;
     } else {
       return false;
