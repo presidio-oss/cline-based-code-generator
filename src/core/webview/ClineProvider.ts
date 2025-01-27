@@ -128,7 +128,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 	private codeIndexAbortController: AbortController
 	private isSideBar: boolean
-	fileSystemWatcher: HaiFileSystemWatcher
+	fileSystemWatcher: HaiFileSystemWatcher | undefined
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -142,8 +142,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = this.getWorkspacePath() || ""
+		if(this.vsCodeWorkSpaceFolderFsPath && this.vsCodeWorkSpaceFolderFsPath.trim() !== '') {
 		this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
 		this.codeIndexBackground()
+		}
 	}
 
 	private getWorkspacePath() {
@@ -437,7 +439,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = undefined
 		this.mcpHub?.dispose()
 		this.mcpHub = undefined
-		this.fileSystemWatcher.dispose()
+		this.fileSystemWatcher?.dispose()
 		this.outputChannel.appendLine("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
 	}
