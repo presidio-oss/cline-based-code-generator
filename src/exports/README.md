@@ -7,7 +7,7 @@ The HAI extension exposes an API that can be used by other extensions. To use th
 3. Get access to the API with the following code:
 
     ```ts
-    const haiExtension = vscode.extensions.getExtension<HaiAPI>("presidio.hai-build")
+    const haiExtension = vscode.extensions.getExtension<HaiAPI>("presidio-inc.hai-build-code-generator")
 
     if (!haiExtension?.isActive) {
     	throw new Error("HAI extension is not activated")
@@ -44,11 +44,11 @@ The HAI extension exposes an API that can be used by other extensions. To use th
     }
     ```
 
-    **Note:** To ensure that the `presidio.hai-build` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
+    **Note:** To ensure that the `presidio-inc.hai-build-code-generato` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
 
     ```json
     "extensionDependencies": [
-        "presidio.hai-build"
+        "presidio-inc.hai-build-code-generator"
     ]
     ```
 
