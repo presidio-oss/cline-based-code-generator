@@ -44,7 +44,7 @@ The HAI extension exposes an API that can be used by other extensions. To use th
     }
     ```
 
-    **Note:** To ensure that the `presidio-inc.hai-build-code-generato` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
+    **Note:** To ensure that the `presidio-inc.hai-build-code-generator` extension is activated before your extension, add it to the `extensionDependencies` in your `package.json`:
 
     ```json
     "extensionDependencies": [
