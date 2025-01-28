@@ -137,5 +137,5 @@ export function mergeJson(
 }
 
 function getExtensionUri(): vscode.Uri {
-	return vscode.extensions.getExtension("presidio.hai-build")!.extensionUri
+	return vscode.extensions.getExtension("presidio-inc.hai-build-code-generator")!.extensionUri
 }

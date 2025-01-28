@@ -39,13 +39,11 @@
 **HAI Code Generator** is designed to boost productivity and precision by automating task execution and integrating file management capabilities. It combines intelligent file indexing, context generation, and LLM-driven automation to minimize manual effort and ensure task accuracy. With user-friendly interfaces and configurable settings, HAI Code Generator is perfect for both developers and teams aiming to enhance their workflows.
 
 ## 📥 Getting Started
-- Download the latest HAI Code Generator extension from our [releases page](https://github.com/presidio-oss/cline-based-code-generator/releases)
-- Open Visual Studio Code → Extensions (⇧⌘X) → Views and More Actions (Button with three dots in the top right corner of the left pane)
+- Open Visual Studio Code → Extensions (⇧⌘X) → Search for “HAI Build” → Click Install
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/gifs/install-from-vsix.gif" alt="HAI Demo" />
+  <img src="assets/gifs/install-hai-build.gif" alt="HAI Demo" />
 </div>
 
-- Click Install from VSIX and select the downloaded “.vsix” file
 - Upon installation, the HAI extension can be found in the sidebar.
 
 <div align="center" style="margin-top: 20px;">

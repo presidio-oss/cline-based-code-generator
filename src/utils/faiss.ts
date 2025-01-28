@@ -62,7 +62,7 @@ export async function ensureFaissPlatformDeps() {
 	}
 	const downloadUrl = `https://github.com/ewfian/faiss-node/releases/download/v0.5.1/faiss-node-v0.5.1-napi-v8-${platform}-${arch}.tar.gz`
 
-	const extensionPath = vscode.extensions.getExtension("presidio.hai-build")?.extensionPath
+	const extensionPath = vscode.extensions.getExtension("presidio-inc.hai-build-code-generator")?.extensionPath
 
 	console.log("faiss", `extensionPath: ${extensionPath}`)
 

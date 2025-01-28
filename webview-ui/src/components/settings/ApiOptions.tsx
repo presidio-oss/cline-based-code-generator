@@ -920,7 +920,7 @@ const ApiOptions = ({
 }
 
 export function getOpenRouterAuthUrl(uriScheme?: string) {
-	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://presidio.hai-build/openrouter`
+	return `https://openrouter.ai/auth?callback_url=${uriScheme || "vscode"}://presidio-inc.hai-build-code-generator/openrouter`
 }
 
 export const formatPrice = (price: number) => {
