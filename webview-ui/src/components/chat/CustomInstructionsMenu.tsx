@@ -27,17 +27,12 @@ const CustomInstructionsMenu = ({
   } = useExtensionState();
 
   const isAllInstructionsEnabled = () => {
-    if (fileInstructions && fileInstructions.length > 0 && customInstructions) {
-      return (
-        fileInstructions.every((i) => i.enabled === true) &&
-        isCustomInstructionsEnabled
-      );
-    } else if (fileInstructions && fileInstructions.length > 0 && !customInstructions) {
-      return fileInstructions.every((i) => i.enabled === true);
-    } else if ((!fileInstructions || fileInstructions.length <= 0) && customInstructions) {
-      return isCustomInstructionsEnabled;
+    if (!fileInstructions?.length) {
+      return customInstructions ? isCustomInstructionsEnabled : false;
+    } else if (customInstructions) {
+      return fileInstructions.every((i) => i.enabled === true) && isCustomInstructionsEnabled;
     } else {
-      return false;
+      return fileInstructions.every((i) => i.enabled === true);
     }
   };
 
