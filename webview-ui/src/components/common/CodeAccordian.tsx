@@ -6,8 +6,8 @@ interface CodeAccordianProps {
 	code?: string
 	diff?: string
 	language?: string | undefined
-	path?: string,
-	showActionIcon?: boolean,
+	path?: string
+	showActionIcon?: boolean
 	isFeedback?: boolean
 	isConsoleLogs?: boolean
 	isExpanded: boolean
@@ -21,7 +21,7 @@ We need to remove leading non-alphanumeric characters from the path in order for
 [^a-zA-Z0-9]+: Matches one or more characters that are not alphanumeric.
 The replace method removes these matched characters, effectively trimming the string up to the first alphanumeric character.
 */
-export const removeLeadingNonAlphanumeric = (path: string): string => path.replace(/^[^a-zA-Z0-9]+/, "")
+export const cleanPathPrefix = (path: string): string => path.replace(/^[^\u4e00-\u9fa5a-zA-Z0-9]+/, "")
 
 const CodeAccordian = ({
 	code,
@@ -63,12 +63,16 @@ const CodeAccordian = ({
 						MozUserSelect: "none",
 						msUserSelect: "none",
 					}}
-					onClick={(isLoading && !showActionIcon) ? undefined : onToggleExpand}>
+					onClick={isLoading && !showActionIcon ? undefined : onToggleExpand}>
 					{isFeedback || isConsoleLogs ? (
 						<div style={{ display: "flex", alignItems: "center" }}>
-							{showActionIcon ? (<span
-								className={`codicon codicon-${isFeedback ? "feedback" : "output"}`}
-								style={{ marginRight: "6px" }}></span>) : ""}
+							{showActionIcon ? (
+								<span
+									className={`codicon codicon-${isFeedback ? "feedback" : "output"}`}
+									style={{ marginRight: "6px" }}></span>
+							) : (
+								""
+							)}
 							<span
 								style={{
 									whiteSpace: "nowrap",
@@ -92,12 +96,12 @@ const CodeAccordian = ({
 									direction: "rtl",
 									textAlign: "left",
 								}}>
-								{removeLeadingNonAlphanumeric(path ?? "") + "\u200E"}
+								{cleanPathPrefix(path ?? "") + "\u200E"}
 							</span>
 						</>
 					)}
 					<div style={{ flexGrow: 1 }}></div>
-					{showActionIcon ? (<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>) : ""}
+					{showActionIcon ? <span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span> : ""}
 				</div>
 			)}
 			{(!(path || isFeedback || isConsoleLogs) || isExpanded) && (

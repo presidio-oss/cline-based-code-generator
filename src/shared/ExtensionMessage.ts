@@ -2,10 +2,12 @@
 
 import { ApiConfiguration, ModelInfo } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
-import { HistoryItem } from "./HistoryItem"
 import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "./customApi"
 import { IHaiStory } from "../../webview-ui/src/interfaces/hai-task.interface"
 import { EmbeddingConfiguration } from "./embeddings"
+import { BrowserSettings } from "./BrowserSettings"
+import { ChatSettings } from "./ChatSettings"
+import { HistoryItem } from "./HistoryItem"
 import { McpServer } from "./mcp"
 
 // webview will hold state
@@ -21,12 +23,15 @@ export interface ExtensionMessage {
 		| "invoke"
 		| "partialMessage"
 		| "openRouterModels"
+		| "mcpServers"
+		| "relinquishControl"
+		| "vsCodeLmModels"
+		| "requestVsCodeLmModels"
 		| "haiTaskData"
 		| "haiAction"
 		| "haiConfig"
 		| "llmConfigValidation"
 		| "embeddingConfigValidation"
-		| "mcpServers"
 		| "existingFiles"
 	text?: string
 	bool?: boolean
@@ -36,6 +41,8 @@ export interface ExtensionMessage {
 		| "settingsButtonClicked"
 		| "historyButtonClicked"
 		| "didBecomeVisible"
+		| "accountLoginClicked"
+		| "accountLogoutClicked"
 		| "haiBuildTaskListClicked"
 		| "onHaiConfigure"
 	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
@@ -43,13 +50,14 @@ export interface ExtensionMessage {
 	images?: string[]
 	ollamaModels?: string[]
 	lmStudioModels?: string[]
+	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	filePaths?: string[]
-	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	partialMessage?: ClineMessage
 	openRouterModels?: Record<string, ModelInfo>
-	haiConfig?: {}
 	mcpServers?: McpServer[]
-	instructions?: { name: string; enabled: boolean }[];
+	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
+	haiConfig?: {}
+	instructions?: { name: string; enabled: boolean }[]
 }
 
 export interface ExtensionState {
@@ -58,15 +66,24 @@ export interface ExtensionState {
 	customInstructions?: string
 	isCustomInstructionsEnabled: boolean
 	fileInstructions?: HaiInstructionFile[]
-	alwaysAllowReadOnly?: boolean
 	uriScheme?: string
+	currentTaskItem?: HistoryItem
+	checkpointTrackerErrorMessage?: string
 	clineMessages: ClineMessage[]
 	taskHistory: HistoryItem[]
 	shouldShowAnnouncement: boolean
+	autoApprovalSettings: AutoApprovalSettings
+	browserSettings: BrowserSettings
+	chatSettings: ChatSettings
+	isLoggedIn: boolean
+	userInfo?: {
+		displayName: string | null
+		email: string | null
+		photoURL: string | null
+	}
 	buildContextOptions?: HaiBuildContextOptions
 	buildIndexProgress?: HaiBuildIndexProgress
 	embeddingConfiguration?: EmbeddingConfiguration
-	autoApprovalSettings: AutoApprovalSettings
 }
 
 export interface ClineMessage {
@@ -77,10 +94,14 @@ export interface ClineMessage {
 	text?: string
 	images?: string[]
 	partial?: boolean
+	lastCheckpointHash?: string
+	conversationHistoryIndex?: number
+	conversationHistoryDeletedRange?: [number, number] // for when conversation history is truncated for API requests
 }
 
 export type ClineAsk =
 	| "followup"
+	| "plan_mode_response"
 	| "command"
 	| "command_output"
 	| "completion_result"
@@ -113,6 +134,8 @@ export type ClineSay =
 	| "mcp_server_request_started"
 	| "mcp_server_response"
 	| "use_mcp_server"
+	| "diff_error"
+	| "deleted_api_reqs"
 
 export interface ClineSayTool {
 	tool:
@@ -169,3 +192,5 @@ export interface ClineApiReqInfo {
 }
 
 export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
+
+export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"

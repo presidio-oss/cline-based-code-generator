@@ -2,6 +2,8 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import axios from "axios"
 import fs from "fs/promises"
 import os from "os"
+import crypto from "crypto"
+import { execa } from "execa"
 import pWaitFor from "p-wait-for"
 import * as path from "path"
 import * as vscode from "vscode"
@@ -12,11 +14,12 @@ import { selectImages } from "../../integrations/misc/process-images"
 import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
+import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
 import { ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
-import { ExtensionMessage } from "../../shared/ExtensionMessage"
+import { ExtensionMessage, ExtensionState } from "../../shared/ExtensionMessage"
 import { HistoryItem } from "../../shared/HistoryItem"
-import { WebviewMessage } from "../../shared/WebviewMessage"
+import { ClineCheckpointRestore, WebviewMessage } from "../../shared/WebviewMessage"
 import { fileExistsAtPath } from "../../utils/fs"
 import { Cline } from "../Cline"
 import { openMention } from "../mentions"
@@ -36,9 +39,11 @@ import { ACCEPTED_FILE_EXTENSIONS, FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import delay from "delay"
-import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { buildEmbeddingHandler } from "../../embedding"
+import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
+import { BrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
+import { ChatSettings, DEFAULT_CHAT_SETTINGS } from "../../shared/ChatSettings"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -62,6 +67,10 @@ type SecretKey =
 	| "embeddingOpenAiApiKey"
 	| "embeddingOpenAiNativeApiKey"
 	| "embeddingAzureOpenAIApiKey"
+	| "deepSeekApiKey"
+	| "mistralApiKey"
+	| "authToken"
+	| "authNonce"
 type GlobalStateKey =
 	| "apiProvider"
 	| "apiModelId"
@@ -72,7 +81,6 @@ type GlobalStateKey =
 	| "lastShownAnnouncementId"
 	| "customInstructions"
 	| "isCustomInstructionsEnabled"
-	| "alwaysAllowReadOnly"
 	| "taskHistory"
 	| "openAiBaseUrl"
 	| "openAiModelId"
@@ -90,8 +98,12 @@ type GlobalStateKey =
 	| "embeddingAwsRegion"
 	| "embeddingOpenAiBaseUrl"
 	| "embeddingOpenAiModelId"
-	| "autoApprovalSettings"
 	| "fileInstructions"
+	| "autoApprovalSettings"
+	| "browserSettings"
+	| "chatSettings"
+	| "vsCodeLmModelSelector"
+	| "userInfo"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -119,7 +131,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private cline?: Cline
 	private workspaceTracker?: WorkspaceTracker
 	mcpHub?: McpHub
-	private latestAnnouncementId = "dec-17-2024" // update to some unique identifier when we add a new announcement
+	private latestAnnouncementId = "jan-20-2025" // update to some unique identifier when we add a new announcement
 
 	private workspaceId = getWorkspaceId()
 
@@ -129,16 +141,18 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private codeIndexAbortController: AbortController
 	private isSideBar: boolean
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
+	private authManager: FirebaseAuthManager
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
 		private readonly outputChannel: vscode.OutputChannel,
-		isSideBar: boolean = true
+		isSideBar: boolean = true,
 	) {
 		this.outputChannel.appendLine("ClineProvider instantiated")
 		ClineProvider.activeInstances.add(this)
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
+		this.authManager = new FirebaseAuthManager(this)
 		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (this.getWorkspacePath() || "").trim()
@@ -154,7 +168,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			return
 		}
 		const workspaceFolder = workspaceFolders[0]
-		return workspaceFolder.uri.fsPath;
+		return workspaceFolder.uri.fsPath
 	}
 
 	private isCustomGlobalKey(key: string): boolean {
@@ -207,7 +221,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async codeIndexBackground(filePaths?: string[], reIndex: boolean = false) {
-		if(!this.isSideBar || this.codeIndexAbortController.signal.aborted) {
+		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted) {
 			return
 		}
 		await ensureFaissPlatformDeps()
@@ -218,12 +232,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				...(data.type === "codeContext" && data.isInProgress === false && data.progress === 100
 					? {
 							isCodeContextEverCompleted: true,
-					  }
+						}
 					: data.type === "codeIndex" && data.isInProgress === false && data.progress === 100
-					? {
-							isCodeIndexEverCompleted: true,
-					  }
-					: {}),
+						? {
+								isCodeIndexEverCompleted: true,
+							}
+						: {}),
 				...(data.type === "codeIndex" && data.isInProgress === false && data.progress === 100
 					? { ts: getFormattedDateTime() }
 					: {}),
@@ -234,12 +248,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				await this.postStateToWebview()
 			}
 		}
-		const getProgress = (
-			progress: number,
-			useIndex: boolean,
-			useContext: boolean,
-			type: "codeIndex" | "codeContext"
-		) => {
+		const getProgress = (progress: number, useIndex: boolean, useContext: boolean, type: "codeIndex" | "codeContext") => {
 			if (type === "codeContext") {
 				return progress / 2
 			} else if (type === "codeIndex") {
@@ -264,150 +273,175 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						const userConfirmation = await vscode.window.showWarningMessage(
 							"hAI works best with code index. Do you want to allow to index on this workspace?",
 							"Yes",
-							"No"
+							"No",
 						)
 						if (userConfirmation === "No" || userConfirmation === undefined) {
 							return
 						}
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
 					}
-					await vscode.window.withProgress({
-						cancellable: false,
-						title: CodeIndexStartMessage,
-						location: vscode.ProgressLocation.Window
-					}, async (progressCtx, token) => {
-						let lastIncrement = 0
-						if (buildContextOptions.useContext) {
+					await vscode.window.withProgress(
+						{
+							cancellable: false,
+							title: CodeIndexStartMessage,
+							location: vscode.ProgressLocation.Window,
+						},
+						async (progressCtx, token) => {
+							let lastIncrement = 0
+							if (buildContextOptions.useContext) {
+								if (this.codeIndexAbortController.signal.aborted) {
+									return
+								}
+
+								console.log(`codeContextAgentProgress...`)
+								// CodeContext
+								const codeContextAgent = new CodeContextAdditionAgent()
+									.withSource(this.vsCodeWorkSpaceFolderFsPath)
+									.withLLMApiConfig(apiConfiguration)
+									.withBuildContextOptions(buildContextOptions)
+									.build()
+								this.codeIndexAbortController.signal.addEventListener("abort", async () => {
+									codeContextAgent.stop()
+									await updateProgressState({
+										type: "codeContext",
+										isInProgress: false,
+									})
+								})
+								codeContextAgent.on("progress", async (progress: ICodeIndexProgress) => {
+									this.outputChannel.appendLine(`codeContextAgentProgress ${progress.type} ${progress.value}%`)
+									console.log(`codeContextAgentProgress ${JSON.stringify(progress, null, 2)}`)
+									// If user cancels the operation from notification, we need to cancel the operation
+									if (token.isCancellationRequested) {
+										codeContextAgent.stop()
+										await updateProgressState({
+											type: "codeContext",
+											isInProgress: false,
+										})
+										return
+									}
+									// If user cancels the operation from settings, we need to cancel the operation
+									if (this.codeIndexAbortController.signal.aborted) {
+										codeContextAgent.stop()
+										await updateProgressState({
+											type: "codeContext",
+											isInProgress: false,
+										})
+										return
+									}
+									// Continue to update the progress
+									if (
+										progress.type === "progress" &&
+										progress.value &&
+										!this.codeIndexAbortController.signal.aborted
+									) {
+										const p = getProgress(
+											progress.value,
+											buildContextOptions.useIndex,
+											buildContextOptions.useContext,
+											"codeContext",
+										)
+										const increment = p - lastIncrement
+										lastIncrement += increment
+										progressCtx.report({ increment, message: `${lastIncrement}%` })
+										await updateProgressState({
+											progress: p,
+											type: "codeContext",
+											isInProgress: true,
+										})
+									}
+								})
+								codeContextAgent.on("error", async (error: { message: string; error: any }) => {
+									console.error("Error during code context:", error.message, error.error)
+									vscode.window.showErrorMessage(`Code context failed: ${error.message}`)
+
+									this.codeIndexAbortController.abort()
+								})
+								await codeContextAgent.start(filePaths, reIndex)
+								if (!this.codeIndexAbortController.signal.aborted) {
+									await updateProgressState({
+										type: "codeContext",
+										isInProgress: false,
+									})
+								}
+							}
 							if (this.codeIndexAbortController.signal.aborted) {
 								return
 							}
 
-							console.log(`codeContextAgentProgress...`)
-							// CodeContext
-							const codeContextAgent = new CodeContextAdditionAgent()
-								.withSource(this.vsCodeWorkSpaceFolderFsPath)
-								.withLLMApiConfig(apiConfiguration)
-								.withBuildContextOptions(buildContextOptions)
-								.build()
-							this.codeIndexAbortController.signal.addEventListener('abort', async () => {
-								codeContextAgent.stop()
+							// TODO: ISSUE: Assuming faiss node takes time to load/initialize.So adding a delay as a temporary fix until we find a root cause.
+							await delay(500)
+
+							const vectorizeCodeAgent = new VectorizeCodeAgent(
+								this.vsCodeWorkSpaceFolderFsPath,
+								embeddingConfiguration,
+								buildContextOptions,
+							)
+							console.log("vectorizeCodeAgentProgress.......")
+							this.codeIndexAbortController.signal.addEventListener("abort", async () => {
+								vectorizeCodeAgent.stop()
 								await updateProgressState({
-									type: 'codeContext',
-									isInProgress: false
+									type: "codeIndex",
+									isInProgress: false,
 								})
 							})
-							codeContextAgent.on('progress', async (progress: ICodeIndexProgress) => {
-								this.outputChannel.appendLine(`codeContextAgentProgress ${progress.type} ${progress.value}%`)
-								console.log(`codeContextAgentProgress ${JSON.stringify(progress, null, 2)}`)
+							vectorizeCodeAgent.on("progress", async (progress: ICodeIndexProgress) => {
+								this.outputChannel.appendLine(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
+								console.log(`vectorizeCodeAgentProgress ${JSON.stringify(progress, null, 2)}`)
 								// If user cancels the operation from notification, we need to cancel the operation
 								if (token.isCancellationRequested) {
-									codeContextAgent.stop()
+									vectorizeCodeAgent.stop()
 									await updateProgressState({
-										type: 'codeContext',
-										isInProgress: false
+										type: "codeIndex",
+										isInProgress: false,
 									})
 									return
 								}
 								// If user cancels the operation from settings, we need to cancel the operation
 								if (this.codeIndexAbortController.signal.aborted) {
-									codeContextAgent.stop()
+									vectorizeCodeAgent.stop()
 									await updateProgressState({
-										type: 'codeContext',
-										isInProgress: false
+										type: "codeIndex",
+										isInProgress: false,
 									})
 									return
 								}
-								// Continue to update the progress
-								if (progress.type === 'progress' && progress.value && !this.codeIndexAbortController.signal.aborted) {
-									const p = getProgress(progress.value, buildContextOptions.useIndex, buildContextOptions.useContext, 'codeContext')
+								if (
+									progress.type === "progress" &&
+									progress.value &&
+									!this.codeIndexAbortController.signal.aborted
+								) {
+									const p = getProgress(
+										progress.value,
+										buildContextOptions.useIndex,
+										buildContextOptions.useContext,
+										"codeIndex",
+									)
 									const increment = p - lastIncrement
 									lastIncrement += increment
 									progressCtx.report({ increment, message: `${lastIncrement}%` })
 									await updateProgressState({
 										progress: p,
-										type: 'codeContext',
+										type: "codeIndex",
 										isInProgress: true,
 									})
 								}
 							})
-							codeContextAgent.on('error', async (error: { message: string; error: any }) => {
-								console.error('Error during code context:', error.message, error.error);
-								vscode.window.showErrorMessage(`Code context failed: ${error.message}`);
-
-								this.codeIndexAbortController.abort();
-							});
-							await codeContextAgent.start(filePaths, reIndex)
+							vectorizeCodeAgent.on("error", async (error: { message: string; error: any }) => {
+								console.error("Error during indexing:", error.message, error.error)
+								vscode.window.showErrorMessage(`Indexing failed: ${error.message}`)
+								this.codeIndexAbortController.abort()
+							})
+							await vectorizeCodeAgent.start(filePaths)
 							if (!this.codeIndexAbortController.signal.aborted) {
+								progressCtx.report({ increment: 100, message: "Done!" })
 								await updateProgressState({
-									type: 'codeContext',
-									isInProgress: false
+									progress: 100,
+									type: "codeIndex",
+									isInProgress: false,
 								})
 							}
-						}
-						if (this.codeIndexAbortController.signal.aborted) {
-							return
-						}
-						
-						// TODO: ISSUE: Assuming faiss node takes time to load/initialize.So adding a delay as a temporary fix until we find a root cause.
-						await delay(500)
-
-						const vectorizeCodeAgent = new VectorizeCodeAgent(this.vsCodeWorkSpaceFolderFsPath, embeddingConfiguration, buildContextOptions)
-						console.log('vectorizeCodeAgentProgress.......')
-						this.codeIndexAbortController.signal.addEventListener('abort', async () => {
-							vectorizeCodeAgent.stop()
-							await updateProgressState({
-								type: 'codeIndex',
-								isInProgress: false
-							})
-						})
-						vectorizeCodeAgent.on('progress', async (progress: ICodeIndexProgress) => {
-							this.outputChannel.appendLine(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
-							console.log(`vectorizeCodeAgentProgress ${JSON.stringify(progress, null, 2)}`)
-							// If user cancels the operation from notification, we need to cancel the operation
-							if (token.isCancellationRequested) {
-								vectorizeCodeAgent.stop()
-								await updateProgressState({
-									type: 'codeIndex',
-									isInProgress: false
-								})
-								return
-							}
-							// If user cancels the operation from settings, we need to cancel the operation
-							if (this.codeIndexAbortController.signal.aborted) {
-								vectorizeCodeAgent.stop()
-								await updateProgressState({
-									type: 'codeIndex',
-									isInProgress: false
-								})
-								return
-							}
-							if (progress.type === 'progress' && progress.value && !this.codeIndexAbortController.signal.aborted) {
-								const p = getProgress(progress.value, buildContextOptions.useIndex, buildContextOptions.useContext, 'codeIndex') 
-								const increment = p - lastIncrement
-								lastIncrement += increment
-								progressCtx.report({ increment, message: `${lastIncrement}%` })
-								await updateProgressState({
-									progress: p,
-									type: 'codeIndex',
-									isInProgress: true,
-								})
-							}
-						})
-						vectorizeCodeAgent.on('error', async (error: { message: string; error: any }) => {
-							console.error('Error during indexing:', error.message, error.error);
-							vscode.window.showErrorMessage(`Indexing failed: ${error.message}`);
-							this.codeIndexAbortController.abort();
-						});
-						await vectorizeCodeAgent.start(filePaths)
-						if (!this.codeIndexAbortController.signal.aborted) {
-							progressCtx.report({ increment: 100, "message": "Done!" })
-							await updateProgressState({
-								progress: 100,
-								type: 'codeIndex',
-								isInProgress: false
-							})
-						}
-					})
+						},
+					)
 				}
 			} catch (error) {
 				console.error("codeIndexBackground", "Error listing files in workspace:", error)
@@ -440,8 +474,27 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.mcpHub?.dispose()
 		this.mcpHub = undefined
 		this.fileSystemWatcher?.dispose()
+		this.authManager.dispose()
 		this.outputChannel.appendLine("Disposed all disposables")
 		ClineProvider.activeInstances.delete(this)
+	}
+
+	// Auth methods
+	async handleSignOut() {
+		try {
+			await this.authManager.signOut()
+			vscode.window.showInformationMessage("Successfully logged out of HAI")
+		} catch (error) {
+			vscode.window.showErrorMessage("Logout failed")
+		}
+	}
+
+	async setAuthToken(token?: string) {
+		await this.storeSecret("authToken", token)
+	}
+
+	async setUserInfo(info?: { displayName: string | null; email: string | null; photoURL: string | null }) {
+		await this.updateGlobalState("userInfo", info)
 	}
 
 	public static getVisibleInstance(): ClineProvider | undefined {
@@ -478,7 +531,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			webviewView.onDidChangeViewState(
 				() => {
 					if (this.view?.visible) {
-						this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+						this.postMessageToWebview({
+							type: "action",
+							action: "didBecomeVisible",
+						})
 					}
 				},
 				null,
@@ -489,7 +545,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			webviewView.onDidChangeVisibility(
 				() => {
 					if (this.view?.visible) {
-						this.postMessageToWebview({ type: "action", action: "didBecomeVisible" })
+						this.postMessageToWebview({
+							type: "action",
+							action: "didBecomeVisible",
+						})
 					}
 				},
 				null,
@@ -512,7 +571,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			async (e) => {
 				if (e && e.affectsConfiguration("workbench.colorTheme")) {
 					// Sends latest theme name to webview
-					await this.postMessageToWebview({ type: "theme", text: JSON.stringify(await getTheme()) })
+					await this.postMessageToWebview({
+						type: "theme",
+						text: JSON.stringify(await getTheme()),
+					})
 				}
 			},
 			null,
@@ -533,21 +595,24 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			customInstructions,
 			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
 			buildContextOptions,
-			autoApprovalSettings
+			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
 		} = await this.getState()
 		this.cline = new Cline(
 			this,
 			apiConfiguration,
-			embeddingConfiguration,
 			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
+			embeddingConfiguration,
 			customInstructions,
-			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
 			task,
-			images
+			images,
+			undefined,
+			isCustomInstructionsEnabled,
 		)
 		this.cline.buildContextOptions = buildContextOptions
 	}
@@ -561,22 +626,25 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			isCustomInstructionsEnabled,
 			fileInstructions,
 			autoApprovalSettings,
-			alwaysAllowReadOnly,
 			buildContextOptions,
+			browserSettings,
+			chatSettings,
 		} = await this.getState()
 		this.cline = new Cline(
 			this,
 			apiConfiguration,
-			embeddingConfiguration,
 			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
+			embeddingConfiguration,
 			customInstructions,
-			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
 			undefined,
 			undefined,
 			historyItem,
+			isCustomInstructionsEnabled,
 		)
+
 		this.cline.buildContextOptions = buildContextOptions
 	}
 
@@ -601,13 +669,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		// then convert it to a uri we can use in the webview.
 
 		// The CSS file from the React build output
-		const stylesUri = getUri(webview, this.context.extensionUri, [
-			"webview-ui",
-			"build",
-			"static",
-			"css",
-			"main.css",
-		])
+		const stylesUri = getUri(webview, this.context.extensionUri, ["webview-ui", "build", "static", "css", "main.css"])
 		// The JS file from the React build output
 		const scriptUri = getUri(webview, this.context.extensionUri, ["webview-ui", "build", "static", "js", "main.js"])
 
@@ -633,15 +695,15 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 		// Use a nonce to only allow a specific script to be run.
 		/*
-		content security policy of your webview to only allow scripts that have a specific nonce
-		create a content security policy meta tag so that only loading scripts with a nonce is allowed
-		As your extension grows you will likely want to add custom styles, fonts, and/or images to your webview. If you do, you will need to update the content security policy meta tag to explicity allow for these resources. E.g.
-				<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
+        content security policy of your webview to only allow scripts that have a specific nonce
+        create a content security policy meta tag so that only loading scripts with a nonce is allowed
+        As your extension grows you will likely want to add custom styles, fonts, and/or images to your webview. If you do, you will need to update the content security policy meta tag to explicity allow for these resources. E.g.
+                <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; img-src ${webview.cspSource} https:; script-src 'nonce-${nonce}';">
 		- 'unsafe-inline' is required for styles due to vscode-webview-toolkit's dynamic style injection
 		- since we pass base64 images to the webview, we need to specify img-src ${webview.cspSource} data:;
 
-		in meta tag we add nonce attribute: A cryptographic nonce (only used once) to allow scripts. The server must generate a unique nonce value each time it transmits a policy. It is critical to provide a nonce that cannot be guessed as bypassing a resource's policy is otherwise trivial.
-		*/
+        in meta tag we add nonce attribute: A cryptographic nonce (only used once) to allow scripts. The server must generate a unique nonce value each time it transmits a policy. It is critical to provide a nonce that cannot be guessed as bypassing a resource's policy is otherwise trivial.
+        */
 		const nonce = getNonce()
 
 		// Tip: Install the es6-string-html VS Code extension to enable code highlighting below
@@ -652,7 +714,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width,initial-scale=1,shrink-to-fit=no">
             <meta name="theme-color" content="#000000">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} data:; script-src 'nonce-${nonce}';">
+            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; font-src ${webview.cspSource}; style-src ${webview.cspSource} 'unsafe-inline'; img-src ${webview.cspSource} https: data:; script-src 'nonce-${nonce}';">
             <link rel="stylesheet" type="text/css" href="${stylesUri}">
 			<link href="${codiconsUri}" rel="stylesheet" />
             <title>HAI Build</title>
@@ -681,12 +743,18 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.initializeFilePaths() // don't await
 						getTheme().then((theme) =>
-							this.postMessageToWebview({ type: "theme", text: JSON.stringify(theme) }),
+							this.postMessageToWebview({
+								type: "theme",
+								text: JSON.stringify(theme),
+							}),
 						)
 						// post last cached models in case the call to endpoint fails
 						this.readOpenRouterModels().then((openRouterModels) => {
 							if (openRouterModels) {
-								this.postMessageToWebview({ type: "openRouterModels", openRouterModels })
+								this.postMessageToWebview({
+									type: "openRouterModels",
+									openRouterModels,
+								})
 							}
 						})
 						// gui relies on model info to be up-to-date to provide the most accurate pricing, so we need to fetch the latest details on launch.
@@ -741,9 +809,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								anthropicBaseUrl,
 								geminiApiKey,
 								openAiNativeApiKey,
+								deepSeekApiKey,
+								mistralApiKey,
 								azureApiVersion,
 								openRouterModelId,
 								openRouterModelInfo,
+								vsCodeLmModelSelector,
 							} = message.apiConfiguration
 							await this.customUpdateState("apiProvider", apiProvider)
 							await this.customUpdateState("apiModelId", apiModelId)
@@ -766,9 +837,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.customUpdateState("anthropicBaseUrl", anthropicBaseUrl)
 							await this.customStoreSecret("geminiApiKey", geminiApiKey)
 							await this.customStoreSecret("openAiNativeApiKey", openAiNativeApiKey)
+							await this.customStoreSecret("deepSeekApiKey", deepSeekApiKey)
+							await this.customStoreSecret("mistralApiKey", mistralApiKey)
 							await this.customUpdateState("azureApiVersion", azureApiVersion)
 							await this.customUpdateState("openRouterModelId", openRouterModelId)
 							await this.customUpdateState("openRouterModelInfo", openRouterModelInfo)
+							await this.customUpdateState("vsCodeLmModelSelector", vsCodeLmModelSelector)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
 							}
@@ -776,7 +850,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.postStateToWebview()
 						break
 					case "showToast":
-						switch(message.toast?.toastType) {
+						switch (message.toast?.toastType) {
 							case "info":
 								vscode.window.showInformationMessage(message.toast.message)
 								break
@@ -787,59 +861,90 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								vscode.window.showWarningMessage(message.toast.message)
 								break
 						}
-						break	
+						break
 					case "customInstructions":
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
 					case "uploadInstruction":
 						if (message.fileInstructions) {
-							const instructionsDir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
-							await fs.mkdir(instructionsDir, { recursive: true });
-							for(const fileInstruction of message.fileInstructions) {
-								const filePath = path.join(instructionsDir, fileInstruction.name);
+							const instructionsDir = path.join(
+								this.vsCodeWorkSpaceFolderFsPath,
+								HaiBuildDefaults.defaultInstructionsDirectory,
+							)
+							await fs.mkdir(instructionsDir, { recursive: true })
+							for (const fileInstruction of message.fileInstructions) {
+								const filePath = path.join(instructionsDir, fileInstruction.name)
 								if (fileInstruction.content) {
-									await fs.writeFile(filePath, fileInstruction.content, "utf8");
+									await fs.writeFile(filePath, fileInstruction.content, "utf8")
 								}
 							}
-							vscode.window.showInformationMessage(`${message.fileInstructions.length} files uploaded successfully`);
+							vscode.window.showInformationMessage(`${message.fileInstructions.length} files uploaded successfully`)
 						}
-						break;
+						break
 					case "deleteInstruction":
-						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory);
-						if(message.text) {
+						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory)
+						if (message.text) {
 							try {
-								const filePath = path.join(dir, message.text);
-								let doesFileExist = await fileExistsAtPath(filePath);
+								const filePath = path.join(dir, message.text)
+								let doesFileExist = await fileExistsAtPath(filePath)
 								if (!doesFileExist) {
-									vscode.window.showErrorMessage(`${message.text} does not exist.`);
-									break;
+									vscode.window.showErrorMessage(`${message.text} does not exist.`)
+									break
 								}
-								await fs.unlink(filePath);
-								vscode.window.showInformationMessage(message.text + " has been deleted.");
+								await fs.unlink(filePath)
+								vscode.window.showInformationMessage(message.text + " has been deleted.")
 							} catch (error) {
-								console.error(`Failed to delete file ${message.text}:`, error);
+								console.error(`Failed to delete file ${message.text}:`, error)
 							}
 						}
-						break;
+						break
 					case "fileInstructions":
 						await this.updateFileInstructions(message.fileInstructions)
 						break
-					case "alwaysAllowReadOnly":
-						await this.customUpdateState("alwaysAllowReadOnly", message.bool ?? undefined)
-						if (this.cline) {
-							this.cline.alwaysAllowReadOnly = message.bool ?? false
-						}
-						await this.postStateToWebview()
-						break
 					case "autoApprovalSettings":
 						if (message.autoApprovalSettings) {
-							await this.updateGlobalState("autoApprovalSettings", message.autoApprovalSettings)
+							await this.customUpdateState("autoApprovalSettings", message.autoApprovalSettings)
 							if (this.cline) {
 								this.cline.autoApprovalSettings = message.autoApprovalSettings
 							}
 							await this.postStateToWebview()
 						}
 						break
+					case "browserSettings":
+						if (message.browserSettings) {
+							await this.customUpdateState("browserSettings", message.browserSettings)
+							if (this.cline) {
+								this.cline.updateBrowserSettings(message.browserSettings)
+							}
+							await this.postStateToWebview()
+						}
+						break
+					case "chatSettings":
+						if (message.chatSettings) {
+							const didSwitchToActMode = message.chatSettings.mode === "act"
+							await this.customUpdateState("chatSettings", message.chatSettings)
+							await this.postStateToWebview()
+							if (this.cline) {
+								this.cline.updateChatSettings(message.chatSettings)
+								if (this.cline.isAwaitingPlanResponse && didSwitchToActMode) {
+									this.cline.didRespondToPlanAskBySwitchingMode = true
+									// this is necessary for the webview to update accordingly, but Cline instance will not send text back as feedback message
+									await this.postMessageToWebview({
+										type: "invoke",
+										invoke: "sendMessage",
+										text: "[Proceeding with the task...]",
+									})
+								} else {
+									this.cancelTask()
+								}
+							}
+						}
+						break
+					// case "relaunchChromeDebugMode":
+					// 	if (this.cline) {
+					// 		this.cline.browserSession.relaunchChromeDebugMode()
+					// 	}
+					// 	break
 					case "askResponse":
 						this.cline?.handleWebviewAskResponse(message.askResponse!, message.text, message.images)
 						break
@@ -854,7 +959,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "selectImages":
 						const images = await selectImages()
-						await this.postMessageToWebview({ type: "selectedImages", images })
+						await this.postMessageToWebview({
+							type: "selectedImages",
+							images,
+						})
 						break
 					case "exportCurrentTask":
 						const currentTaskId = this.cline?.taskId
@@ -876,11 +984,21 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "requestOllamaModels":
 						const ollamaModels = await this.getOllamaModels(message.text)
-						this.postMessageToWebview({ type: "ollamaModels", ollamaModels })
+						this.postMessageToWebview({
+							type: "ollamaModels",
+							ollamaModels,
+						})
 						break
 					case "requestLmStudioModels":
 						const lmStudioModels = await this.getLmStudioModels(message.text)
-						this.postMessageToWebview({ type: "lmStudioModels", lmStudioModels })
+						this.postMessageToWebview({
+							type: "lmStudioModels",
+							lmStudioModels,
+						})
+						break
+					case "requestVsCodeLmModels":
+						const vsCodeLmModels = await this.getVsCodeLmModels()
+						this.postMessageToWebview({ type: "vsCodeLmModels", vsCodeLmModels })
 						break
 					case "refreshOpenRouterModels":
 						await this.refreshOpenRouterModels()
@@ -894,28 +1012,80 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "openMention":
 						openMention(message.text)
 						break
-					case "cancelTask":
-						if (this.cline) {
-							const { historyItem } = await this.getTaskWithId(this.cline.taskId)
-							this.cline.abortTask()
-							await pWaitFor(() => this.cline === undefined || this.cline.didFinishAborting, {
+					case "checkpointDiff": {
+						if (message.number) {
+							await this.cline?.presentMultifileDiff(message.number, false)
+						}
+						break
+					}
+					case "checkpointRestore": {
+						await this.cancelTask() // we cannot alter message history say if the task is active, as it could be in the middle of editing a file or running a command, which expect the ask to be responded to rather than being superceded by a new message eg add deleted_api_reqs
+						// cancel task waits for any open editor to be reverted and starts a new cline instance
+						if (message.number) {
+							// wait for messages to be loaded
+							await pWaitFor(() => this.cline?.isInitialized === true, {
 								timeout: 3_000,
 							}).catch(() => {
-								console.error("Failed to abort task")
+								console.error("Failed to init new cline instance")
 							})
-							if (this.cline) {
-								// 'abandoned' will prevent this cline instance from affecting future cline instance gui. this may happen if its hanging on a streaming request
-								this.cline.abandoned = true
-							}
-							await this.initClineWithHistoryItem(historyItem) // clears task again, so we need to abortTask manually above
-							// await this.postStateToWebview() // new Cline instance will post state when it's ready. having this here sent an empty messages array to webview leading to virtuoso having to reload the entire list
+							// NOTE: cancelTask awaits abortTask, which awaits diffViewProvider.revertChanges, which reverts any edited files, allowing us to reset to a checkpoint rather than running into a state where the revertChanges function is called alongside or after the checkpoint reset
+							await this.cline?.restoreCheckpoint(message.number, message.text! as ClineCheckpointRestore)
 						}
-
 						break
+					}
+					case "taskCompletionViewChanges": {
+						if (message.number) {
+							await this.cline?.presentMultifileDiff(message.number, true)
+						}
+						break
+					}
+					case "cancelTask":
+						this.cancelTask()
+						break
+					case "getLatestState":
+						await this.postStateToWebview()
+						break
+					case "accountLoginClicked": {
+						// Generate nonce for state validation
+						const nonce = crypto.randomBytes(32).toString("hex")
+						await this.storeSecret("authNonce", nonce)
+
+						// Open browser for authentication with state param
+						console.log("Login button clicked in account page")
+						console.log("Opening auth page with state param")
+
+						const uriScheme = vscode.env.uriScheme
+
+						const authUrl = vscode.Uri.parse(
+							`https://app.cline.bot/auth?state=${encodeURIComponent(nonce)}&callback_url=${encodeURIComponent(`${uriScheme || "vscode"}://saoudrizwan.claude-dev/auth`)}`,
+						)
+						vscode.env.openExternal(authUrl)
+						break
+					}
+					case "accountLogoutClicked": {
+						await this.handleSignOut()
+						break
+					}
 					case "openMcpSettings": {
 						const mcpSettingsFilePath = await this.mcpHub?.getMcpSettingsFilePath()
 						if (mcpSettingsFilePath) {
 							openFile(mcpSettingsFilePath)
+						}
+						break
+					}
+					case "toggleMcpServer": {
+						try {
+							await this.mcpHub?.toggleServerDisabled(message.serverName!, message.disabled!)
+						} catch (error) {
+							console.error(`Failed to toggle MCP server ${message.serverName}:`, error)
+						}
+						break
+					}
+					case "toggleToolAutoApprove": {
+						try {
+							await this.mcpHub?.toggleToolAutoApprove(message.serverName!, message.toolName!, message.autoApprove!)
+						} catch (error) {
+							console.error(`Failed to toggle auto-approve for tool ${message.toolName}:`, error)
 						}
 						break
 					}
@@ -927,8 +1097,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						break
 					}
-					// Add more switch case statements here as more webview message commands
-					// are created within the webview context (i.e. inside media/main.js)
 					case "onHaiConfigure":
 						const isConfigureEnabled = message.bool !== undefined ? message.bool : true
 
@@ -965,14 +1133,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.customUpdateState("embeddingAwsRegion", awsRegion)
 							await this.customUpdateState("embeddingOpenAiBaseUrl", openAiBaseUrl)
 							await this.customUpdateState("embeddingOpenAiModelId", openAiModelId)
-							await this.customUpdateState(
-								"embeddingAzureOpenAIApiInstanceName",
-								azureOpenAIApiInstanceName
-							)
+							await this.customUpdateState("embeddingAzureOpenAIApiInstanceName", azureOpenAIApiInstanceName)
 							await this.customUpdateState("embeddingAzureOpenAIApiVersion", azureOpenAIApiVersion)
 							await this.customUpdateState(
 								"embeddingAzureOpenAIApiEmbeddingsDeploymentName",
-								azureOpenAIApiEmbeddingsDeploymentName
+								azureOpenAIApiEmbeddingsDeploymentName,
 							)
 							// Update Secrets
 							await this.customStoreSecret("embeddingAwsAccessKey", awsAccessKey)
@@ -985,41 +1150,44 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.postStateToWebview()
 						break
-					case 'validateLLMConfig':
-						let isValid = false;
+					case "validateLLMConfig":
+						let isValid = false
 						if (message.apiConfiguration) {
 							try {
 								const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
-								isValid = await apiHandler.validateAPIKey();
+								isValid = await apiHandler.validateAPIKey()
 							} catch (error) {
-								vscode.window.showErrorMessage(`LLM validation failed: ${error}`);
+								vscode.window.showErrorMessage(`LLM validation failed: ${error}`)
 							}
 						}
 
 						this.postMessageToWebview({
-							type: 'llmConfigValidation',
-							bool: isValid
-						});
+							type: "llmConfigValidation",
+							bool: isValid,
+						})
 						await this.customUpdateState("isApiConfigurationValid", isValid)
 
 						break
-					case 'validateEmbeddingConfig':
-						let isEmbeddingValid = false;
+					case "validateEmbeddingConfig":
+						let isEmbeddingValid = false
 						if (message.embeddingConfiguration) {
 							try {
-								const embeddingHandler = buildEmbeddingHandler({ ...message.embeddingConfiguration, maxRetries: 0 })
-								isEmbeddingValid = await embeddingHandler.validateAPIKey();
+								const embeddingHandler = buildEmbeddingHandler({
+									...message.embeddingConfiguration,
+									maxRetries: 0,
+								})
+								isEmbeddingValid = await embeddingHandler.validateAPIKey()
 							} catch (error) {
-								vscode.window.showErrorMessage(`Embedding validation failed: ${error}`);
+								vscode.window.showErrorMessage(`Embedding validation failed: ${error}`)
 							}
 						}
 
 						this.postMessageToWebview({
-							type: 'embeddingConfigValidation',
-							bool: isEmbeddingValid
-						});
+							type: "embeddingConfigValidation",
+							bool: isEmbeddingValid,
+						})
 						await this.customUpdateState("isEmbeddingConfigurationValid", isEmbeddingValid)
-						
+
 						break
 					case "openHistory":
 						this.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
@@ -1027,15 +1195,25 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "openHaiTasks":
 						this.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" })
 						break
+					case "openExtensionSettings": {
+						await vscode.commands.executeCommand(
+							"workbench.action.openSettings",
+							"@ext:presidio-inc.hai-build-code-generator",
+						)
+						break
+					}
 					default:
 						this.customWebViewMessageHandlers(message)
 						break
+					// Add more switch case statements here as more webview message commands
+					// are created within the webview context (i.e. inside media/main.js)
 				}
 			},
 			null,
 			this.disposables,
 		)
 	}
+
 	async updateFileInstructions(fileInstructions: HaiInstructionFile[] | undefined) {
 		await this.customUpdateState("fileInstructions", fileInstructions)
 		if (this.cline) {
@@ -1045,33 +1223,36 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async checkInstructionFilesFromFileSystem() {
-		const workspaceFolder = this.getWorkspacePath();
-		if (!workspaceFolder) { return; }
-		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory);
+		const workspaceFolder = this.getWorkspacePath()
+		if (!workspaceFolder) {
+			return
+		}
+		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory)
 		try {
-			const files = await fs.readdir(instructionsPath);
-			const filesInSystemSet = new Set(files.filter(file => {
-				const extension = file.split('.').pop()?.trim().toLowerCase();
-				return extension ? ACCEPTED_FILE_EXTENSIONS.includes(extension) : false;
-			}));
-			const fileInstructions = await this.customGetState("fileInstructions") as HaiInstructionFile[];		
+			const files = await fs.readdir(instructionsPath)
+			const filesInSystemSet = new Set(
+				files.filter((file) => {
+					const extension = file.split(".").pop()?.trim().toLowerCase()
+					return extension ? ACCEPTED_FILE_EXTENSIONS.includes(extension) : false
+				}),
+			)
+			const fileInstructions = (await this.customGetState("fileInstructions")) as HaiInstructionFile[]
 			const existingInstructionsMap = new Map(
-				fileInstructions?.map(instruction => [instruction.name, instruction.enabled])
-			);
-			
-			const updatedInstructions = Array.from(filesInSystemSet, name => ({
+				fileInstructions?.map((instruction) => [instruction.name, instruction.enabled]),
+			)
+
+			const updatedInstructions = Array.from(filesInSystemSet, (name) => ({
 				name,
-				enabled: existingInstructionsMap.get(name) || false
-			}));
-			
-			await this.updateFileInstructions(updatedInstructions);
-			
+				enabled: existingInstructionsMap.get(name) || false,
+			}))
+
+			await this.updateFileInstructions(updatedInstructions)
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-				await this.updateFileInstructions([]);
-				return;
+			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+				await this.updateFileInstructions([])
+				return
 			}
-			console.error('Error checking instruction files:', error);
+			console.error("Error checking instruction files:", error)
 		}
 	}
 	async customWebViewMessageHandlers(message: WebviewMessage) {
@@ -1090,9 +1271,38 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
+	async cancelTask() {
+		if (this.cline) {
+			const { historyItem } = await this.getTaskWithId(this.cline.taskId)
+			try {
+				await this.cline.abortTask()
+			} catch (error) {
+				console.error("Failed to abort task", error)
+			}
+			await pWaitFor(
+				() =>
+					this.cline === undefined ||
+					this.cline.isStreaming === false ||
+					this.cline.didFinishAbortingStream ||
+					this.cline.isWaitingForFirstChunk, // if only first chunk is processed, then there's no need to wait for graceful abort (closes edits, browser, etc)
+				{
+					timeout: 3_000,
+				},
+			).catch(() => {
+				console.error("Failed to abort task")
+			})
+			if (this.cline) {
+				// 'abandoned' will prevent this cline instance from affecting future cline instance gui. this may happen if its hanging on a streaming request
+				this.cline.abandoned = true
+			}
+			await this.initClineWithHistoryItem(historyItem) // clears task again, so we need to abortTask manually above
+			// await this.postStateToWebview() // new Cline instance will post state when it's ready. having this here sent an empty messages array to webview leading to virtuoso having to reload the entire list
+		}
+	}
+
 	async updateCustomInstructions(instructions?: string, enable?: boolean) {
-		const { isCustomInstructionsEnabled } = await this.getState();
-		enable = enable ?? isCustomInstructionsEnabled;
+		const { isCustomInstructionsEnabled } = await this.getState()
+		enable = enable ?? isCustomInstructionsEnabled
 
 		await this.customUpdateState("customInstructions", instructions)
 		await this.customUpdateState("isCustomInstructionsEnabled", enable)
@@ -1103,11 +1313,30 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.postStateToWebview()
 	}
 
-
 	// MCP
 
+	async getDocumentsPath(): Promise<string> {
+		if (process.platform === "win32") {
+			// If the user is running Win 7/Win Server 2008 r2+, we want to get the correct path to their Documents directory.
+			try {
+				const { stdout: docsPath } = await execa("powershell", [
+					"-NoProfile", // Ignore user's PowerShell profile(s)
+					"-Command",
+					"[System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::MyDocuments)",
+				])
+				return docsPath.trim()
+			} catch (err) {
+				console.error("Failed to retrieve Windows Documents path. Falling back to homedir/Documents.")
+				return path.join(os.homedir(), "Documents")
+			}
+		} else {
+			return path.join(os.homedir(), "Documents") // On POSIX (macOS, Linux, etc.), assume ~/Documents by default (existing behavior, but may want to implement similar logic here)
+		}
+	}
+
 	async ensureMcpServersDirectoryExists(): Promise<string> {
-		const mcpServersDir = path.join(os.homedir(), "Documents", "HAI", "MCP")
+		const userDocumentsPath = await this.getDocumentsPath()
+		const mcpServersDir = path.join(userDocumentsPath, "HAI", "MCP")
 		try {
 			await fs.mkdir(mcpServersDir, { recursive: true })
 		} catch (error) {
@@ -1120,6 +1349,18 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		const settingsDir = path.join(this.context.globalStorageUri.fsPath, "settings")
 		await fs.mkdir(settingsDir, { recursive: true })
 		return settingsDir
+	}
+
+	// VSCode LM API
+
+	private async getVsCodeLmModels() {
+		try {
+			const models = await vscode.lm.selectChatModels({})
+			return models || []
+		} catch (error) {
+			console.error("Error fetching VS Code LM models:", error)
+			return []
+		}
 	}
 
 	// Ollama
@@ -1160,6 +1401,32 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
+	// Auth
+
+	public async validateAuthState(state: string | null): Promise<boolean> {
+		const storedNonce = await this.getSecret("authNonce")
+		if (!state || state !== storedNonce) {
+			return false
+		}
+		await this.storeSecret("authNonce", undefined) // Clear after use
+		return true
+	}
+
+	async handleAuthCallback(token: string) {
+		try {
+			// First sign in with Firebase to trigger auth state change
+			await this.authManager.signInWithCustomToken(token)
+
+			// Then store the token securely
+			await this.storeSecret("authToken", token)
+			await this.postStateToWebview()
+			vscode.window.showInformationMessage("Successfully logged in to HAI")
+		} catch (error) {
+			console.error("Failed to handle auth callback:", error)
+			vscode.window.showErrorMessage("Failed to log in to HAI")
+		}
+	}
+
 	// OpenRouter
 
 	async handleOpenRouterCallback(code: string) {
@@ -1181,7 +1448,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.customStoreSecret("openRouterApiKey", apiKey)
 		await this.postStateToWebview()
 		if (this.cline) {
-			this.cline.api = buildApiHandler({ apiProvider: openrouter, openRouterApiKey: apiKey })
+			this.cline.api = buildApiHandler({
+				apiProvider: openrouter,
+				openRouterApiKey: apiKey,
+			})
 		}
 		// await this.postMessageToWebview({ type: "action", action: "settingsButtonClicked" }) // bad ux if user is on welcome
 	}
@@ -1193,10 +1463,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async readOpenRouterModels(): Promise<Record<string, ModelInfo> | undefined> {
-		const openRouterModelsFilePath = path.join(
-			await this.ensureCacheDirectoryExists(),
-			GlobalFileNames.openRouterModels,
-		)
+		const openRouterModelsFilePath = path.join(await this.ensureCacheDirectoryExists(), GlobalFileNames.openRouterModels)
 		const fileExists = await fileExistsAtPath(openRouterModelsFilePath)
 		if (fileExists) {
 			const fileContents = await fs.readFile(openRouterModelsFilePath, "utf8")
@@ -1206,10 +1473,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async refreshOpenRouterModels() {
-		const openRouterModelsFilePath = path.join(
-			await this.ensureCacheDirectoryExists(),
-			GlobalFileNames.openRouterModels,
-		)
+		const openRouterModelsFilePath = path.join(await this.ensureCacheDirectoryExists(), GlobalFileNames.openRouterModels)
 
 		let models: Record<string, ModelInfo> = {}
 		try {
@@ -1298,6 +1562,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							modelInfo.cacheWritesPrice = 0.3
 							modelInfo.cacheReadsPrice = 0.03
 							break
+						case "deepseek/deepseek-chat":
+							modelInfo.supportsPromptCache = true
+							// see api.ts/deepSeekModels for more info
+							modelInfo.inputPrice = 0
+							modelInfo.cacheWritesPrice = 0.14
+							modelInfo.cacheReadsPrice = 0.014
+							break
 					}
 
 					models[rawModel.id] = modelInfo
@@ -1311,7 +1582,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			console.error("Error fetching OpenRouter models:", error)
 		}
 
-		await this.postMessageToWebview({ type: "openRouterModels", openRouterModels: models })
+		await this.postMessageToWebview({
+			type: "openRouterModels",
+			openRouterModels: models,
+		})
 		return models
 	}
 
@@ -1354,7 +1628,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			const { historyItem } = await this.getTaskWithId(id)
 			await this.initClineWithHistoryItem(historyItem) // clears existing task
 		}
-		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		await this.postMessageToWebview({
+			type: "action",
+			action: "chatButtonClicked",
+		})
 	}
 
 	async exportTaskWithId(id: string) {
@@ -1384,6 +1661,18 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		if (await fileExistsAtPath(legacyMessagesFilePath)) {
 			await fs.unlink(legacyMessagesFilePath)
 		}
+
+		// Delete the checkpoints directory if it exists
+		const checkpointsDir = path.join(taskDirPath, "checkpoints")
+		if (await fileExistsAtPath(checkpointsDir)) {
+			try {
+				await fs.rm(checkpointsDir, { recursive: true, force: true })
+			} catch (error) {
+				console.error(`Failed to delete checkpoints directory for task ${id}:`, error)
+				// Continue with deletion of task directory - don't throw since this is a cleanup operation
+			}
+		}
+
 		await fs.rmdir(taskDirPath) // succeeds if the dir is empty
 	}
 
@@ -1402,28 +1691,33 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.postMessageToWebview({ type: "state", state })
 	}
 
-	async getStateToPostToWebview() {
+	async getStateToPostToWebview(): Promise<ExtensionState> {
 		const {
 			apiConfiguration,
 			lastShownAnnouncementId,
 			customInstructions,
 			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
 			taskHistory,
 			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
+			userInfo,
 			buildContextOptions,
 			buildIndexProgress,
 			embeddingConfiguration,
 		} = await this.getState()
+
+		const authToken = await this.getSecret("authToken")
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
 			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
 			uriScheme: vscode.env.uriScheme,
+			currentTaskItem: this.cline?.taskId ? (taskHistory || []).find((item) => item.id === this.cline?.taskId) : undefined,
+			checkpointTrackerErrorMessage: this.cline?.checkpointTrackerErrorMessage,
 			clineMessages: this.cline?.clineMessages || [],
 			taskHistory: (taskHistory || []).filter((item) => item.ts && item.task).sort((a, b) => b.ts - a.ts),
 			shouldShowAnnouncement: lastShownAnnouncementId !== this.latestAnnouncementId,
@@ -1431,6 +1725,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			buildIndexProgress,
 			embeddingConfiguration,
 			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
+			isLoggedIn: !!authToken,
+			userInfo,
 		}
 	}
 
@@ -1508,18 +1806,23 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			anthropicBaseUrl,
 			geminiApiKey,
 			openAiNativeApiKey,
+			deepSeekApiKey,
+			mistralApiKey,
 			azureApiVersion,
 			openRouterModelId,
 			openRouterModelInfo,
 			lastShownAnnouncementId,
 			customInstructions,
+			taskHistory,
+			autoApprovalSettings,
+			browserSettings,
+			chatSettings,
+			vsCodeLmModelSelector,
+			userInfo,
 			isCustomInstructionsEnabled,
 			fileInstructions,
-			alwaysAllowReadOnly,
-			taskHistory,
 			buildContextOptions,
 			buildIndexProgress,
-			autoApprovalSettings,
 			isApiConfigurationValid,
 			// Embedding Configuration
 			storedEmbeddingProvider,
@@ -1559,18 +1862,23 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("anthropicBaseUrl") as Promise<string | undefined>,
 			this.customGetSecret("geminiApiKey") as Promise<string | undefined>,
 			this.customGetSecret("openAiNativeApiKey") as Promise<string | undefined>,
+			this.customGetSecret("deepSeekApiKey") as Promise<string | undefined>,
+			this.customGetSecret("mistralApiKey") as Promise<string | undefined>,
 			this.customGetState("azureApiVersion") as Promise<string | undefined>,
 			this.customGetState("openRouterModelId") as Promise<string | undefined>,
 			this.customGetState("openRouterModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("lastShownAnnouncementId") as Promise<string | undefined>,
 			this.customGetState("customInstructions") as Promise<string | undefined>,
+			this.customGetState("taskHistory") as Promise<HistoryItem[] | undefined>,
+			this.customGetState("autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
+			this.customGetState("browserSettings") as Promise<BrowserSettings | undefined>,
+			this.customGetState("chatSettings") as Promise<ChatSettings | undefined>,
+			this.customGetState("vsCodeLmModelSelector") as Promise<vscode.LanguageModelChatSelector | undefined>,
+			this.customGetState("userInfo") as Promise<UserInfo | undefined>,
 			this.customGetState("isCustomInstructionsEnabled") as Promise<boolean | undefined>,
 			this.customGetState("fileInstructions") as Promise<HaiInstructionFile[] | undefined>,
-			this.customGetState("alwaysAllowReadOnly") as Promise<boolean | undefined>,
-			this.customGetState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.customGetState("buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 			this.customGetState("buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
-			this.getGlobalState("autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
 			this.customGetState("isApiConfigurationValid") as Promise<boolean | undefined>,
 			// Embedding Configurations
 			this.customGetState("embeddingProvider") as Promise<EmbeddingProvider | undefined>,
@@ -1634,9 +1942,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				anthropicBaseUrl,
 				geminiApiKey,
 				openAiNativeApiKey,
+				deepSeekApiKey,
+				mistralApiKey,
 				azureApiVersion,
 				openRouterModelId,
 				openRouterModelInfo,
+				vsCodeLmModelSelector,
 				isApiConfigurationValid,
 			},
 			embeddingConfiguration: {
@@ -1660,7 +1971,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			customInstructions,
 			isCustomInstructionsEnabled: isCustomInstructionsEnabled ?? true,
 			fileInstructions,
-			alwaysAllowReadOnly: alwaysAllowReadOnly ?? false,
 			taskHistory,
 			buildContextOptions: buildContextOptions ?? {
 				useIndex: true, // Enable Indexing by default
@@ -1669,6 +1979,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			},
 			buildIndexProgress: buildIndexProgress,
 			autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
+			browserSettings: browserSettings || DEFAULT_BROWSER_SETTINGS,
+			chatSettings: chatSettings || DEFAULT_CHAT_SETTINGS,
+			userInfo,
 		}
 	}
 
@@ -1742,7 +2055,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	async customGetSecret(key: SecretKey, defaultGlobal: boolean = true) {
 		let workspaceSecret = await this.getSecret(`${this.workspaceId}-${key}` as SecretKey)
 		if (!defaultGlobal) {
-			return workspaceSecret;
+			return workspaceSecret
 		}
 
 		if (!workspaceSecret) {
@@ -1761,7 +2074,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
-	private async getSecret(key: SecretKey) {
+	async getSecret(key: SecretKey) {
 		return await this.context.secrets.get(key)
 	}
 
@@ -1788,6 +2101,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			"openAiApiKey",
 			"geminiApiKey",
 			"openAiNativeApiKey",
+			"deepSeekApiKey",
+			"mistralApiKey",
+			"authToken",
 			// Embedding Keys
 			"embeddingAwsAccessKey",
 			"embeddingAwsSecretKey",
@@ -1806,7 +2122,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		vscode.window.showInformationMessage("State reset")
 		await this.checkInstructionFilesFromFileSystem()
 		await this.postStateToWebview()
-		await this.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+		await this.postMessageToWebview({
+			type: "action",
+			action: "chatButtonClicked",
+		})
 	}
 
 	async readHaiTaskList(url: string): Promise<IHaiStory[]> {

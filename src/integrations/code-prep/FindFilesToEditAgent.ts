@@ -1,75 +1,104 @@
-import { FaissStore } from "@langchain/community/vectorstores/faiss";
-import { ApiConfiguration } from "../../shared/api";
-import { HaiBuildContextOptions } from "../../shared/customApi";
-import { findFilesInDirectory, getApiStreamResponse, getEmbeddings, getFolderStructure, getFolderStructureString, readAndProcessGitignore } from "./helper";
-import type { OpenAIEmbeddings } from "@langchain/openai";
-import type { BedrockEmbeddings } from "@langchain/aws";
-import { basename, join } from "node:path";
-import { buildApiHandler } from "../../api";
-import { ensureFaissPlatformDeps } from "../../utils/faiss";
-import { EmbeddingConfiguration } from "../../shared/embeddings";
+import { FaissStore } from "@langchain/community/vectorstores/faiss"
+import { ApiConfiguration } from "../../shared/api"
+import { HaiBuildContextOptions } from "../../shared/customApi"
+import {
+	findFilesInDirectory,
+	getApiStreamResponse,
+	getEmbeddings,
+	getFolderStructure,
+	getFolderStructureString,
+	readAndProcessGitignore,
+} from "./helper"
+import type { OpenAIEmbeddings } from "@langchain/openai"
+import type { BedrockEmbeddings } from "@langchain/aws"
+import { basename, join } from "node:path"
+import { buildApiHandler } from "../../api"
+import { ensureFaissPlatformDeps } from "../../utils/faiss"
+import { EmbeddingConfiguration } from "../../shared/embeddings"
 
 export class FindFilesToEditAgent {
+	private srcFolder: string
+	private llmApiConfig: ApiConfiguration
+	private embeddingConfig: EmbeddingConfiguration
+	private embeddings: OpenAIEmbeddings | BedrockEmbeddings
+	private vectorStore: FaissStore
+	private task: string
+	private buildContextOptions: HaiBuildContextOptions
+	private contextDir: string
 
-    private srcFolder: string;
-    private llmApiConfig: ApiConfiguration;
-    private embeddingConfig: EmbeddingConfiguration;
-    private embeddings: OpenAIEmbeddings | BedrockEmbeddings;
-    private vectorStore: FaissStore;
-    private task: string;
-    private buildContextOptions: HaiBuildContextOptions;
-    private contextDir: string;
+	private abortController = new AbortController()
 
-    private abortController = new AbortController();
+	private SYSTEM_PROMPT: string = `You are a world class software developer.`
 
-    private SYSTEM_PROMPT: string = `You are a world class software developer.`;
+	constructor(
+		srcFolder: string,
+		llmApiConfig: ApiConfiguration,
+		embeddingConfig: EmbeddingConfiguration,
+		buildContextOptions: HaiBuildContextOptions,
+		task: string,
+		contextDir = ".hai",
+	) {
+		this.srcFolder = srcFolder
+		this.llmApiConfig = llmApiConfig
+		this.embeddingConfig = embeddingConfig
+		this.embeddings = getEmbeddings(this.embeddingConfig)
+		this.vectorStore = new FaissStore(this.embeddings, {})
+		this.task = task
+		this.buildContextOptions = buildContextOptions
+		this.contextDir = contextDir
+	}
 
-    constructor(srcFolder: string, llmApiConfig: ApiConfiguration, embeddingConfig: EmbeddingConfiguration, buildContextOptions: HaiBuildContextOptions, task: string, contextDir = '.hai') {
-        this.srcFolder = srcFolder;
-        this.llmApiConfig = llmApiConfig;
-        this.embeddingConfig = embeddingConfig;
-        this.embeddings = getEmbeddings(this.embeddingConfig);
-        this.vectorStore = new FaissStore(this.embeddings, {});
-        this.task = task;
-        this.buildContextOptions = buildContextOptions;
-        this.contextDir = contextDir;
-    }
+	private async job(): Promise<string[]> {
+		const faissWithContextDir = ".faiss-context"
+		const faissWithoutContextDir = ".faiss"
 
-    private async job(): Promise<string[]> {
-        const faissWithContextDir = ".faiss-context";
-        const faissWithoutContextDir = ".faiss";
+		// faiss db path
+		const faissDbPath = this.buildContextOptions.useContext
+			? join(this.srcFolder, this.contextDir, faissWithContextDir)
+			: join(this.srcFolder, this.contextDir, faissWithoutContextDir)
 
-        // faiss db path
-        const faissDbPath = this.buildContextOptions.useContext ? join(this.srcFolder, this.contextDir, faissWithContextDir) : join(this.srcFolder, this.contextDir, faissWithoutContextDir);
+		const defaultExcludeDirs: string[] = [
+			".git",
+			"node_modules",
+			".husky",
+			".vscode",
+			this.contextDir,
+			faissWithoutContextDir,
+			faissWithContextDir,
+		]
 
-        const defaultExcludeDirs: string[] = ['.git', 'node_modules', '.husky', '.vscode', this.contextDir, faissWithoutContextDir, faissWithContextDir];
+		const excludedFolders = this.buildContextOptions.excludeFolders
+			? [...this.buildContextOptions.excludeFolders.split(",").map((f) => f.trim()), ...defaultExcludeDirs]
+			: [...defaultExcludeDirs]
 
-        const excludedFolders = this.buildContextOptions.excludeFolders ? [...this.buildContextOptions.excludeFolders.split(',').map((f) => f.trim()), ...defaultExcludeDirs] : [...defaultExcludeDirs];
+		const gitIgnoreFilePaths = findFilesInDirectory(this.srcFolder, ".gitignore")
 
-        const gitIgnoreFilePaths = findFilesInDirectory(this.srcFolder, '.gitignore');
+		const gitIgnorePatterns = gitIgnoreFilePaths.flatMap((filePath) => readAndProcessGitignore(filePath))
 
-        const gitIgnorePatterns = gitIgnoreFilePaths.flatMap(filePath => readAndProcessGitignore(filePath));
+		excludedFolders.push(...gitIgnorePatterns)
 
-        excludedFolders.push(...gitIgnorePatterns);
+		const folderStructure = getFolderStructure(this.srcFolder, excludedFolders)
 
-        const folderStructure = getFolderStructure(this.srcFolder, excludedFolders);
+		const folderStructureString = getFolderStructureString(folderStructure)
 
-        const folderStructureString = getFolderStructureString(folderStructure);
+		try {
+			this.vectorStore = await FaissStore.load(faissDbPath, this.embeddings)
+		} catch (error) {
+			// vector store not found
+			return []
+		}
 
-        try {
-            this.vectorStore = await FaissStore.load(faissDbPath, this.embeddings);
-        } catch (error) {
-            // vector store not found
-            return [];
-        }
+		const similarDocs = await this.vectorStore.similaritySearchWithScore(this.task)
 
-        const similarDocs = await this.vectorStore.similaritySearchWithScore(this.task);
+		const similarDocsString = similarDocs
+			.map(([{ id }]) => id)
+			.filter((id) => id !== undefined)
+			.map((id, idx) => `${idx + 1}. ${basename(id)} \t ${id}`)
+			.join("\n")
 
-        const similarDocsString = similarDocs.map(([{ id }]) => id).filter((id) => id !== undefined).map((id, idx) => `${idx + 1}. ${basename(id)} \t ${id}`).join('\n');
+		const llmApi = buildApiHandler(this.llmApiConfig)
 
-        const llmApi = buildApiHandler(this.llmApiConfig);
-
-        const USER_PROMPT = `
+		const USER_PROMPT = `
         This is the folder structure of a application you are working on:
         <folder-structure>
         ${folderStructureString}
@@ -90,36 +119,37 @@ export class FindFilesToEditAgent {
         ALWAYS output the files in valid JSON array.
         DO NOT include any other information in the output other than the files.
         DO NOT include any other information and \`\`\` marks or JSON in the output
-        ALWAYS SEND THE LIST OF FILES AS A JSON ARRAY OF STRINGS`;
-        const MAX_ATTEMPT = 3;
-        for (let attempt = 1; attempt <= MAX_ATTEMPT; attempt++) {
-            try {
-                const apiStream = llmApi.createMessage(this.SYSTEM_PROMPT, [{
-                    role: 'user',
-                    content: USER_PROMPT,
-                }]);
-                const res = await getApiStreamResponse(apiStream);
-                const resJson = JSON.parse(res);
+        ALWAYS SEND THE LIST OF FILES AS A JSON ARRAY OF STRINGS`
+		const MAX_ATTEMPT = 3
+		for (let attempt = 1; attempt <= MAX_ATTEMPT; attempt++) {
+			try {
+				const apiStream = llmApi.createMessage(this.SYSTEM_PROMPT, [
+					{
+						role: "user",
+						content: USER_PROMPT,
+					},
+				])
+				const res = await getApiStreamResponse(apiStream)
+				const resJson = JSON.parse(res)
 
-                return resJson;
-            } catch (err) {
+				return resJson
+			} catch (err) {
+				if (attempt >= MAX_ATTEMPT) {
+					return []
+				}
+			}
+		}
+		return []
+	}
 
-                if (attempt >= MAX_ATTEMPT) {
-                    return [];
-                }
-            }
-        }
-        return [];
-    }
+	async start(): Promise<string[]> {
+		await ensureFaissPlatformDeps()
+		return this.job()
+	}
 
-    async start(): Promise<string[]> {
-        await ensureFaissPlatformDeps()
-        return this.job();
-    }
-
-    stop() {
-        this.abortController.abort();
-    }
+	stop() {
+		this.abortController.abort()
+	}
 }
 
 // Example Usage:

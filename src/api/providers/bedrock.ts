@@ -21,7 +21,7 @@ export class AwsBedrockHandler implements ApiHandler {
 			// awsRegion changes the aws region to which the request is made. By default, we read AWS_REGION,
 			// and if that's not present, we default to us-east-1. Note that we do not read ~/.aws/config for the region.
 			awsRegion: this.options.awsRegion,
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -108,7 +108,10 @@ export class AwsBedrockHandler implements ApiHandler {
 			const id = modelId as BedrockModelId
 			return { id, info: bedrockModels[id] }
 		}
-		return { id: bedrockDefaultModelId, info: bedrockModels[bedrockDefaultModelId] }
+		return {
+			id: bedrockDefaultModelId,
+			info: bedrockModels[bedrockDefaultModelId],
+		}
 	}
 
 	async validateAPIKey(): Promise<boolean> {
@@ -118,7 +121,7 @@ export class AwsBedrockHandler implements ApiHandler {
 				max_tokens: 1,
 				temperature: 0,
 				messages: [{ role: "user", content: "Test" }],
-				stream: false
+				stream: false,
 			})
 			return true
 		} catch (error) {

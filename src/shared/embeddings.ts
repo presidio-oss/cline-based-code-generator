@@ -1,7 +1,4 @@
-export type EmbeddingProvider = 
-	| "bedrock"
-	| "openai-native"
-	| "openai"
+export type EmbeddingProvider = "bedrock" | "openai-native" | "openai"
 
 export interface EmbeddingHandlerOptions {
 	modelId?: string
@@ -74,21 +71,21 @@ export const openAiNativeEmbeddingModels = {
 } as const
 
 export const embeddingProviderModels = {
-	"bedrock": bedrockEmbeddingModels,
+	bedrock: bedrockEmbeddingModels,
 	"openai-native": openAiNativeEmbeddingModels,
-	"openai": {}
+	openai: {},
 } as const
 
 export const defaultEmbeddingConfigs: Record<EmbeddingProvider, { defaultModel: string }> = {
-	"bedrock": {
+	bedrock: {
 		defaultModel: "amazon.titan-embed-text-v1",
 	},
 	"openai-native": {
 		defaultModel: "text-embedding-3-small",
 	},
-	"openai": {
+	openai: {
 		defaultModel: "",
-	}
+	},
 }
 
 export const azureOpenAIApiVersion = "2023-05-15"

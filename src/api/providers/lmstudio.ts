@@ -14,7 +14,7 @@ export class LmStudioHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 			apiKey: "noop",
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -62,7 +62,7 @@ export class LmStudioHandler implements ApiHandler {
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],
 				temperature: 0,
-				stream: false
+				stream: false,
 			})
 			return true
 		} catch (error) {

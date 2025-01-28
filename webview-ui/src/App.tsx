@@ -5,6 +5,7 @@ import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
+import AccountView from "./components/account/AccountView"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
 import { vscode } from "./utils/vscode"
 import { HaiTasksList } from "./components/hai/hai-tasks-list"
@@ -17,10 +18,11 @@ const AppContent = () => {
 	const [showSettings, setShowSettings] = useState(false)
 	const [showHistory, setShowHistory] = useState(false)
 	const [showMcp, setShowMcp] = useState(false)
+	const [showAccount, setShowAccount] = useState(false)
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
 	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
 	const [taskList, setTaskList] = useState<IHaiStory[]>([])
-	const [taskLastUpdatedTs, setTaskLastUpdatedTs] = useState<string>('');
+	const [taskLastUpdatedTs, setTaskLastUpdatedTs] = useState<string>("")
 	const [selectedTask, setSelectedTask] = useState<IHaiClineTask | null>(null)
 	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
 	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
@@ -37,6 +39,7 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(false)
+						setShowAccount(false)
 						break
 					case "historyButtonClicked":
 						setShowSettings(false)
@@ -45,6 +48,7 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(false)
+						setShowAccount(false)
 						break
 					case "mcpButtonClicked":
 						setShowSettings(false)
@@ -53,6 +57,16 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(true)
+						setShowAccount(false)
+						break
+					case "accountLoginClicked":
+						setShowSettings(false)
+						setShowHistory(false)
+						setShowHaiTaskList(false)
+						setDetailedStory(null)
+						setDetailedTask(null)
+						setShowMcp(false)
+						setShowAccount(true)
 						break
 					case "chatButtonClicked":
 						setShowSettings(false)
@@ -61,6 +75,7 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(false)
+						setShowAccount(false)
 						break
 					case "haiBuildTaskListClicked":
 						setShowSettings(false)
@@ -69,16 +84,17 @@ const AppContent = () => {
 						setDetailedStory(null)
 						setDetailedTask(null)
 						setShowMcp(false)
+						setShowAccount(false)
 						break
 				}
 				break
 			case "haiTaskData":
 				setTaskList(message.haiTaskData!.tasks)
-				setTaskLastUpdatedTs(message.haiTaskData!.ts);
+				setTaskLastUpdatedTs(message.haiTaskData!.ts)
 				setHaiConfig({ ...haiConfig, folder: message.haiTaskData!.folder, ts: message.haiTaskData!.ts })
 				break
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	useEvent("message", handleMessage)
@@ -94,7 +110,7 @@ const AppContent = () => {
 		if (haiConfig?.folder) {
 			onConfigure(true)
 		}
-	// eslint-disable-next-line react-hooks/exhaustive-deps
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [haiConfig?.folder])
 
 	const onHaiTaskCancel = () => {
@@ -107,31 +123,31 @@ const AppContent = () => {
 	}
 
 	const onHaiTaskReset = () => {
-		setTaskList([]);
-		vscode.postMessage({ type: 'onHaiConfigure', bool: false })
+		setTaskList([])
+		vscode.postMessage({ type: "onHaiConfigure", bool: false })
 	}
 
 	const handleTaskClick = (task: IHaiTask) => {
-		setDetailedTask(task);
-		const story = taskList.find(story => story.tasks.some(t => t.id === task.id && t === task));
-		setDetailedStory(story ? story : null);
-	};
+		setDetailedTask(task)
+		const story = taskList.find((story) => story.tasks.some((t) => t.id === task.id && t === task))
+		setDetailedStory(story ? story : null)
+	}
 
 	const handleStoryClick = (story: IHaiStory) => {
-		setDetailedStory(story);
-		setDetailedTask(null);
-	};
+		setDetailedStory(story)
+		setDetailedTask(null)
+	}
 
 	const handleBreadcrumbClick = (type: string) => {
 		if (type === "USER_STORIES") {
-			setShowHaiTaskList(true);
-			setDetailedTask(null);
-			setDetailedStory(null);
+			setShowHaiTaskList(true)
+			setDetailedTask(null)
+			setDetailedStory(null)
 		} else if (type === "USER_STORY") {
-			setDetailedStory(detailedStory);
-			setDetailedTask(null);
+			setDetailedStory(detailedStory)
+			setDetailedTask(null)
 		}
-	};
+	}
 
 	if (!didHydrateState) {
 		return null
@@ -143,11 +159,11 @@ const AppContent = () => {
 				<WelcomeView />
 			) : (
 				<>
-					{(detailedTask || detailedStory) ? (
-						<DetailedView 
+					{detailedTask || detailedStory ? (
+						<DetailedView
 							onTaskClick={handleTaskClick}
-							task={detailedTask} 
-							story={detailedStory} 
+							task={detailedTask}
+							story={detailedStory}
 							onBreadcrumbClick={handleBreadcrumbClick}
 							onTaskSelect={(selectedTask) => {
 								setSelectedTask(selectedTask)
@@ -176,6 +192,7 @@ const AppContent = () => {
 							{showSettings && <SettingsView onDone={() => setShowSettings(false)} />}
 							{showHistory && <HistoryView onDone={() => setShowHistory(false)} />}
 							{showMcp && <McpView onDone={() => setShowMcp(false)} />}
+							{showAccount && <AccountView onDone={() => setShowAccount(false)} />}
 							{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 							<ChatView
 								onTaskSelect={(selectedTask) => {
@@ -188,7 +205,7 @@ const AppContent = () => {
 									setShowHaiTaskList(false)
 								}}
 								selectedHaiTask={selectedTask}
-								isHidden={showSettings || showHistory || showMcp}
+								isHidden={showSettings || showHistory || showMcp || showAccount}
 								showAnnouncement={showAnnouncement}
 								hideAnnouncement={() => {
 									setShowAnnouncement(false)

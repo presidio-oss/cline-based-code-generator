@@ -4,21 +4,19 @@ import { getWorkspacePath } from "./path"
 import { HaiInstructionFile } from "../shared/customApi"
 import { HaiBuildDefaults } from "../shared/haiDefaults"
 
-export const readInstructionsFromFiles = async (
-	instructionStates: HaiInstructionFile[],
-): Promise<string | undefined> => {
+export const readInstructionsFromFiles = async (instructionStates: HaiInstructionFile[]): Promise<string | undefined> => {
 	const workspacePath = getWorkspacePath()
 	if (!workspacePath) {
 		console.log("Workspace path is undefined")
 		return
 	}
 	const instructionsDir = path.resolve(workspacePath, HaiBuildDefaults.defaultInstructionsDirectory)
-	const instructionsMap = new Map(instructionStates.map(state => [state.name, state]))
+	const instructionsMap = new Map(instructionStates.map((state) => [state.name, state]))
 	try {
 		const files = await fs.readdir(instructionsDir)
 		let instructions = ""
 		for (const file of files) {
-            const instructionState = instructionsMap.get(file)
+			const instructionState = instructionsMap.get(file)
 			if (instructionState && instructionState.enabled) {
 				const filePath = path.join(instructionsDir, file)
 				const content = await fs.readFile(filePath, "utf8")

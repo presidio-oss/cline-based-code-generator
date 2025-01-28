@@ -9,15 +9,15 @@ export class OpenAiEmbeddingHandler implements EmbeddingHandler {
 	constructor(options: EmbeddingHandlerOptions) {
 		this.options = options
 		if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com")) {
-			const originalURL = new URL(this.options.openAiBaseUrl);
-            const baseURL = originalURL.origin;
+			const originalURL = new URL(this.options.openAiBaseUrl)
+			const baseURL = originalURL.origin
 
 			this.client = new AzureOpenAIEmbeddings({
 				azureOpenAIApiKey: this.options.openAiApiKey,
 				azureOpenAIBasePath: baseURL + "/openai/deployments",
 				azureOpenAIApiEmbeddingsDeploymentName: this.options.openAiModelId,
 				azureOpenAIApiVersion: this.options.azureOpenAIApiVersion || azureOpenAIApiVersion,
-				maxRetries: this.options.maxRetries
+				maxRetries: this.options.maxRetries,
 			})
 		} else {
 			this.client = new OpenAIEmbeddings({
@@ -27,18 +27,18 @@ export class OpenAiEmbeddingHandler implements EmbeddingHandler {
 					apiKey: this.options.openAiApiKey,
 					baseURL: this.options.openAiBaseUrl || "https://api.openai.com/v1",
 				},
-				maxRetries: this.options.maxRetries
+				maxRetries: this.options.maxRetries,
 			})
 		}
 	}
 
 	getClient() {
-		return this.client;
+		return this.client
 	}
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.embedQuery('Test');
+			await this.client.embedQuery("Test")
 			return true
 		} catch (error) {
 			console.error("Error validating OpenAI Native embedding credentials: ", error)

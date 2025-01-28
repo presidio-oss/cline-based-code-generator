@@ -22,8 +22,9 @@ export const toolUseNames = [
 	"use_mcp_tool",
 	"access_mcp_resource",
 	"ask_followup_question",
+	"plan_mode_response",
 	"attempt_completion",
-	...customToolUseNames
+	...customToolUseNames,
 ] as const
 
 // Converts array of tool call names into a union type ("execute_command" | "read_file" | ...)
@@ -47,8 +48,9 @@ export const toolParamNames = [
 	"arguments",
 	"uri",
 	"question",
+	"response",
 	"result",
-	...customToolParamNames
+	...customToolParamNames,
 ] as const
 
 export type ToolParamName = (typeof toolParamNames)[number]
@@ -128,6 +130,6 @@ export interface FindRelevantFilesToolUse extends ToolUse {
 }
 
 export interface CodeSecurityScanToolUse extends ToolUse {
-	name: "code_security_scan",
+	name: "code_security_scan"
 	params: Partial<Record<ToolParamName, string>>
 }
