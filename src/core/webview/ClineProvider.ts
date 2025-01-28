@@ -1196,7 +1196,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						this.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" })
 						break
 					case "openExtensionSettings": {
-						await vscode.commands.executeCommand("workbench.action.openSettings", "@ext:presidio.hai-build")
+						await vscode.commands.executeCommand(
+							"workbench.action.openSettings",
+							"@ext:presidio-inc.hai-build-code-generator",
+						)
 						break
 					}
 					default:
