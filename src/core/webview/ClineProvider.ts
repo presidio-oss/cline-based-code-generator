@@ -141,8 +141,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.mcpHub = new McpHub(this)
 		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
-		this.vsCodeWorkSpaceFolderFsPath = this.getWorkspacePath() || ""
-		this.vsCodeWorkSpaceFolderFsPath = this.vsCodeWorkSpaceFolderFsPath.trim();
+		this.vsCodeWorkSpaceFolderFsPath = (this.getWorkspacePath() || "").trim()
 		if (this.vsCodeWorkSpaceFolderFsPath) {
 			this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
 			this.codeIndexBackground()
