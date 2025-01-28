@@ -1,11 +1,11 @@
 out
 dist
 node_modules
+tmp
 .vscode-test/
 *.vsix
 
 .DS_Store
-.idea
-webview-ui/build
-webview-ui/node_modules
+
+pnpm-lock.yaml
 .hai/

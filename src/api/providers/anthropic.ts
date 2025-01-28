@@ -1,12 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { Stream as AnthropicStream } from "@anthropic-ai/sdk/streaming"
-import {
-	anthropicDefaultModelId,
-	AnthropicModelId,
-	anthropicModels,
-	ApiHandlerOptions,
-	ModelInfo,
-} from "../../shared/api"
+import { anthropicDefaultModelId, AnthropicModelId, anthropicModels, ApiHandlerOptions, ModelInfo } from "../../shared/api"
 import { ApiHandler } from "../index"
 import { ApiStream } from "../transform/stream"
 
@@ -19,13 +13,14 @@ export class AnthropicHandler implements ApiHandler {
 		this.client = new Anthropic({
 			apiKey: this.options.apiKey,
 			baseURL: this.options.anthropicBaseUrl || undefined,
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const model = this.getModel()
 		let stream: AnthropicStream<Anthropic.Beta.PromptCaching.Messages.RawPromptCachingBetaMessageStreamEvent>
-		const modelId = this.getModel().id
+		const modelId = model.id
 		switch (modelId) {
 			// 'latest' alias does not support cache_control
 			case "claude-3-5-sonnet-20241022":
@@ -44,9 +39,15 @@ export class AnthropicHandler implements ApiHandler {
 				stream = await this.client.beta.promptCaching.messages.create(
 					{
 						model: modelId,
-						max_tokens: this.getModel().info.maxTokens || 8192,
+						max_tokens: model.info.maxTokens || 8192,
 						temperature: 0,
-						system: [{ text: systemPrompt, type: "text", cache_control: { type: "ephemeral" } }], // setting cache breakpoint for system prompt so new tasks can reuse it
+						system: [
+							{
+								text: systemPrompt,
+								type: "text",
+								cache_control: { type: "ephemeral" },
+							},
+						], // setting cache breakpoint for system prompt so new tasks can reuse it
 						messages: messages.map((message, index) => {
 							if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
 								return {
@@ -57,12 +58,19 @@ export class AnthropicHandler implements ApiHandler {
 													{
 														type: "text",
 														text: message.content,
-														cache_control: { type: "ephemeral" },
+														cache_control: {
+															type: "ephemeral",
+														},
 													},
 												]
 											: message.content.map((content, contentIndex) =>
 													contentIndex === message.content.length - 1
-														? { ...content, cache_control: { type: "ephemeral" } }
+														? {
+																...content,
+																cache_control: {
+																	type: "ephemeral",
+																},
+															}
 														: content,
 												),
 								}
@@ -84,7 +92,9 @@ export class AnthropicHandler implements ApiHandler {
 							case "claude-3-opus-20240229":
 							case "claude-3-haiku-20240307":
 								return {
-									headers: { "anthropic-beta": "prompt-caching-2024-07-31" },
+									headers: {
+										"anthropic-beta": "prompt-caching-2024-07-31",
+									},
 								}
 							default:
 								return undefined
@@ -96,7 +106,7 @@ export class AnthropicHandler implements ApiHandler {
 			default: {
 				stream = (await this.client.messages.create({
 					model: modelId,
-					max_tokens: this.getModel().info.maxTokens || 8192,
+					max_tokens: model.info.maxTokens || 8192,
 					temperature: 0,
 					system: [{ text: systemPrompt, type: "text" }],
 					messages,
@@ -172,7 +182,10 @@ export class AnthropicHandler implements ApiHandler {
 			const id = modelId as AnthropicModelId
 			return { id, info: anthropicModels[id] }
 		}
-		return { id: anthropicDefaultModelId, info: anthropicModels[anthropicDefaultModelId] }
+		return {
+			id: anthropicDefaultModelId,
+			info: anthropicModels[anthropicDefaultModelId],
+		}
 	}
 
 	async validateAPIKey(): Promise<boolean> {
@@ -182,7 +195,7 @@ export class AnthropicHandler implements ApiHandler {
 				max_tokens: 1,
 				temperature: 0,
 				messages: [{ role: "user", content: "Test" }],
-				stream: false
+				stream: false,
 			})
 			return true
 		} catch (error) {

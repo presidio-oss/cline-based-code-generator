@@ -51,7 +51,10 @@ export class GeminiHandler implements ApiHandler {
 			const id = modelId as GeminiModelId
 			return { id, info: geminiModels[id] }
 		}
-		return { id: geminiDefaultModelId, info: geminiModels[geminiDefaultModelId] }
+		return {
+			id: geminiDefaultModelId,
+			info: geminiModels[geminiDefaultModelId],
+		}
 	}
 
 	async validateAPIKey(): Promise<boolean> {
@@ -73,8 +76,8 @@ export class GeminiHandler implements ApiHandler {
 					maxOutputTokens: 1,
 				},
 			})
-			
-			return true;
+
+			return true
 		} catch (error) {
 			console.error("Error validating Gemini credentials: ", error)
 			return false

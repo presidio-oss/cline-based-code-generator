@@ -1,68 +1,82 @@
 # Contributing to HAI Build
 
-We're excited you're interested in contributing to HAI Build! This document outlines the process for contributing to our project. We welcome contributions from everyone, whether you're fixing a typo, improving documentation, or adding a new feature.
+We're thrilled you're interested in contributing to HAI Build. Whether you're fixing a bug, adding a feature, or improving our docs, every contribution makes HAI Build smarter! To keep our community vibrant and welcoming, all members must adhere to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-## Getting Started
+## Reporting Bugs or Issues
 
-1. Fork the repository on GitHub.
-2. Clone your fork locally:
-   ```
-   git clone https://github.com/presidio-oss/cline-based-code-generator
-   cd cline-based-code-generator
-   ```
-3. To set up and run the application locally:
-   - Install the necessary packages.
-   ```
-   npm run install:all
-   ```
-   - To debug the extension locally, use `fn + F5`
-   
-## Making Changes
+Bug reports help make HAI Build better for everyone! Before creating a new issue, please [search existing ones](https://github.com/presidio-oss/cline-based-code-generator/issues) to avoid duplicates. When you're ready to report a bug, head over to our [issues page](https://github.com/presidio-oss/cline-based-code-generator/issues/new/choose) where you'll find a template to help you with filling out the relevant information.
 
-1. Create a new branch for your changes:
-   ```
-   git checkout -b your-branch-name
-   ```
-2. Make your changes in the codebase.
-3. Write or update tests as necessary.
-4. Format your code.
-5. Run linting checks.
+<blockquote class='warning-note'>
+     🔐 <b>Important:</b> If you discover a security vulnerability, please use the <a href="https://github.com/presidio-oss/cline-based-code-generator/security/advisories/new">Github security tool to report it privately</a>.
+</blockquote>
 
-## Submitting Changes
+## Deciding What to Work On
 
-1. Commit your changes:
-   ```
-   git commit -m "Your detailed commit message"
-   ```
-2. Push to your fork:
-   ```
-   git push origin your-branch-name
-   ```
-3. Submit a pull request through the GitHub website to https://github.com/presidio-oss/cline-based-code-generator
+Looking for a good first contribution? Check out issues labeled ["good first issue"](https://github.com/presidio-oss/cline-based-code-generator/labels/good%20first%20issue) or ["help wanted"](https://github.com/presidio-oss/cline-based-code-generator/labels/help%20wanted). These are specifically curated for new contributors and areas where we'd love some help!
 
-## Pull Request Guidelines
+We also welcome contributions to our [documentation](https://github.com/presidio-oss/cline-based-code-generator/tree/main/docs)! Whether it's fixing typos, improving existing guides, or creating new educational content - we'd love to build a community-driven repository of resources that helps everyone get the most out of HAI Build. You can start by diving into `/docs` and looking for areas that need improvement.
 
-- Provide a clear title and description of your changes.
-- Include any relevant issue numbers in the PR description.
-- Ensure all tests pass and there are no linting errors.
-- Update documentation if you're changing functionality.
+If you're planning to work on a bigger feature, please create a [feature request](https://github.com/presidio-oss/cline-based-code-generator/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop) first so we can discuss whether it aligns with HAI Build's vision.
 
-Before submitting a pull request, verify the changes in your local environment.
+## Development Setup
 
-## Reporting Bugs
+1. **VS Code Extensions**
 
-Use the GitHub issue tracker at [open issues](https://github.com/presidio-oss/cline-based-code-generator/issues) to report bugs. When filing an issue, please include:
+    - When opening the project, VS Code will prompt you to install recommended extensions
+    - These extensions are required for development - please accept all installation prompts
+    - If you dismissed the prompts, you can install them manually from the Extensions panel
 
-- A clear title and description.
-- As much relevant information as possible.
-- A code sample or an executable test case demonstrating the expected behavior that is not occurring.
+2. **Local Development**
+    - Run `npm run install:all` to install dependencies
+    - Run `npm run test` to run tests locally
+    - Before submitting PR, run `npm run format:fix` to format your code
 
-## Feature Requests
+## Writing and Submitting Code
 
-Feature requests are welcome. Please provide a clear description of the feature and why it would be beneficial to the project. You can submit feature requests through the GitHub issue tracker.
+Anyone can contribute code to HAI Build, but we ask that you follow these guidelines to ensure your contributions can be smoothly integrated:
 
-## Questions?
+1. **Keep Pull Requests Focused**
 
-If you have any questions, feel free to open an issue or reach out to the maintainers through the GitHub repository.
+    - Limit PRs to a single feature or bug fix
+    - Split larger changes into smaller, related PRs
+    - Break changes into logical commits that can be reviewed independently
 
-Thank you for contributing to HAI Build!
+2. **Code Quality**
+
+    - Run `npm run lint` to check code style
+    - Run `npm run format` to automatically format code
+    - All PRs must pass CI checks which include both linting and formatting
+    - Address any ESLint warnings or errors before submitting
+    - Follow TypeScript best practices and maintain type safety
+
+3. **Testing**
+
+    - Add tests for new features
+    - Run `npm test` to ensure all tests pass
+    - Update existing tests if your changes affect them
+    - Include both unit tests and integration tests where appropriate
+
+4. **Commit Guidelines**
+
+    - Write clear, descriptive commit messages
+    - Use conventional commit format (e.g., "feat:", "fix:", "docs:")
+    - Reference relevant issues in commits using #issue-number
+
+5. **Before Submitting**
+
+    - Rebase your branch on the latest main
+    - Ensure your branch builds successfully
+    - Double-check all tests are passing
+    - Review your changes for any debugging code or console logs
+
+6. **Pull Request Description**
+    - Clearly describe what your changes do
+    - Include steps to test the changes
+    - List any breaking changes
+    - Add screenshots for UI changes
+
+## Contribution Agreement
+
+By submitting a pull request, you agree that your contributions will be licensed under the same license as the project ([Apache 2.0](LICENSE)).
+
+Remember: Contributing to HAI Build isn't just about writing code - it's about being part of a community that's shaping the future of AI-assisted development. Let's build something amazing together! 🚀

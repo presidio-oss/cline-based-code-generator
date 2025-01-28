@@ -4,6 +4,7 @@
 
 ### Added
 
+- Merged changes from Cline 3.2.0 (see [changelog](https://github.com/cline/cline/blob/main/CHANGELOG.md#320)). 
 - Added copy to clipboard for HAI tasks
 - Added ability to add custom instruction markdown files to the workspace
 - Added ability to dynamically choose custom instructions while conversing
@@ -22,7 +23,3 @@
 - Enabled support for various embedding model provider.
 - Implemented OWASP scanning for code changes during task execution.
 - Added quick actions to the welcome page.
-
-
-
-

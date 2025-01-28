@@ -1,7 +1,7 @@
 export type HaiBuildContextOptions = {
-    useIndex: boolean
-    useContext: boolean
-    appContext?: string
+	useIndex: boolean
+	useContext: boolean
+	appContext?: string
 	excludeFolders?: string
-    useSyncWithApi: boolean
+	useSyncWithApi: boolean
 }

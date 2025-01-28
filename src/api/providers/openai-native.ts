@@ -19,7 +19,7 @@ export class OpenAiNativeHandler implements ApiHandler {
 		this.options = options
 		this.client = new OpenAI({
 			apiKey: this.options.openAiNativeApiKey,
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -81,7 +81,10 @@ export class OpenAiNativeHandler implements ApiHandler {
 			const id = modelId as OpenAiNativeModelId
 			return { id, info: openAiNativeModels[id] }
 		}
-		return { id: openAiNativeDefaultModelId, info: openAiNativeModels[openAiNativeDefaultModelId] }
+		return {
+			id: openAiNativeDefaultModelId,
+			info: openAiNativeModels[openAiNativeDefaultModelId],
+		}
 	}
 
 	async validateAPIKey(): Promise<boolean> {
@@ -91,9 +94,9 @@ export class OpenAiNativeHandler implements ApiHandler {
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],
 				temperature: 0,
-				stream: false
+				stream: false,
 			})
-			return true;
+			return true
 		} catch (error) {
 			console.error("Error validating OpenAI Native credentials: ", error)
 			return false

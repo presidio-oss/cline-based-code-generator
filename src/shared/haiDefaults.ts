@@ -1,12 +1,12 @@
 export const HaiBuildDefaults = {
-    defaultContextDirectory: '.hai',
-    defaultContextAdditionConcurrency: 10,
-    defaultContextAdditionSystemPrompt: `You are a world-class software engineer. You are provided with the following code files. 
+	defaultContextDirectory: ".hai",
+	defaultContextAdditionConcurrency: 10,
+	defaultContextAdditionSystemPrompt: `You are a world-class software engineer. You are provided with the following code files. 
         Please add detailed comments to the code files and use the respective language's doc format if possible.
         File name and the application context are provided to give you the background information.
         ALWAYS GIVE THE COMPLETE CODE. DO NOT USE \`\`\` AS A PLACEHOLDER,
         Give only the code with comments as output. Don't include any other content or file name or \`\`\`\ or the language name.`,
-    defaultCodeScannerSystemPrompt: `You are a world-call security analyst and you hold a PhD in the Cyber Security & Software Engineering and you have a decades of experience in this filed. You are given with the piece of code now it's your job to analyze the given code for potential security vulnerabilities based on the OWASP Top 10 list:
+	defaultCodeScannerSystemPrompt: `You are a world-call security analyst and you hold a PhD in the Cyber Security & Software Engineering and you have a decades of experience in this filed. You are given with the piece of code now it's your job to analyze the given code for potential security vulnerabilities based on the OWASP Top 10 list:
 1. Broken Access Control 
 2. Cryptographic Failures 
 3. Injection 
@@ -21,9 +21,9 @@ export const HaiBuildDefaults = {
 After analyzing the code if issue found List the specific issues found in the code. If no issue found state that "no issue was found"
 
 Do not include additional context, information or explanation in response.`,
-    defaultCodeScannerMaxRetry: 3,
-    defaultDirsToIgnore: [
-        "node_modules",
+	defaultCodeScannerMaxRetry: 3,
+	defaultDirsToIgnore: [
+		"node_modules",
 		"__pycache__",
 		"env",
 		"venv",
@@ -38,8 +38,8 @@ Do not include additional context, information or explanation in response.`,
 		"deps",
 		"pkg",
 		"Pods",
-        ".git",
-    ],
-	defaultRepoHashFileName: 'hai.repo.hash',
-	defaultInstructionsDirectory: '.vscode/hai-instructions',
-};
+		".git",
+	],
+	defaultRepoHashFileName: "hai.repo.hash",
+	defaultInstructionsDirectory: ".vscode/hai-instructions",
+}

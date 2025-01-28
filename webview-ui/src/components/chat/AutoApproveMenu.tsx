@@ -7,8 +7,8 @@ import { vscode } from "../../utils/vscode"
 
 interface AutoApproveMenuProps {
 	style?: React.CSSProperties
-	isExpanded: boolean;
-	onToggleExpand: () => void;  
+	isExpanded: boolean
+	onToggleExpand: () => void
 }
 
 const ACTION_METADATA: {
@@ -158,7 +158,9 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 					}
 				}}>
 				<VSCodeCheckbox
-					style={{ pointerEvents: hasEnabledActions ? "auto" : "none" }}
+					style={{
+						pointerEvents: hasEnabledActions ? "auto" : "none",
+					}}
 					checked={hasEnabledActions && autoApprovalSettings.enabled}
 					disabled={!hasEnabledActions}
 					// onChange={(e) => {
@@ -183,7 +185,13 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 							onToggleExpand()
 						}
 					}}>
-					<span style={{ color: "var(--vscode-foreground)", whiteSpace: "nowrap" }}>Auto-approve:</span>
+					<span
+						style={{
+							color: "var(--vscode-foreground)",
+							whiteSpace: "nowrap",
+						}}>
+						Auto-approve:
+					</span>
 					<span
 						style={{
 							whiteSpace: "nowrap",
@@ -209,8 +217,8 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 							color: "var(--vscode-descriptionForeground)",
 							fontSize: "12px",
 						}}>
-						Auto-approve allows HAI to perform the following actions without asking for permission. Please
-						use with caution and only enable if you understand the risks.
+						Auto-approve allows HAI to perform the following actions without asking for permission. Please use with
+						caution and only enable if you understand the risks.
 					</div>
 					{ACTION_METADATA.map((action) => (
 						<div key={action.id} style={{ margin: "6px 0" }}>
@@ -264,10 +272,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 							}}
 							onKeyDown={(e) => {
 								// Prevent non-numeric keys (except for backspace, delete, arrows)
-								if (
-									!/^\d$/.test(e.key) &&
-									!["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(e.key)
-								) {
+								if (!/^\d$/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight"].includes(e.key)) {
 									e.preventDefault()
 								}
 							}}
@@ -280,8 +285,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 							fontSize: "12px",
 							marginBottom: "10px",
 						}}>
-						HAI will automatically make this many API requests before asking for approval to proceed with
-						the task.
+						HAI will automatically make this many API requests before asking for approval to proceed with the task.
 					</div>
 					<div style={{ margin: "6px 0" }}>
 						<VSCodeCheckbox
@@ -298,8 +302,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 								color: "var(--vscode-descriptionForeground)",
 								fontSize: "12px",
 							}}>
-							Receive system notifications when HAI requires approval to proceed or when a task is
-							completed.
+							Receive system notifications when HAI requires approval to proceed or when a task is completed.
 						</div>
 					</div>
 				</div>

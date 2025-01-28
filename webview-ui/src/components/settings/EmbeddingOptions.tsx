@@ -26,31 +26,34 @@ interface EmbeddingOptionsProps {
 }
 
 const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessage, onValid }: EmbeddingOptionsProps) => {
-	const { embeddingConfiguration, setEmbeddingConfiguration, apiConfiguration , setBuildContextOptions , buildContextOptions } = useExtensionState()
-	const [azureOpenAIApiVersionSelected, setAzureOpenAIApiVersionSelected] = useState(!!embeddingConfiguration?.azureOpenAIApiVersion)
+	const { embeddingConfiguration, setEmbeddingConfiguration, apiConfiguration, setBuildContextOptions, buildContextOptions } =
+		useExtensionState()
+	const [azureOpenAIApiVersionSelected, setAzureOpenAIApiVersionSelected] = useState(
+		!!embeddingConfiguration?.azureOpenAIApiVersion,
+	)
 	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const [validateEmbedding, setValidateEmbedding] = useState<EmbeddingConfiguration | undefined>(undefined);
+	const [validateEmbedding, setValidateEmbedding] = useState<EmbeddingConfiguration | undefined>(undefined)
 
-    useEffect(() => {
-        if (!apiConfiguration || !buildContextOptions?.useSyncWithApi) return
+	useEffect(() => {
+		if (!apiConfiguration || !buildContextOptions?.useSyncWithApi) return
 
-        if (apiConfiguration.apiProvider === "openai-native") {
-            setEmbeddingConfiguration({
+		if (apiConfiguration.apiProvider === "openai-native") {
+			setEmbeddingConfiguration({
 				...embeddingConfiguration,
-                provider: "openai-native",
-                openAiNativeApiKey: apiConfiguration.openAiNativeApiKey
-            })
-        } else if (apiConfiguration.apiProvider === "bedrock") {
-            setEmbeddingConfiguration({
+				provider: "openai-native",
+				openAiNativeApiKey: apiConfiguration.openAiNativeApiKey,
+			})
+		} else if (apiConfiguration.apiProvider === "bedrock") {
+			setEmbeddingConfiguration({
 				...embeddingConfiguration,
-                provider: "bedrock",
-                awsAccessKey: apiConfiguration.awsAccessKey,
-                awsSecretKey: apiConfiguration.awsSecretKey,
-                awsSessionToken: apiConfiguration.awsSessionToken,
-                awsRegion: apiConfiguration.awsRegion
-            })
-        } else if (apiConfiguration.apiProvider === "openai") {
+				provider: "bedrock",
+				awsAccessKey: apiConfiguration.awsAccessKey,
+				awsSecretKey: apiConfiguration.awsSecretKey,
+				awsSessionToken: apiConfiguration.awsSessionToken,
+				awsRegion: apiConfiguration.awsRegion,
+			})
+		} else if (apiConfiguration.apiProvider === "openai") {
 			setEmbeddingConfiguration({
 				...embeddingConfiguration,
 				provider: "openai",
@@ -58,49 +61,52 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 				openAiBaseUrl: apiConfiguration.openAiBaseUrl,
 			})
 		}
-	// To handle Azure AI
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [apiConfiguration, buildContextOptions?.useSyncWithApi])
+		// To handle Azure AI
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [apiConfiguration, buildContextOptions?.useSyncWithApi])
 
 	const handleInputChange = (field: keyof EmbeddingConfiguration) => (event: any) => {
-		if (field === 'provider') {
+		if (field === "provider") {
 			// Reset the validation message
-			setIsEmbeddingValid(null);
+			setIsEmbeddingValid(null)
 		}
 
-		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }		
+		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }
 		setEmbeddingConfiguration(newEmbeddingConfiguration)
 	}
 
 	useEffect(() => {
-		const error = validateEmbeddingConfiguration(embeddingConfiguration);
+		const error = validateEmbeddingConfiguration(embeddingConfiguration)
 		if (!error) {
-			setValidateEmbedding(embeddingConfiguration);
+			setValidateEmbedding(embeddingConfiguration)
 		} else {
-			setIsEmbeddingValid(null);
+			setIsEmbeddingValid(null)
 		}
+	}, [embeddingConfiguration])
 
-	}, [embeddingConfiguration]);
-
-	useDebounce(() => {
-		if (validateEmbedding) {
-			setIsEmbeddingValid(false);
-			setIsLoading(true);
-			vscode.postMessage({ type: 'validateEmbeddingConfig', embeddingConfiguration: validateEmbedding })
-		}
-	}, 500, [validateEmbedding])
+	useDebounce(
+		() => {
+			if (validateEmbedding) {
+				setIsEmbeddingValid(false)
+				setIsLoading(true)
+				vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration: validateEmbedding })
+			}
+		},
+		500,
+		[validateEmbedding],
+	)
 
 	const handleApiKey = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
-		if (message.type === 'embeddingConfigValidation') {
+		if (message.type === "embeddingConfigValidation") {
 			setIsEmbeddingValid(!!message.bool)
 			setIsLoading(false)
 		}
 	}, [])
 
 	useEffect(() => {
-		if (onValid) onValid(!!isEmbeddingValid);
-	}, [isEmbeddingValid, onValid]);
+		if (onValid) onValid(!!isEmbeddingValid)
+	}, [isEmbeddingValid, onValid])
 
 	useEvent("message", handleApiKey)
 
@@ -237,11 +243,10 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						Authenticate by either providing the keys above or use the default AWS credential providers,
-						i.e. ~/.aws/credentials or environment variables. These credentials are only used locally to
-						make API requests from this extension.
+						Authenticate by either providing the keys above or use the default AWS credential providers, i.e.
+						~/.aws/credentials or environment variables. These credentials are only used locally to make API requests
+						from this extension.
 					</p>
-					
 				</div>
 			)}
 
@@ -282,12 +287,12 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						}}>
 						Set API version
 					</VSCodeCheckbox>
-					{azureOpenAIApiVersionSelected&&(<VSCodeTextField
-						value={embeddingConfiguration?.azureOpenAIApiVersion || ""}
-						style={{ width: "100%" }}
-						onInput={handleInputChange("azureOpenAIApiVersion")}
-						placeholder={`Default: ${azureOpenAIApiVersion}`}>
-					</VSCodeTextField>
+					{azureOpenAIApiVersionSelected && (
+						<VSCodeTextField
+							value={embeddingConfiguration?.azureOpenAIApiVersion || ""}
+							style={{ width: "100%" }}
+							onInput={handleInputChange("azureOpenAIApiVersion")}
+							placeholder={`Default: ${azureOpenAIApiVersion}`}></VSCodeTextField>
 					)}
 				</div>
 			)}
@@ -342,13 +347,13 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 
 			<VSCodeCheckbox
 				style={{
-					marginBottom: '10px'
+					marginBottom: "10px",
 				}}
 				checked={buildContextOptions?.useSyncWithApi}
 				onChange={(e: any) => {
 					setBuildContextOptions({
 						...buildContextOptions!,
-						useSyncWithApi: e.target?.checked
+						useSyncWithApi: e.target?.checked,
 					})
 				}}>
 				Same as LLM API configuration
@@ -365,14 +370,14 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 				</p>
 			)}
 
-			{showModelError && isEmbeddingValid !== null &&
+			{showModelError && isEmbeddingValid !== null && (
 				<Info
-					status={isEmbeddingValid ? InfoStatus.SUCCESS : InfoStatus.FAILED} 
-					statusLabel={`Embedding configuration is ${isEmbeddingValid ? 'valid' : 'invalid'}`}
+					status={isEmbeddingValid ? InfoStatus.SUCCESS : InfoStatus.FAILED}
+					statusLabel={`Embedding configuration is ${isEmbeddingValid ? "valid" : "invalid"}`}
 					isLoading={isLoading}
-					loadingText="Validating Embedding configuration..." 
+					loadingText="Validating Embedding configuration..."
 				/>
-			}
+			)}
 		</div>
 	)
 }

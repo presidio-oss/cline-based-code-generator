@@ -15,17 +15,17 @@ export class OpenAiNativeEmbeddingHandler implements EmbeddingHandler {
 				apiKey: this.options.openAiNativeApiKey,
 				baseURL: "https://api.openai.com/v1",
 			},
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
 	getClient() {
-		return this.client;
+		return this.client
 	}
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.embedQuery('Test');
+			await this.client.embedQuery("Test")
 			return true
 		} catch (error) {
 			console.error("Error validating OpenAI Native embedding credentials: ", error)

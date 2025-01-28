@@ -45,4 +45,3 @@ export async function fileExistsAtPath(filePath: string): Promise<boolean> {
 		return false
 	}
 }
-

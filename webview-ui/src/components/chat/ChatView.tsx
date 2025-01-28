@@ -18,6 +18,7 @@ import { getApiMetrics } from "../../../../src/shared/getApiMetrics"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { normalizeApiConfiguration } from "../settings/ApiOptions"
+import AutoApproveMenu from "./AutoApproveMenu"
 import BrowserSessionRow from "./BrowserSessionRow"
 import ChatRow from "./ChatRow"
 import ChatTextArea from "./ChatTextArea"
@@ -25,7 +26,6 @@ import TaskHeader from "./TaskHeader"
 import { ReactComponent as Logo } from "../../assets/hai-dark.svg"
 import { IHaiClineTask } from "../../interfaces/hai-task.interface"
 import CodeIndexWarning from "./CodeIndexWarning"
-import AutoApproveMenu from "./AutoApproveMenu"
 import QuickActions from "../welcome/QuickActions"
 import CustomInstructionsMenu from "./CustomInstructionsMenu"
 
@@ -34,21 +34,20 @@ interface ChatViewProps {
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
 	showHistoryView: () => void
-	onTaskSelect: (task: IHaiClineTask) => void;
+	onTaskSelect: (task: IHaiClineTask) => void
 	selectedHaiTask: IHaiClineTask | null
 }
 
 export const MAX_IMAGES_PER_MESSAGE = 20 // Anthropic limits to 20 images
 
 const ChatView = ({
-					  isHidden,
-					  showAnnouncement,
-					  hideAnnouncement,
-					  showHistoryView,
-					  onTaskSelect,
-					  selectedHaiTask
-				  }: ChatViewProps) => {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	isHidden,
+	showAnnouncement,
+	hideAnnouncement,
+	showHistoryView,
+	onTaskSelect,
+	selectedHaiTask,
+}: ChatViewProps) => {
 	const { version, clineMessages: messages, taskHistory, apiConfiguration } = useExtensionState()
 
 	//const task = messages.length > 0 ? (messages[0].say === "task" ? messages[0] : undefined) : undefined) : undefined
@@ -61,23 +60,22 @@ const ChatView = ({
 	const textAreaRef = useRef<HTMLTextAreaElement>(null)
 	const [textAreaDisabled, setTextAreaDisabled] = useState(false)
 	const [selectedImages, setSelectedImages] = useState<string[]>([])
-	const [isAutoApproveExpanded, setIsAutoApproveExpanded] = useState(false);
-	const [isCustomInstructionsExpanded, setIsCustomInstructionsExpanded] = useState(false);
-  
+	const [isAutoApproveExpanded, setIsAutoApproveExpanded] = useState(false)
+	const [isCustomInstructionsExpanded, setIsCustomInstructionsExpanded] = useState(false)
+
 	const handleToggleAutoApprove = useCallback(() => {
-	  setIsAutoApproveExpanded((prev) => {
-		if (!prev) setIsCustomInstructionsExpanded(false);
-		return !prev;
-	  });
-	}, []);
-  
+		setIsAutoApproveExpanded((prev) => {
+			if (!prev) setIsCustomInstructionsExpanded(false)
+			return !prev
+		})
+	}, [])
+
 	const handleToggleCustomInstructions = useCallback(() => {
-	  setIsCustomInstructionsExpanded((prev) => {
-		if (!prev) setIsAutoApproveExpanded(false);
-		return !prev;
-	  });
-	}, []);
-  
+		setIsCustomInstructionsExpanded((prev) => {
+			if (!prev) setIsAutoApproveExpanded(false)
+			return !prev
+		})
+	}, [])
 
 	// we need to hold on to the ask because useEffect > lastMessage will always let us know when an ask comes in and handle it, but by the time handleMessage is called, the last message might not be the ask anymore (it could be a say that followed)
 	const [clineAsk, setClineAsk] = useState<ClineAsk | undefined>(undefined)
@@ -134,7 +132,14 @@ const ChatView = ({
 						case "followup":
 							setTextAreaDisabled(isPartial)
 							setClineAsk("followup")
-							setEnableButtons(isPartial)
+							setEnableButtons(false)
+							// setPrimaryButtonText(undefined)
+							// setSecondaryButtonText(undefined)
+							break
+						case "plan_mode_response":
+							setTextAreaDisabled(isPartial)
+							setClineAsk("plan_mode_response")
+							setEnableButtons(false)
 							// setPrimaryButtonText(undefined)
 							// setSecondaryButtonText(undefined)
 							break
@@ -270,8 +275,7 @@ const ChatView = ({
 
 	const isStreaming = useMemo(() => {
 		const isLastAsk = !!modifiedMessages.at(-1)?.ask // checking clineAsk isn't enough since messages effect may be called again for a tool for example, set clineAsk to its value, and if the next message is not an ask then it doesn't reset. This is likely due to how much more often we're updating messages as compared to before, and should be resolved with optimizations as it's likely a rendering bug. but as a final guard for now, the cancel button will show if the last message is not an ask
-		const isToolCurrentlyAsking =
-			isLastAsk && clineAsk !== undefined && enableButtons && primaryButtonText !== undefined
+		const isToolCurrentlyAsking = isLastAsk && clineAsk !== undefined && enableButtons && primaryButtonText !== undefined
 		if (isToolCurrentlyAsking) {
 			return false
 		}
@@ -302,6 +306,7 @@ const ChatView = ({
 				} else if (clineAsk) {
 					switch (clineAsk) {
 						case "followup":
+						case "plan_mode_response":
 						case "tool":
 						case "browser_action_launch":
 						case "command": // user can provide feedback to a tool or command use
@@ -352,7 +357,10 @@ const ChatView = ({
 			case "resume_task":
 			case "mistake_limit_reached":
 			case "auto_approval_max_req_reached":
-				vscode.postMessage({ type: "askResponse", askResponse: "yesButtonClicked" })
+				vscode.postMessage({
+					type: "askResponse",
+					askResponse: "yesButtonClicked",
+				})
 				break
 			case "completion_result":
 			case "resume_completed_task":
@@ -386,7 +394,10 @@ const ChatView = ({
 			case "browser_action_launch":
 			case "use_mcp_server":
 				// responds to the API with a "This operation failed" and lets it try again
-				vscode.postMessage({ type: "askResponse", askResponse: "noButtonClicked" })
+				vscode.postMessage({
+					type: "askResponse",
+					askResponse: "noButtonClicked",
+				})
 				break
 		}
 		setTextAreaDisabled(true)
@@ -428,9 +439,7 @@ const ChatView = ({
 				case "selectedImages":
 					const newImages = message.images ?? []
 					if (newImages.length > 0) {
-						setSelectedImages((prevImages) =>
-							[...prevImages, ...newImages].slice(0, MAX_IMAGES_PER_MESSAGE),
-						)
+						setSelectedImages((prevImages) => [...prevImages, ...newImages].slice(0, MAX_IMAGES_PER_MESSAGE))
 					}
 					break
 				case "invoke":
@@ -448,14 +457,7 @@ const ChatView = ({
 			}
 			// textAreaRef.current is not explicitly required here since react gaurantees that ref will be stable across re-renders, and we're not using its value but its reference.
 		},
-		[
-			isHidden,
-			textAreaDisabled,
-			enableButtons,
-			handleSendMessage,
-			handlePrimaryButtonClick,
-			handleSecondaryButtonClick,
-		],
+		[isHidden, textAreaDisabled, enableButtons, handleSendMessage, handlePrimaryButtonClick, handleSecondaryButtonClick],
 	)
 
 	useEvent("message", handleMessage)
@@ -493,6 +495,7 @@ const ChatView = ({
 			switch (message.say) {
 				case "api_req_finished": // combineApiRequests removes this from modifiedMessages anyways
 				case "api_req_retried": // this message is used to update the latest api_req_started that the request was retried
+				case "deleted_api_reqs": // aggregated api_req metrics from deleted messages
 					return false
 				case "text":
 					// Sometimes cline returns an empty text message, we don't want to render these. (We also use a say text for user messages, so in case they just sent images we still render that)
@@ -513,13 +516,9 @@ const ChatView = ({
 			return ["browser_action_launch"].includes(message.ask!)
 		}
 		if (message.type === "say") {
-			return [
-				"browser_action_launch",
-				"api_req_started",
-				"text",
-				"browser_action",
-				"browser_action_result",
-			].includes(message.say!)
+			return ["browser_action_launch", "api_req_started", "text", "browser_action", "browser_action_result"].includes(
+				message.say!,
+			)
 		}
 		return false
 	}
@@ -704,7 +703,7 @@ const ChatView = ({
 	useEvent("wheel", handleWheel, window, { passive: true }) // passive improves scrolling performance
 
 	const placeholderText = useMemo(() => {
-		const text = task ? "Type a message (@ to add context)..." : "Type your task here (@ to add context)..."
+		const text = task ? "Type a message..." : "Type your task here..."
 		return text
 	}, [task])
 
@@ -756,7 +755,7 @@ const ChatView = ({
 				bottom: 0,
 				display: isHidden ? "none" : "flex",
 				flexDirection: "column",
-				overflow: "hidden"
+				overflow: "hidden",
 			}}>
 			{task ? (
 				<TaskHeader
@@ -779,27 +778,29 @@ const ChatView = ({
 						flexDirection: "column",
 						paddingBottom: "10px",
 					}}>
-					
 					<div style={{ height: "auto", maxWidth: "200px", margin: "20px" }}>
 						<Logo style={{ height: "100%", width: "100%" }} className="hai-logo" />
 					</div>
 
 					{/* {showAnnouncement && <Announcement version={version} hideAnnouncement={hideAnnouncement} />} */}
-					<CodeIndexWarning type="info" style={{
-						margin: "0px 15px",
-						position: "relative",
-						flexShrink: 0,
-					}} />
+					<CodeIndexWarning
+						type="info"
+						style={{
+							margin: "0px 15px",
+							position: "relative",
+							flexShrink: 0,
+						}}
+					/>
 					<div style={{ padding: "0 20px", flexShrink: 0 }}>
 						<h2>How can I help you today?</h2>
 						<p>
-							I can handle complex software development tasks step-by-step. With tools that let me create
-							& edit files, explore complex projects, use the browser, and execute terminal commands
-							(after you grant permission), I can assist you in ways that go beyond code completion or
-							tech support. I can even use MCP to create new tools and extend my own capabilities.
+							I can handle complex software development tasks step-by-step. With tools that let me create & edit
+							files, explore complex projects, use the browser, and execute terminal commands (after you grant
+							permission), I can assist you in ways that go beyond code completion or tech support. I can even use
+							MCP to create new tools and extend my own capabilities.
 						</p>
 					</div>
-					<QuickActions onTaskSelect={onTaskSelect}/>
+					<QuickActions onTaskSelect={onTaskSelect} />
 				</div>
 			)}
 
@@ -828,10 +829,12 @@ const ChatView = ({
 						}}
 						isExpanded={isAutoApproveExpanded}
 						onToggleExpand={handleToggleAutoApprove}
-			
 					/>
-					<CustomInstructionsMenu isExpanded={isCustomInstructionsExpanded} onToggleExpand={handleToggleCustomInstructions} />
-					</>
+					<CustomInstructionsMenu
+						isExpanded={isCustomInstructionsExpanded}
+						onToggleExpand={handleToggleCustomInstructions}
+					/>
+				</>
 			)}
 
 			{task && (
@@ -849,7 +852,10 @@ const ChatView = ({
 								Footer: () => <div style={{ height: 5 }} />, // Add empty padding at the bottom
 							}}
 							// increasing top by 3_000 to prevent jumping around when user collapses a row
-							increaseViewportBy={{ top: 3_000, bottom: Number.MAX_SAFE_INTEGER }} // hack to make sure the last message is always rendered to get truly perfect scroll to bottom animation when new messages are added (Number.MAX_SAFE_INTEGER is safe for arithmetic operations, which is all virtuoso uses this value for in src/sizeRangeSystem.ts)
+							increaseViewportBy={{
+								top: 3_000,
+								bottom: Number.MAX_SAFE_INTEGER,
+							}} // hack to make sure the last message is always rendered to get truly perfect scroll to bottom animation when new messages are added (Number.MAX_SAFE_INTEGER is safe for arithmetic operations, which is all virtuoso uses this value for in src/sizeRangeSystem.ts)
 							data={groupedMessages} // messages is the raw format returned by extension, modifiedMessages is the manipulated structure that combines certain messages of related type, and visibleMessages is the filtered structure that removes messages that should not be rendered
 							itemContent={itemContent}
 							atBottomStateChange={(isAtBottom) => {
@@ -863,8 +869,11 @@ const ChatView = ({
 							initialTopMostItemIndex={groupedMessages.length - 1}
 						/>
 					</div>
-					<AutoApproveMenu isExpanded={isAutoApproveExpanded} onToggleExpand={handleToggleAutoApprove}/>
-					<CustomInstructionsMenu isExpanded={isCustomInstructionsExpanded} onToggleExpand={handleToggleCustomInstructions} />
+					<AutoApproveMenu isExpanded={isAutoApproveExpanded} onToggleExpand={handleToggleAutoApprove} />
+					<CustomInstructionsMenu
+						isExpanded={isCustomInstructionsExpanded}
+						onToggleExpand={handleToggleCustomInstructions}
+					/>
 					{showScrollToBottom ? (
 						<div
 							style={{

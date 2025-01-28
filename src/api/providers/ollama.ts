@@ -14,7 +14,7 @@ export class OllamaHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: (this.options.ollamaBaseUrl || "http://localhost:11434") + "/v1",
 			apiKey: "ollama",
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -55,9 +55,9 @@ export class OllamaHandler implements ApiHandler {
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],
 				temperature: 0,
-				stream: false
+				stream: false,
 			})
-			return true;
+			return true
 		} catch (error) {
 			console.error("Error validating Ollama credentials: ", error)
 			return false

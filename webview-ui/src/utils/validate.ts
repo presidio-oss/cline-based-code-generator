@@ -1,6 +1,9 @@
 import { ApiConfiguration, openRouterDefaultModelId } from "../../../src/shared/api"
 import { ModelInfo } from "../../../src/shared/api"
-import { validateApiConfiguration as validateApiConfigurationFn, validateEmbeddingConfiguration as validateEmbeddingConfigurationFn } from "../../../src/shared/validate"
+import {
+	validateApiConfiguration as validateApiConfigurationFn,
+	validateEmbeddingConfiguration as validateEmbeddingConfigurationFn,
+} from "../../../src/shared/validate"
 export const validateApiConfiguration = validateApiConfigurationFn
 export const validateEmbeddingConfiguration = validateEmbeddingConfigurationFn
 
