@@ -41,9 +41,7 @@ const CustomInstructionsMenu = ({
     }
   };
 
-  const [allInstructionsEnabled, setAllInstructionsEnabled] = useState<boolean>(
-    isAllInstructionsEnabled()
-  );
+  const [allInstructionsEnabled, setAllInstructionsEnabled] = useState<boolean>(false);
 
   useEffect(() => {
     setAllInstructionsEnabled(isAllInstructionsEnabled());
