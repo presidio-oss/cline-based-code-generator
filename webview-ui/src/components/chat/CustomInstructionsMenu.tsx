@@ -27,7 +27,7 @@ const CustomInstructionsMenu = ({
   } = useExtensionState();
 
   const isAllInstructionsEnabled = () => {
-    if (fileInstructions && fileInstructions && fileInstructions.length > 0 && customInstructions) {
+    if (fileInstructions && fileInstructions.length > 0 && customInstructions) {
       return (
         fileInstructions.every((i) => i.enabled === true) &&
         isCustomInstructionsEnabled
