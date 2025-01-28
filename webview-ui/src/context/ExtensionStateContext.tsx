@@ -2,18 +2,15 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { useEvent } from "react-use"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../../src/shared/AutoApprovalSettings"
 import { ExtensionMessage, ExtensionState } from "../../../src/shared/ExtensionMessage"
-import {
-	ApiConfiguration,
-	ModelInfo,
-	openRouterDefaultModelId,
-	openRouterDefaultModelInfo
-} from "../../../src/shared/api"
 import { EmbeddingConfiguration } from "../../../src/shared/embeddings"
-import { vscode } from "../utils/vscode"
-import { convertTextMateToHljs } from "../utils/textMateToHljs"
-import { findLastIndex } from "../../../src/shared/array"
 import { HaiBuildContextOptions, HaiInstructionFile } from "../../../src/shared/customApi"
+import { ApiConfiguration, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../../src/shared/api"
+import { findLastIndex } from "../../../src/shared/array"
 import { McpServer } from "../../../src/shared/mcp"
+import { convertTextMateToHljs } from "../utils/textMateToHljs"
+import { vscode } from "../utils/vscode"
+import { DEFAULT_BROWSER_SETTINGS } from "../../../src/shared/BrowserSettings"
+import { DEFAULT_CHAT_SETTINGS } from "../../../src/shared/ChatSettings"
 
 interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -22,21 +19,22 @@ interface ExtensionStateContextType extends ExtensionState {
 	openRouterModels: Record<string, ModelInfo>
 	mcpServers: McpServer[]
 	filePaths: string[]
+	haiConfig: { [key in string]: any }
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
 	setFileInstructions: (value: HaiInstructionFile[]) => void
 	setIsCustomInstructionsEnabled: (value: boolean) => void
-	setAlwaysAllowReadOnly: (value: boolean) => void
-	setShowAnnouncement: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
-	haiConfig: { [key in string]: any }
 	setHaiConfig: (value: { [key in string]: any }) => void
 	setEmbeddingConfiguration: (config: EmbeddingConfiguration) => void
+	setShowAnnouncement: (value: boolean) => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
 
-export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ExtensionStateContextProvider: React.FC<{
+	children: React.ReactNode
+}> = ({ children }) => {
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
 		clineMessages: [],
@@ -44,13 +42,16 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		shouldShowAnnouncement: false,
 		isCustomInstructionsEnabled: true,
 		autoApprovalSettings: DEFAULT_AUTO_APPROVAL_SETTINGS,
+		browserSettings: DEFAULT_BROWSER_SETTINGS,
+		chatSettings: DEFAULT_CHAT_SETTINGS,
+		isLoggedIn: false,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
 	const [theme, setTheme] = useState<any>(undefined)
 	const [filePaths, setFilePaths] = useState<string[]>([])
 	const [openRouterModels, setOpenRouterModels] = useState<Record<string, ModelInfo>>({
-		[openRouterDefaultModelId]: openRouterDefaultModelInfo
+		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
 	const [haiConfig, setHaiConfig] = useState({})
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
@@ -63,25 +64,28 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				const config = message.state?.apiConfiguration
 				const hasKey = config
 					? [
-						config.apiKey,
-						config.openRouterApiKey,
-						config.awsRegion,
-						config.vertexProjectId,
-						config.openAiApiKey,
-						config.ollamaModelId,
-						config.lmStudioModelId,
-						config.geminiApiKey,
-						config.openAiNativeApiKey,
-					].some((key) => key !== undefined)
+							config.apiKey,
+							config.openRouterApiKey,
+							config.awsRegion,
+							config.vertexProjectId,
+							config.openAiApiKey,
+							config.ollamaModelId,
+							config.lmStudioModelId,
+							config.geminiApiKey,
+							config.openAiNativeApiKey,
+							config.deepSeekApiKey,
+							config.mistralApiKey,
+							config.vsCodeLmModelSelector,
+						].some((key) => key !== undefined)
 					: false
-					const embedding = message.state?.embeddingConfiguration;
-					const hasEmbeddingKey = embedding
+				const embedding = message.state?.embeddingConfiguration
+				const hasEmbeddingKey = embedding
 					? [
-						embedding.awsRegion,
-						embedding.openAiNativeApiKey,
-						embedding.azureOpenAIApiKey,
-						embedding.openAiApiKey
-					].some((key) => key !== undefined)
+							embedding.awsRegion,
+							embedding.openAiNativeApiKey,
+							embedding.azureOpenAIApiKey,
+							embedding.openAiApiKey,
+						].some((key) => key !== undefined)
 					: false
 				setShowWelcome(!(hasKey || hasEmbeddingKey))
 				setDidHydrateState(true)
@@ -120,7 +124,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 				break
 			}
 			case "haiConfig": {
-				setHaiConfig(message.haiConfig || {});
+				setHaiConfig(message.haiConfig || {})
 				break
 			}
 			case "mcpServers": {
@@ -145,15 +149,46 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		mcpServers,
 		filePaths,
 		haiConfig,
-		setHaiConfig: (value) => setHaiConfig((prevState) => ({ ...prevState, ...value })),
-		setApiConfiguration: (value) => setState((prevState) => ({ ...prevState, apiConfiguration: value })),
-		setCustomInstructions: (value) => setState((prevState) => ({ ...prevState, customInstructions: value })),
-		setIsCustomInstructionsEnabled: (value) => setState((prevState) => ({ ...prevState, isCustomInstructionsEnabled: value })),
-		setFileInstructions: (value) => setState((prevState) => ({ ...prevState, fileInstructions: value })),
-		setAlwaysAllowReadOnly: (value) => setState((prevState) => ({ ...prevState, alwaysAllowReadOnly: value })),
-		setShowAnnouncement: (value) => setState((prevState) => ({ ...prevState, shouldShowAnnouncement: value })),
-		setBuildContextOptions: (value) => setState((prevState) => ({...prevState, buildContextOptions: value })),
-		setEmbeddingConfiguration: (value) => setState((prevState) => ({ ...prevState, embeddingConfiguration: value })),
+		setApiConfiguration: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				apiConfiguration: value,
+			})),
+		setCustomInstructions: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				customInstructions: value,
+			})),
+		setShowAnnouncement: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				shouldShowAnnouncement: value,
+			})),
+		setHaiConfig: (value) =>
+			setHaiConfig((prevState) => ({
+				...prevState,
+				...value,
+			})),
+		setIsCustomInstructionsEnabled: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				isCustomInstructionsEnabled: value,
+			})),
+		setFileInstructions: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				fileInstructions: value,
+			})),
+		setBuildContextOptions: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				buildContextOptions: value,
+			})),
+		setEmbeddingConfiguration: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				embeddingConfiguration: value,
+			})),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

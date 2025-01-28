@@ -15,7 +15,7 @@ export class VertexHandler implements ApiHandler {
 			projectId: this.options.vertexProjectId,
 			// https://cloud.google.com/vertex-ai/generative-ai/docs/partner-models/use-claude#regions
 			region: this.options.vertexRegion,
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -82,7 +82,10 @@ export class VertexHandler implements ApiHandler {
 			const id = modelId as VertexModelId
 			return { id, info: vertexModels[id] }
 		}
-		return { id: vertexDefaultModelId, info: vertexModels[vertexDefaultModelId] }
+		return {
+			id: vertexDefaultModelId,
+			info: vertexModels[vertexDefaultModelId],
+		}
 	}
 
 	async validateAPIKey(): Promise<boolean> {
@@ -92,7 +95,7 @@ export class VertexHandler implements ApiHandler {
 				max_tokens: 1,
 				temperature: 0,
 				messages: [{ role: "user", content: "Test" }],
-				stream: false
+				stream: false,
 			})
 			return true
 		} catch (error) {

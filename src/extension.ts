@@ -25,7 +25,7 @@ export function activate(context: vscode.ExtensionContext) {
 	outputChannel = vscode.window.createOutputChannel("HAI Build")
 	context.subscriptions.push(outputChannel)
 
-	let haiTaskList: string;
+	let haiTaskList: string
 
 	outputChannel.appendLine("HAI extension activated")
 
@@ -42,13 +42,19 @@ export function activate(context: vscode.ExtensionContext) {
 			outputChannel.appendLine("Plus button Clicked")
 			await sidebarProvider.clearTask()
 			await sidebarProvider.postStateToWebview()
-			await sidebarProvider.postMessageToWebview({ type: "action", action: "chatButtonClicked" })
+			await sidebarProvider.postMessageToWebview({
+				type: "action",
+				action: "chatButtonClicked",
+			})
 		}),
 	)
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.mcpButtonClicked", () => {
-			sidebarProvider.postMessageToWebview({ type: "action", action: "mcpButtonClicked" })
+			sidebarProvider.postMessageToWebview({
+				type: "action",
+				action: "mcpButtonClicked",
+			})
 		}),
 	)
 
@@ -73,10 +79,10 @@ export function activate(context: vscode.ExtensionContext) {
 			localResourceRoots: [context.extensionUri],
 		})
 		// TODO: use better svg icon with light and dark variants (see https://stackoverflow.com/questions/58365687/vscode-extension-iconpath)
-
+		// TODO: Replace with proper light and dark icons
 		panel.iconPath = {
-			light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "robot_panel_light.png"),
-			dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "robot_panel_dark.png"),
+			light: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "hai-logo-mini.png"),
+			dark: vscode.Uri.joinPath(context.extensionUri, "assets", "icons", "hai-logo-mini.png"),
 		}
 		tabProvider.resolveWebviewView(panel)
 
@@ -91,13 +97,28 @@ export function activate(context: vscode.ExtensionContext) {
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.settingsButtonClicked", () => {
 			//vscode.window.showInformationMessage(message)
-			sidebarProvider.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
+			sidebarProvider.postMessageToWebview({
+				type: "action",
+				action: "settingsButtonClicked",
+			})
 		}),
 	)
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.historyButtonClicked", () => {
-			sidebarProvider.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
+			sidebarProvider.postMessageToWebview({
+				type: "action",
+				action: "historyButtonClicked",
+			})
+		}),
+	)
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.accountLoginClicked", () => {
+			sidebarProvider.postMessageToWebview({
+				type: "action",
+				action: "accountLoginClicked",
+			})
 		}),
 	)
 
@@ -113,12 +134,16 @@ export function activate(context: vscode.ExtensionContext) {
 			return Buffer.from(uri.query, "base64").toString("utf-8")
 		}
 	})()
-	context.subscriptions.push(
-		vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider),
-	)
+	context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(DIFF_VIEW_URI_SCHEME, diffContentProvider))
 
 	// URI Handler
 	const handleUri = async (uri: vscode.Uri) => {
+		console.log("URI Handler called with:", {
+			path: uri.path,
+			query: uri.query,
+			scheme: uri.scheme,
+		})
+
 		const path = uri.path
 		const query = new URLSearchParams(uri.query.replace(/\+/g, "%2B"))
 		const visibleProvider = ClineProvider.getVisibleInstance()
@@ -133,35 +158,46 @@ export function activate(context: vscode.ExtensionContext) {
 				}
 				break
 			}
+			case "/auth": {
+				const token = query.get("token")
+				const state = query.get("state")
+
+				console.log("Auth callback received:", {
+					token: token,
+					state: state,
+				})
+
+				// Validate state parameter
+				if (!(await visibleProvider.validateAuthState(state))) {
+					vscode.window.showErrorMessage("Invalid auth state")
+					return
+				}
+
+				if (token) {
+					await visibleProvider.handleAuthCallback(token)
+				}
+				break
+			}
 			default:
 				break
 		}
 	}
 	context.subscriptions.push(vscode.window.registerUriHandler({ handleUri }))
 
-
 	sidebarProvider.getState().then(({ apiConfiguration }) => {
 		context.subscriptions.push(
-			...new InlineEditingProvider()
-				.withContext(context)
-				.withApiConfiguration(apiConfiguration)
-				.build()
-		);
+			...new InlineEditingProvider().withContext(context).withApiConfiguration(apiConfiguration).build(),
+		)
 	})
-
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", async () => {
-			await sidebarProvider.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" });
+			await sidebarProvider.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" })
 
-			const haiConfig = (await context.workspaceState.get('haiConfig')) || {};
-			await sidebarProvider.postMessageToWebview({ type: "haiConfig", haiConfig });
-		})
+			const haiConfig = (await context.workspaceState.get("haiConfig")) || {}
+			await sidebarProvider.postMessageToWebview({ type: "haiConfig", haiConfig })
+		}),
 	)
-
-
-
-
 
 	return createHaiAPI(outputChannel, sidebarProvider)
 }

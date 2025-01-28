@@ -1,11 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI, { AzureOpenAI } from "openai"
-import {
-	ApiHandlerOptions,
-	azureOpenAiDefaultApiVersion,
-	ModelInfo,
-	openAiModelInfoSaneDefaults,
-} from "../../shared/api"
+import { ApiHandlerOptions, azureOpenAiDefaultApiVersion, ModelInfo, openAiModelInfoSaneDefaults } from "../../shared/api"
 import { ApiHandler } from "../index"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
@@ -23,13 +18,13 @@ export class OpenAiHandler implements ApiHandler {
 				deployment: this.options.openAiModelId,
 				apiKey: this.options.openAiApiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
-				maxRetries: this.options.maxRetries
+				maxRetries: this.options.maxRetries,
 			})
 		} else {
 			this.client = new OpenAI({
 				baseURL: this.options.openAiBaseUrl,
 				apiKey: this.options.openAiApiKey,
-				maxRetries: this.options.maxRetries
+				maxRetries: this.options.maxRetries,
 			})
 		}
 	}
@@ -70,11 +65,11 @@ export class OpenAiHandler implements ApiHandler {
 			info: openAiModelInfoSaneDefaults,
 		}
 	}
-	
+
 	async validateAPIKey(): Promise<boolean> {
 		try {
 			if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com") && !this.options.openAiModelId) {
-				return false;
+				return false
 			}
 
 			await this.client.chat.completions.create({
@@ -82,9 +77,9 @@ export class OpenAiHandler implements ApiHandler {
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],
 				temperature: 0,
-				stream: false
+				stream: false,
 			})
-			return true;
+			return true
 		} catch (error) {
 			console.error("Error validating OpenAI credentials: ", error)
 			return false

@@ -1,13 +1,14 @@
-import { ApiConfiguration, ApiProvider } from "./api"
 import { HaiBuildContextOptions, HaiInstructionFile } from "./customApi"
 import { EmbeddingConfiguration } from "./embeddings"
+import { ApiConfiguration } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
+import { BrowserSettings } from "./BrowserSettings"
+import { ChatSettings } from "./ChatSettings"
 
 export interface WebviewMessage {
 	type:
 		| "apiConfiguration"
 		| "customInstructions"
-		| "alwaysAllowReadOnly"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"
@@ -26,14 +27,26 @@ export interface WebviewMessage {
 		| "openMention"
 		| "cancelTask"
 		| "refreshOpenRouterModels"
+		| "openMcpSettings"
+		| "restartMcpServer"
+		| "autoApprovalSettings"
+		| "browserSettings"
+		| "chatSettings"
+		| "checkpointDiff"
+		| "checkpointRestore"
+		| "taskCompletionViewChanges"
+		| "openExtensionSettings"
+		| "requestVsCodeLmModels"
+		| "toggleToolAutoApprove"
+		| "toggleMcpServer"
+		| "getLatestState"
+		| "accountLoginClicked"
+		| "accountLogoutClicked"
 		| "onHaiConfigure"
 		| "buildContextOptions"
 		| "embeddingConfiguration"
 		| "validateLLMConfig"
 		| "validateEmbeddingConfig"
-		| "openMcpSettings"
-		| "restartMcpServer"
-		| "autoApprovalSettings"
 		| "openHistory"
 		| "openHaiTasks"
 		| "showToast"
@@ -41,15 +54,26 @@ export interface WebviewMessage {
 		| "deleteInstruction"
 		| "fileInstructions"
 	text?: string
+	disabled?: boolean
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
 	images?: string[]
 	bool?: boolean
+	number?: number
+	autoApprovalSettings?: AutoApprovalSettings
+	browserSettings?: BrowserSettings
+	chatSettings?: ChatSettings
+
+	// For toggleToolAutoApprove
+	serverName?: string
+	toolName?: string
+	autoApprove?: boolean
+
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
-	autoApprovalSettings?: AutoApprovalSettings
-	fileInstructions? : HaiInstructionFile[]
-	toast?: { message: string; toastType: "error" | "warning" | "info" } 
+	fileInstructions?: HaiInstructionFile[]
+	toast?: { message: string; toastType: "error" | "warning" | "info" }
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
+export type ClineCheckpointRestore = "task" | "workspace" | "taskAndWorkspace"

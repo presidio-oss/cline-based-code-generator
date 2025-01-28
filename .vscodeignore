@@ -35,9 +35,11 @@ webview-ui/.npm/**
 .cache/**
 .npm/**
 assets/docs/**
-.gitlab-ci.yml
 commitlint.config.js
 .husky/**
+
+# Ignore docs
+docs/**
 
 # Fix issue where codicons don't get packaged (https://github.com/microsoft/vscode-extension-samples/issues/692)
 !node_modules/@vscode/codicons/dist/codicon.css

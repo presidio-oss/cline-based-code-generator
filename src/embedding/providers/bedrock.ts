@@ -17,17 +17,17 @@ export class AwsBedrockEmbeddingHandler implements EmbeddingHandler {
 				secretAccessKey: this.options.awsSecretKey!,
 				...(this.options.awsSessionToken ? { sessionToken: this.options.awsSessionToken } : {}),
 			},
-			maxRetries: this.options.maxRetries
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
 	getClient() {
-		return this.client;
+		return this.client
 	}
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.embedQuery('Test');
+			await this.client.embedQuery("Test")
 			return true
 		} catch (error) {
 			console.error("Error validating Bedrock embedding credentials: ", error)
