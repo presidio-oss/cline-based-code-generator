@@ -13,7 +13,7 @@ import {
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
-import { useDebounce, useEvent } from "react-use"
+import { useDebounce, useDeepCompareEffect, useEvent } from "react-use"
 import Info, { InfoStatus } from "../common/Info"
 import { validateEmbeddingConfiguration } from "../../utils/validate"
 
@@ -75,7 +75,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 		setEmbeddingConfiguration(newEmbeddingConfiguration)
 	}
 
-	useEffect(() => {
+	useDeepCompareEffect(() => {
 		const error = validateEmbeddingConfiguration(embeddingConfiguration)
 		if (!error) {
 			setValidateEmbedding(embeddingConfiguration)

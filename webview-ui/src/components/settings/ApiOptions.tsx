@@ -8,7 +8,7 @@ import {
 	VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react"
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react"
-import { useDebounce, useEvent, useInterval } from "react-use"
+import { useDebounce, useDeepCompareEffect, useEvent, useInterval } from "react-use"
 import {
 	ApiConfiguration,
 	ApiProvider,
@@ -104,7 +104,7 @@ const ApiOptions = ({
 		setApiConfiguration(newApiConfiguration)
 	}
 
-	useEffect(() => {
+	useDeepCompareEffect(() => {
 		const error = validateApiConfiguration(apiConfiguration)
 		if (!error) {
 			setValidateLLM(apiConfiguration)
