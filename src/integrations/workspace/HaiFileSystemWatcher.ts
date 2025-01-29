@@ -10,7 +10,7 @@ class HaiFileSystemWatcher {
 	private sourceFolder: string
 	private ig: ReturnType<typeof ignore>
 	private providerRef: WeakRef<ClineProvider>
-	private watcher: Watcher
+	private watcher: Watcher | undefined
 	private instructionsDir: string
 
 	constructor(provider: ClineProvider, sourceFolder: string) {
@@ -18,6 +18,24 @@ class HaiFileSystemWatcher {
 		this.providerRef = new WeakRef(provider)
 		this.ig = ignore()
 		this.instructionsDir = path.join(this.sourceFolder, HaiBuildDefaults.defaultInstructionsDirectory)
+		this.initializeWatcher().then()
+	}
+
+	private async loadGitIgnore() {
+		try {
+			const gitignorePath = path.join(this.sourceFolder, ".gitignore")
+			const content = await fs.readFile(gitignorePath, "utf-8")
+
+			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#") && !line.includes(".vscode")))
+		} catch (error) {
+			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
+		}
+
+		this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory])
+	}
+
+	private async initializeWatcher() {
+		await this.loadGitIgnore()
 
 		this.watcher = new Watcher(this.sourceFolder, {
 			recursive: true,
@@ -38,29 +56,10 @@ class HaiFileSystemWatcher {
 				if (relativePath === "") {
 					return false
 				}
-
 				const isIgnored = this.ig.ignores(relativePath)
 				return isIgnored
 			},
 		})
-		this.initializeWatcher().then()
-	}
-
-	private async loadGitIgnore() {
-		try {
-			const gitignorePath = path.join(this.sourceFolder, ".gitignore")
-			const content = await fs.readFile(gitignorePath, "utf-8")
-
-			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#") && !line.includes(".vscode")))
-		} catch (error) {
-			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
-		}
-
-		this.ig.add([...HaiBuildDefaults.defaultDirsToIgnore, HaiBuildDefaults.defaultContextDirectory])
-	}
-
-	private async initializeWatcher() {
-		await this.loadGitIgnore()
 
 		this.watcher.on("unlink", (filePath) => {
 			console.log("HaiFileSystemWatcher File deleted", filePath)
@@ -91,7 +90,7 @@ class HaiFileSystemWatcher {
 	}
 
 	async dispose() {
-		this.watcher.close()
+		this.watcher?.close()
 	}
 }
 
