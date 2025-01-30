@@ -51,20 +51,20 @@ jobs:
               if: steps.webview-cache.outputs.cache-hit != 'true'
               run: cd webview-ui && npm ci
 
-            - name: Set environment variables
-              run: |
-                echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")" >> $GITHUB_ENV
-                echo "BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")" >> $GITHUB_ENV
-
             - name: Build package
               run: |
-                  npx @vscode/vsce package --out "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix"
+                  PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")
+                  echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+                  BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")
+                  echo "BUILD_VERSION=$BUILD_VERSION >> $GITHUB_ENV
+                  echo "Output Package Name: $PACKAGE_NAME-$BUILD_VERSION.vsix"
+                  npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
                   name: vsix-package
-                  path: ${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+                  path: $PACKAGE_NAME-$BUILD_VERSION.vsix
                   retention-days: 90
 
             - name: Notify release
