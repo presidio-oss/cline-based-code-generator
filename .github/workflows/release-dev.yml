@@ -1,0 +1,165 @@
+name: CI/CD Pipeline for Development Release.
+
+on:
+    push:
+        branches: [main]
+    workflow_dispatch:
+
+jobs:
+    test:
+        uses: ./.github/workflows/test.yml
+
+    release-dev:
+        needs: test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v4
+
+            - name: Setup Node.js environment
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20.15.1
+
+            # Cache root dependencies - only reuse if package-lock.json exactly matches
+            - name: Cache root dependencies
+              uses: actions/cache@v4
+              id: root-cache
+              with:
+                  path: node_modules
+                  key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+
+            # Cache webview-ui dependencies - only reuse if package-lock.json exactly matches
+            - name: Cache webview-ui dependencies
+              uses: actions/cache@v4
+              id: webview-cache
+              with:
+                  path: webview-ui/node_modules
+                  key: ${{ runner.os }}-npm-webview-${{ hashFiles('webview-ui/package-lock.json') }}
+
+            - name: Install root dependencies
+              if: steps.root-cache.outputs.cache-hit != 'true'
+              run: npm ci
+
+            - name: Install webview-ui dependencies
+              if: steps.webview-cache.outputs.cache-hit != 'true'
+              run: cd webview-ui && npm ci
+
+            - name: Build Extension
+              run: npm run build
+
+            - name: Build package
+              run: |
+                  echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")" >> $GITHUB_ENV
+                  echo "BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")" >> $GITHUB_ENV
+                  npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
+
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: vsix-package
+                  path: ${{ github.workspace }}/${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+                  retention-days: 90
+
+            - name: Notify release
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL }}
+              run: |
+                  ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --header "authorization: Bearer $GITHUB_TOKEN" | jq -r '.artifacts[0].id')
+
+                  if [[ -z "$ARTIFACT_ID" || "$ARTIFACT_ID" == "null" ]]; then
+                    echo "❌ ERROR: ARTIFACT_ID is missing or invalid."
+                    exit 1
+                  fi
+
+                  ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${ARTIFACT_ID}"
+                  echo "✅ Artifact URL: $ARTIFACT_URL"
+
+                  if [[ -z "$NOTIFICATION_URL" ]]; then
+                    echo "❌ ERROR: NOTIFICATION_URL is not set."
+                    exit 1
+                  fi
+
+                  # Fetch random celebration GIF
+                  RANDOM_GIF=$(curl -s "https://api.giphy.com/v1/gifs/random?api_key=0UTRbFtkMxAplrohufYco5IY74U8hOes&tag=celebration+sports&rating=g" | jq -r '.data.images.original.webp')
+
+                  echo "Notifying release ${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}"
+
+                  # Prepare the notification with UI components
+                  curl -X POST -H 'Content-type: application/json' --data "{
+                    \"type\": \"message\",
+                    \"attachments\": [
+                      {
+                        \"contentType\": \"application/vnd.microsoft.card.adaptive\",
+                        \"content\": {
+                          \"type\": \"AdaptiveCard\",
+                          \"version\": \"1.5\",
+                          \"body\": [
+                            {
+                              \"type\": \"ColumnSet\",
+                              \"columns\": [
+                                {
+                                  \"type\": \"Column\",
+                                  \"width\": \"auto\",
+                                  \"items\": [
+                                    {
+                                      \"type\": \"Icon\",
+                                      \"name\": \"Megaphone\",
+                                      \"size\": \"xxSmall\",
+                                      \"color\": \"Accent\",
+                                      \"style\": \"Filled\"
+                                    }
+                                  ]
+                                },
+                                {
+                                  \"type\": \"Column\",
+                                  \"width\": \"stretch\",
+                                  \"items\": [
+                                    {
+                                      \"type\": \"TextBlock\",
+                                      \"text\": \"Release Announcement\",
+                                      \"size\": \"Small\",
+                                      \"isSubtle\": true
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              \"type\": \"TextBlock\",
+                              \"text\": \"Release - v${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}\",
+                              \"weight\": \"Bolder\",
+                              \"size\": \"Medium\"
+                            },
+                            {
+                              \"type\": \"TextBlock\",
+                              \"text\": \"🎉 The latest release is now available!\",
+                              \"wrap\": true
+                            },
+                            {
+                              \"type\": \"TextBlock\",
+                              \"text\": \"Download the artifact from: $ARTIFACT_URL\",
+                              \"wrap\": true
+                            },
+                            {
+                              \"type\": \"Image\",
+                              \"url\": \"$RANDOM_GIF\",
+                              \"size\": \"Stretch\"
+                            },
+                            {
+                              \"type\": \"ActionSet\",
+                              \"actions\": [
+                                {
+                                  \"type\": \"Action.OpenUrl\",
+                                  \"title\": \"Download Artifact\",
+                                  \"url\": \"$ARTIFACT_URL\",
+                                  \"iconUrl\": \"icon:ArrowDownload\"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }" $NOTIFICATION_URL
