@@ -83,7 +83,7 @@ By centralizing AI-driven tasks in HAI Code Generator, you can maintain an effic
 Enhanced file identification with intelligent discovery and retrieval:
 
   <div align="center">
-    <img src="assets/gifs/hai-find-files.gif" alt="File Identification" />
+    <img src="assets/gifs/find-files.gif" alt="File Identification" />
       <p><i>File Identification</i></p>
   </div>
 
