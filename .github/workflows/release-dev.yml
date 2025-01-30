@@ -51,20 +51,25 @@ jobs:
               if: steps.webview-cache.outputs.cache-hit != 'true'
               run: cd webview-ui && npm ci
 
-            - name: Build Extension
-              run: npm run build
-
             - name: Build package
               run: |
-                  echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")" >> $GITHUB_ENV
-                  echo "BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")" >> $GITHUB_ENV
+                  # Set the package name and version from package.json or use default values
+                  PACKAGE_NAME="$(node -p "require('./package.json').name || 'hai-build-code-generator'")"
+                  BUILD_VERSION="$(node -p "require('./package.json').version || '0.0.0'")"
+
+                  # Save the environment variables to GitHub Actions environment
+                  echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
+                  echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
+
+                  # Build the VSIX package
+                  echo "Output Package Name: $PACKAGE_NAME-$BUILD_VERSION.vsix"
                   npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: vsix-package
-                  path: ${{ github.workspace }}/${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+                  name: "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}"
+                  path: "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix"
                   retention-days: 90
 
             - name: Notify release
@@ -134,18 +139,13 @@ jobs:
                             },
                             {
                               \"type\": \"TextBlock\",
-                              \"text\": \"Release - v${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}\",
+                              \"text\": \"Release - v${{ env.BUILD_VERSION }}\",
                               \"weight\": \"Bolder\",
                               \"size\": \"Medium\"
                             },
                             {
                               \"type\": \"TextBlock\",
                               \"text\": \"🎉 The latest release is now available!\",
-                              \"wrap\": true
-                            },
-                            {
-                              \"type\": \"TextBlock\",
-                              \"text\": \"Download the artifact from: $ARTIFACT_URL\",
                               \"wrap\": true
                             },
                             {

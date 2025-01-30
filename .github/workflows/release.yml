@@ -52,9 +52,6 @@ jobs:
               if: steps.webview-cache.outputs.cache-hit != 'true'
               run: cd webview-ui && npm ci
 
-            - name: Build Extension
-              run: npm run build
-
             - name: Install Publishing Tools
               run: npm install -g vsce
 
