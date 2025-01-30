@@ -2,9 +2,9 @@ name: CI/CD Pipeline for Development Release in Teams
 
 on:
   push:
-    branches: [dev, qa, uat, main]
+    branches: [ qa, main]
   pull_request:
-    branches: [dev, qa, uat, main]
+    branches: [ qa,  main]
   release:
     types: [created]
 
@@ -206,18 +206,9 @@ jobs:
       
       - name: Set notification variables
         run: |
-          case "${{ github.ref }}" in
-            "refs/heads/dev")
-              echo "NOTIFICATION_URL=${{ secrets.DEV_NOTIFICATION_URL }}" >> $GITHUB_ENV
-              echo "MENTION_LIST=${{ secrets.NOTIFICATION_DEV_LIST }}" >> $GITHUB_ENV
-              ;;
             "refs/heads/qa")
               echo "NOTIFICATION_URL=${{ secrets.QA_NOTIFICATION_URL }}" >> $GITHUB_ENV
               echo "MENTION_LIST=${{ secrets.NOTIFICATION_QA_LIST }}" >> $GITHUB_ENV
-              ;;
-            "refs/heads/uat")
-              echo "NOTIFICATION_URL=${{ secrets.UAT_NOTIFICATION_URL }}" >> $GITHUB_ENV
-              echo "MENTION_LIST=${{ secrets.NOTIFICATION_UAT_LIST }}" >> $GITHUB_ENV
               ;;
             "refs/heads/main")
               echo "NOTIFICATION_URL=${{ secrets.PROD_NOTIFICATION_URL }}" >> $GITHUB_ENV
