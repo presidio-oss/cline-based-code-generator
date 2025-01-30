@@ -53,10 +53,15 @@ jobs:
 
             - name: Build package
               run: |
-                  PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")
+                  # Set the package name and version from package.json or use default values
+                  PACKAGE_NAME="$(node -p "require('./package.json').name || 'hai-build-code-generator'")"
+                  BUILD_VERSION="$(node -p "require('./package.json').version || '0.0.0'")"
+
+                  # Save the environment variables to GitHub Actions environment
                   echo "PACKAGE_NAME=$PACKAGE_NAME" >> $GITHUB_ENV
-                  BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")
-                  echo "BUILD_VERSION=$BUILD_VERSION >> $GITHUB_ENV
+                  echo "BUILD_VERSION=$BUILD_VERSION" >> $GITHUB_ENV
+
+                  # Build the VSIX package
                   echo "Output Package Name: $PACKAGE_NAME-$BUILD_VERSION.vsix"
                   npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
 
