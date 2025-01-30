@@ -104,26 +104,30 @@ Together, these components form a cohesive system for efficient file identificat
 
 ---
 
-### Custom Instructions
+### 🎯 Custom Instructions
 Uploading custom instruction sets for HAI Code Generator allows you to tailor the tool to your specific needs.
-  <div align="center">
-    <img src="assets/gifs/inline-editing.gif" alt="Custom Instructions" />
-      <p><i>Custom Instructions</i></p>
-  </div>
+ <div align="center">
+   <img src="assets/gifs/custom-instructions.gif" alt="Custom Instructions" />
+     <p><i>Custom Instructions</i></p>
+ </div>
 
+#### Personalized AI-Driven Development
+- Upload your own instruction sets to tailor HAI Code Generator to your unique requirements.
+- Use these instructions to generate tasks, code, or customize the tool's behavior.
+- Instruction sets are stored in the `.vscode/hai-instructions` folder, facilitating easy access and collaborative development.
 
 ---
 
-### Inline Editing
+### ✏️ Inline Editing
 Enhance your code editing experience with inline editing, allowing you to make changes directly within the codebase.
-  <div align="center">
-    <img src="assets/gifs/inline-editing.gif" alt="Inline Editing" />
-      <p><i>Inline Editing</i></p>
-  </div>
+ <div align="center">
+   <img src="assets/gifs/inline-editing.gif" alt="Inline Editing" />
+     <p><i>Inline Editing</i></p>
+ </div>
 
 #### Seamless Quick Changes
-- Simply click on "Edit with hAI" and provide a brief prompt to effortlessly transform the selected portion of your code.
-- This feature is particularly useful for making quick edits or corrections without the need to navigate away from the codebase.
+- Click "Edit with hAI" and provide a brief prompt to effortlessly transform selected code.
+- Perfect for quick edits or corrections without navigating away from your codebase.
 
 ---
 
