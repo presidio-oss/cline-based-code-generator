@@ -55,13 +55,13 @@ jobs:
               run: |
                   echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")" >> $GITHUB_ENV
                   echo "BUILD_VERSION=$(node -p "require('./package.json').version || '0.0.0'")" >> $GITHUB_ENV
-                  npx @vscode/vsce package --out ${{ github.workspace }}/${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+                  npx @vscode/vsce package --out "$PACKAGE_NAME-${BUILD_VERSION}.vsix"
 
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
                   name: vsix-package
-                  path: ${{ github.workspace }}/${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+                  path: ${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
                   retention-days: 90
 
             - name: Notify release
