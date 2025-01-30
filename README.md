@@ -78,7 +78,6 @@ By centralizing AI-driven tasks in HAI Code Generator, you can maintain an effic
 
 ---
 
-
 ### 🔍 File Identification
 Enhanced file identification with intelligent discovery and retrieval:
 
@@ -101,12 +100,11 @@ Transform the way you manage files by leveraging the core functionalities of **T
 
 Together, these components form a cohesive system for efficient file identification, ensuring that Task-Based File Discovery is not just smart but also contextual.
 
-
 ---
 
-### 🎯 Custom Instructions
-Uploading custom instruction sets for HAI Code Generator allows you to tailor the tool to your specific needs.
- <div align="center">
+### 🎯 Upload Custom Instructions
+HAI Code Generator's custom instruction sets help define code standards, preferred communication, and output formats to match your development workflow.
+<div align="center">
    <img src="assets/gifs/custom-instructions.gif" alt="Custom Instructions" />
      <p><i>Custom Instructions</i></p>
  </div>
@@ -116,6 +114,7 @@ Uploading custom instruction sets for HAI Code Generator allows you to tailor th
 - Use these instructions to generate tasks, code, or customize the tool's behavior.
 - Instruction sets are stored in the `.vscode/hai-instructions` folder, facilitating easy access and collaborative development.
 
+These customizations empower developers to shape AI outputs that match their distinct coding style and preferences. 
 ---
 
 ### ✏️ Inline Editing
