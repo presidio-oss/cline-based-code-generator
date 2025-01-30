@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.2] - YYYY-MM-DD
+## [3.0.2] - 2025-01-30
 
 ### Added
 
@@ -8,10 +8,16 @@
 - Added copy to clipboard for HAI tasks
 - Added ability to add custom instruction markdown files to the workspace
 - Added ability to dynamically choose custom instructions while conversing
+- Added inline editing (Ability to select a piece of code and edit it with HAI)
 
 ### Fixed
 
 - Fixed AWS Bedrock session token preserved in the global state
+- Fixed unnecessary LLM and embedding validation occurring on every indexing update
+- Fixed issue causing the extension host to terminate unexpectedly
+- Fixed LLM and embedding validation errors appearing on the welcome page post-installation
+- Fixed embedding configuration incorrectly validating when an LLM model name is provided
+- Fixed errors encountered during code context processing and indexing operations
 
 ## [3.0.1] - 2024-12-20
 

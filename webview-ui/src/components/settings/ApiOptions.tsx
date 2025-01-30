@@ -650,17 +650,6 @@ const ApiOptions = ({
 							placeholder={`Default: ${azureOpenAiDefaultApiVersion}`}
 						/>
 					)}
-					<p
-						style={{
-							fontSize: "12px",
-							marginTop: 3,
-							color: "var(--vscode-descriptionForeground)",
-						}}>
-						<span style={{ color: "var(--vscode-errorForeground)" }}>
-							(<span style={{ fontWeight: 500 }}>Note:</span> HAI uses complex prompts and works best with Claude
-							models. Less capable models may not work as expected.)
-						</span>
-					</p>
 				</div>
 			)}
 
@@ -784,10 +773,6 @@ const ApiOptions = ({
 							local server
 						</VSCodeLink>{" "}
 						feature to use it with this extension.{" "}
-						<span style={{ color: "var(--vscode-errorForeground)" }}>
-							(<span style={{ fontWeight: 500 }}>Note:</span> HAI uses complex prompts and works best with Claude
-							models. Less capable models may not work as expected.)
-						</span>
 					</p>
 				</div>
 			)}
@@ -845,10 +830,6 @@ const ApiOptions = ({
 							style={{ display: "inline", fontSize: "inherit" }}>
 							quickstart guide.
 						</VSCodeLink>
-						<span style={{ color: "var(--vscode-errorForeground)" }}>
-							(<span style={{ fontWeight: 500 }}>Note:</span> HAI uses complex prompts and works best with Claude
-							models. Less capable models may not work as expected.)
-						</span>
 					</p>
 				</div>
 			)}
