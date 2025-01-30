@@ -1,0 +1,339 @@
+name: CI/CD Pipeline for Development Release in Teams
+
+on:
+  push:
+    branches: [dev, qa, uat, main]
+  pull_request:
+    branches: [dev, qa, uat, main]
+  release:
+    types: [created]
+
+env:
+  NODE_VERSION: '22.x'
+
+jobs:
+  initialize:
+    runs-on: ubuntu-latest
+    outputs:
+      package_name: ${{ steps.set_vars.outputs.package_name }}
+      package_version: ${{ steps.set_vars.outputs.package_version }}
+      build_version: ${{ steps.set_vars.outputs.build_version }}
+      build_tag: ${{ steps.set_vars.outputs.build_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Check Docker containers
+        run: docker ps -a || echo "Docker not available!"
+      
+      - name: Set environment variables
+        id: set_vars
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./package.json').haiVersion || '0.0.0'")
+          CLINE_VERSION=$(node -p "require('./package.json').version || '0.0.0'")
+          BUILD_VERSION="v$PACKAGE_VERSION"
+          BUILD_TAG="v$PACKAGE_VERSION"
+          
+          if [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.ref }}" = "refs/heads/dev" ] || [ "${{ github.ref }}" = "refs/heads/qa" ]; then
+            BUILD_VERSION="$BUILD_VERSION-${{ github.run_number }}"
+            BUILD_TAG="$BUILD_TAG/${{ github.run_number }}"
+          fi
+          
+          PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build'")
+          case "${{ github.ref }}" in
+            "refs/heads/dev") PACKAGE_NAME="$PACKAGE_NAME-dev" ;;
+            "refs/heads/qa") PACKAGE_NAME="$PACKAGE_NAME-qa" ;;
+            "refs/heads/uat") PACKAGE_NAME="$PACKAGE_NAME-uat" ;;
+          esac
+          
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+          echo "package_version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+          echo "cline_version=$CLINE_VERSION" >> $GITHUB_OUTPUT
+          echo "build_version=$BUILD_VERSION" >> $GITHUB_OUTPUT
+          echo "build_tag=$BUILD_TAG" >> $GITHUB_OUTPUT
+      
+      - name: Print environment variables
+        run: |
+          echo "PACKAGE_NAME=${{ steps.set_vars.outputs.package_name }}"
+          echo "PACKAGE_VERSION=${{ steps.set_vars.outputs.package_version }}"
+          echo "CLINE_VERSION=${{ steps.set_vars.outputs.cline_version }}"
+          echo "BUILD_VERSION=${{ steps.set_vars.outputs.build_version }}"
+          echo "BUILD_TAG=${{ steps.set_vars.outputs.build_tag }}"
+          printenv
+      
+      - name: Print Node.js and npm versions
+        run: |
+          node --version
+          npm --version
+      
+      - name: Install dependencies
+        run: |
+          npm ci --cache .npm --prefer-offline
+          cd webview-ui && npm ci --cache .npm --prefer-offline && cd ..
+      
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm
+            node_modules
+            webview-ui/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+  lint:
+    needs: initialize
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm
+            node_modules
+            webview-ui/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      
+      - name: Print Node.js and npm versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install typescript
+          cd webview-ui
+          npm ci
+          npm install
+          cd ..
+
+      - name: Check types
+        run: |
+          echo "Node.js version:"
+          node --version
+          echo "npm version:"
+          npm --version
+          echo "TypeScript version:"
+          npx tsc --version
+          npx tsc --noEmit
+          cd webview-ui && npx tsc --noEmit && cd ..
+      
+      - name: Run linter
+        run: npm run lint
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Restore cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .npm
+            node_modules
+            webview-ui/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd webview-ui
+          npm ci
+          npm install --save-dev rewire
+          cd ..
+
+      - name: Verify webview-ui dependencies
+        run: |
+          echo "Contents of webview-ui/node_modules:"
+          ls -l webview-ui/node_modules
+          echo "Checking for rewire:"
+          ls -l webview-ui/node_modules/rewire || echo "rewire not found"
+
+      - name: Build package for Pull Request
+        if: github.event_name == 'pull_request'
+        run: npx @vscode/vsce package
+    
+
+      - name: Set package variables
+        id: package_info
+        run: |
+          echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build'")" >> $GITHUB_ENV
+          echo "BUILD_VERSION=$(node -p "require('./package.json').haiVersion || '0.0.0'")" >> $GITHUB_ENV
+
+      - name: Build VSIX package
+        if: github.event_name != 'pull_request'
+        run: |
+          echo "Building VSIX package: $PACKAGE_NAME-$BUILD_VERSION.vsix"
+          npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
+
+      - name: Upload artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix-package
+          path: ${{ github.workspace }}/${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix
+          retention-days: 90
+
+
+
+  notify:
+    needs: [initialize, build]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Set notification variables
+        run: |
+          case "${{ github.ref }}" in
+            "refs/heads/dev")
+              echo "NOTIFICATION_URL=${{ secrets.DEV_NOTIFICATION_URL }}" >> $GITHUB_ENV
+              echo "MENTION_LIST=${{ secrets.NOTIFICATION_DEV_LIST }}" >> $GITHUB_ENV
+              ;;
+            "refs/heads/qa")
+              echo "NOTIFICATION_URL=${{ secrets.QA_NOTIFICATION_URL }}" >> $GITHUB_ENV
+              echo "MENTION_LIST=${{ secrets.NOTIFICATION_QA_LIST }}" >> $GITHUB_ENV
+              ;;
+            "refs/heads/uat")
+              echo "NOTIFICATION_URL=${{ secrets.UAT_NOTIFICATION_URL }}" >> $GITHUB_ENV
+              echo "MENTION_LIST=${{ secrets.NOTIFICATION_UAT_LIST }}" >> $GITHUB_ENV
+              ;;
+            "refs/heads/main")
+              echo "NOTIFICATION_URL=${{ secrets.PROD_NOTIFICATION_URL }}" >> $GITHUB_ENV
+              echo "MENTION_LIST=${{ secrets.NOTIFICATION_PROD_LIST }}" >> $GITHUB_ENV
+              ;;
+          esac
+
+      - name: Download artifact
+        id: download_artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: vsix-package
+          path: ./artifacts
+
+      - name: Notify release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL }}
+        run: |
+          ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --header "authorization: Bearer $GITHUB_TOKEN" | jq -r '.artifacts[0].id')
+
+          if [[ -z "$ARTIFACT_ID" || "$ARTIFACT_ID" == "null" ]]; then
+            echo "❌ ERROR: ARTIFACT_ID is missing or invalid."
+            exit 1
+          fi
+
+          ARTIFACT_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts/${ARTIFACT_ID}"
+          echo "✅ Artifact URL: $ARTIFACT_URL"
+
+          if [[ -z "$NOTIFICATION_URL" ]]; then
+            echo "❌ ERROR: NOTIFICATION_URL is not set."
+            exit 1
+          fi
+
+          # Fetch random celebration GIF
+          RANDOM_GIF=$(curl -s "https://api.giphy.com/v1/gifs/random?api_key=0UTRbFtkMxAplrohufYco5IY74U8hOes&tag=celebration+sports&rating=g" | jq -r '.data.images.original.webp')
+
+          echo "Notifying release ${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}"
+          
+          # Prepare the notification with UI components
+          curl -X POST -H 'Content-type: application/json' --data "{
+            \"type\": \"message\",
+            \"attachments\": [
+              {
+                \"contentType\": \"application/vnd.microsoft.card.adaptive\",
+                \"content\": {
+                  \"type\": \"AdaptiveCard\",
+                  \"version\": \"1.5\",
+                  \"body\": [
+                    {
+                      \"type\": \"ColumnSet\",
+                      \"columns\": [
+                        {
+                          \"type\": \"Column\",
+                          \"width\": \"auto\",
+                          \"items\": [
+                            {
+                              \"type\": \"Icon\",
+                              \"name\": \"Megaphone\",
+                              \"size\": \"xxSmall\",
+                              \"color\": \"Accent\",
+                              \"style\": \"Filled\"
+                            }
+                          ]
+                        },
+                        {
+                          \"type\": \"Column\",
+                          \"width\": \"stretch\",
+                          \"items\": [
+                            {
+                              \"type\": \"TextBlock\",
+                              \"text\": \"Release Announcement\",
+                              \"size\": \"Small\",
+                              \"isSubtle\": true
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      \"type\": \"TextBlock\",
+                      \"text\": \"Release - v${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}\",
+                      \"weight\": \"Bolder\",
+                      \"size\": \"Medium\"
+                    },
+                    {
+                      \"type\": \"TextBlock\",
+                      \"text\": \"🎉 The latest release is now available!\",
+                      \"wrap\": true
+                    },
+                    {
+                      \"type\": \"TextBlock\",
+                      \"text\": \"Download the artifact from: $ARTIFACT_URL\",
+                      \"wrap\": true
+                    },
+                    {
+                      \"type\": \"Image\",
+                      \"url\": \"$RANDOM_GIF\",
+                      \"size\": \"Stretch\"
+                    },
+                    {
+                      \"type\": \"ActionSet\",
+                      \"actions\": [
+                        {
+                          \"type\": \"Action.OpenUrl\",
+                          \"title\": \"Download Artifact\",
+                          \"url\": \"$ARTIFACT_URL\",
+                          \"iconUrl\": \"icon:ArrowDownload\"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            ]
+          }" $NOTIFICATION_URL
+
+
+
