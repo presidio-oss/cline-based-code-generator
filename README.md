@@ -21,7 +21,7 @@
 > 🏗️ **Built on [Cline](https://github.com/cline/cline)**'s powerful foundation for AI-assisted development.
 
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/gifs/hai-demo.gif" alt="HAI Demo" />
+  <img src="assets/gifs/hai-home-page.gif" alt="HAI Demo" />
 </div>
 
 ## Table of Contents
@@ -47,7 +47,7 @@
 - Upon installation, the HAI extension can be found in the sidebar.
 
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/img/hai-installed.png" alt="HAI Demo" />
+  <img src="assets/img/hai-home.png" alt="HAI Demo" />
 </div>
 
 ## ✨ Features
@@ -78,12 +78,11 @@ By centralizing AI-driven tasks in HAI Code Generator, you can maintain an effic
 
 ---
 
-
 ### 🔍 File Identification
 Enhanced file identification with intelligent discovery and retrieval:
 
   <div align="center">
-    <img src="assets/gifs/hai-find-files.gif" alt="File Identification" />
+    <img src="assets/gifs/find-files.gif" alt="File Identification" />
       <p><i>File Identification</i></p>
   </div>
 
@@ -101,8 +100,37 @@ Transform the way you manage files by leveraging the core functionalities of **T
 
 Together, these components form a cohesive system for efficient file identification, ensuring that Task-Based File Discovery is not just smart but also contextual.
 
+---
+
+### 🎯 Upload Custom Instructions
+HAI Code Generator's custom instruction sets help define code standards, preferred communication, and output formats to match your development workflow.
+<div align="center">
+   <img src="assets/gifs/custom-instructions.gif" alt="Custom Instructions" />
+     <p><i>Custom Instructions</i></p>
+ </div>
+
+#### Personalized AI-Driven Development
+- Upload your own instruction sets to tailor HAI Code Generator to your unique requirements.
+- Use these instructions to generate tasks, code, or customize the tool's behavior.
+- Instruction sets are stored in the `.vscode/hai-instructions` folder, facilitating easy access and collaborative development.
+
+These customizations empower developers to shape AI outputs that match their distinct coding style and preferences. 
 
 ---
+
+### ✏️ Inline Editing
+Enhance your code editing experience with inline editing, allowing you to make changes directly within the codebase.
+ <div align="center">
+   <img src="assets/gifs/inline-editing.gif" alt="Inline Editing" />
+     <p><i>Inline Editing</i></p>
+ </div>
+
+#### Seamless Quick Changes
+- Click "Edit with hAI" and provide a brief prompt to effortlessly transform selected code.
+- Perfect for quick edits or corrections without navigating away from your codebase.
+
+---
+
 
 ### ⚙️ Settings Interface
 Customize and seamlessly integrate advanced language and embedding models into your AI-powered workflow, ensuring you stay at the forefront of AI innovations.
