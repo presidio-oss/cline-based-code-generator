@@ -21,7 +21,7 @@
 > 🏗️ **Built on [Cline](https://github.com/cline/cline)**'s powerful foundation for AI-assisted development.
 
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/gifs/hai-demo.gif" alt="HAI Demo" />
+  <img src="assets/gifs/hai-home-page.gif" alt="HAI Demo" />
 </div>
 
 ## Table of Contents
@@ -47,7 +47,7 @@
 - Upon installation, the HAI extension can be found in the sidebar.
 
 <div align="center" style="margin-top: 20px;">
-  <img src="assets/img/hai-installed.png" alt="HAI Demo" />
+  <img src="assets/img/hai-home.png" alt="HAI Demo" />
 </div>
 
 ## ✨ Features
