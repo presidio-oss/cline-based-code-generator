@@ -68,7 +68,7 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: vsix-package
+                  name: "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}"
                   path: "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix"
                   retention-days: 90
 
@@ -139,18 +139,13 @@ jobs:
                             },
                             {
                               \"type\": \"TextBlock\",
-                              \"text\": \"Release - v${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}\",
+                              \"text\": \"Release - v${{ env.BUILD_VERSION }}\",
                               \"weight\": \"Bolder\",
                               \"size\": \"Medium\"
                             },
                             {
                               \"type\": \"TextBlock\",
                               \"text\": \"🎉 The latest release is now available!\",
-                              \"wrap\": true
-                            },
-                            {
-                              \"type\": \"TextBlock\",
-                              \"text\": \"Download the artifact from: $ARTIFACT_URL\",
                               \"wrap\": true
                             },
                             {
