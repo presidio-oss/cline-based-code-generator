@@ -69,7 +69,7 @@ jobs:
               uses: actions/upload-artifact@v4
               with:
                   name: vsix-package
-                  path: $PACKAGE_NAME-$BUILD_VERSION.vsix
+                  path: "${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}.vsix"
                   retention-days: 90
 
             - name: Notify release
