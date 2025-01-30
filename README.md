@@ -115,6 +115,7 @@ HAI Code Generator's custom instruction sets help define code standards, preferr
 - Instruction sets are stored in the `.vscode/hai-instructions` folder, facilitating easy access and collaborative development.
 
 These customizations empower developers to shape AI outputs that match their distinct coding style and preferences. 
+
 ---
 
 ### ✏️ Inline Editing
