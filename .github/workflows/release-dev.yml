@@ -51,9 +51,6 @@ jobs:
               if: steps.webview-cache.outputs.cache-hit != 'true'
               run: cd webview-ui && npm ci
 
-            - name: Build Extension
-              run: npm run build
-
             - name: Build package
               run: |
                   echo "PACKAGE_NAME=$(node -p "require('./package.json').name || 'hai-build-code-generator'")" >> $GITHUB_ENV
