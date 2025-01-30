@@ -140,9 +140,10 @@ export class CodeContextAdditionAgent extends EventEmitter {
 
 		// TODO: Figure out the way to calculate the token based on the selected model
 		// currently `tiktoken` doesn't support other then GPT models.
+		// commented the code since tokenLength not in use
 
-		const encoding = encodingForModel("gpt-4o")
-		const tokenLength = encoding.encode(fileContent).length
+		// const encoding = encodingForModel("gpt-4o")
+		// const tokenLength = encoding.encode(fileContent).length
 
 		// TODO: `4096` is arbitrary, we need to figure out the optimal value for this. incase of `getModel` returns `null`
 		const maxToken = llmApi.getModel().info.maxTokens ?? 4096 * 4 // 1 token ~= 4 char
