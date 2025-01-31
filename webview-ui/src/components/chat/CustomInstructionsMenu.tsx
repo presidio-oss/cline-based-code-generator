@@ -122,12 +122,11 @@ const CustomInstructionsMenu = ({ isExpanded, onToggleExpand }: CustomInstructio
 						}}>
 						{(fileInstructions ?? []).filter((i) => i.enabled).length > 0 ||
 						(customInstructions && isCustomInstructionsEnabled)
-							? `${fileInstructions
-									?.filter((i) => i.enabled)
+							? `${(fileInstructions ?? [])
 									.filter((i) => i.enabled)
 									.map((i) => i.name)
 									.join(", ")}${
-									(fileInstructions?.filter((i) => i.enabled).length ?? 0) > 0 &&
+									((fileInstructions ?? []).filter((i) => i.enabled).length ?? 0) > 0 &&
 									customInstructions &&
 									isCustomInstructionsEnabled
 										? ", "
