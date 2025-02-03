@@ -84,6 +84,7 @@ export interface ExtensionState {
 	buildContextOptions?: HaiBuildContextOptions
 	buildIndexProgress?: HaiBuildIndexProgress
 	embeddingConfiguration?: EmbeddingConfiguration
+	vscodeWorkspacePath?: string
 }
 
 export interface ClineMessage {

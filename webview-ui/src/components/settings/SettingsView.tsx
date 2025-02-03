@@ -29,6 +29,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		embeddingConfiguration,
 		fileInstructions,
 		setFileInstructions,
+		vscodeWorkspacePath,
 	} = useExtensionState()
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
@@ -212,7 +213,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						resize="vertical"
 						rows={4}
 						placeholder={'e.g. "Run unit tests at the end", "Use TypeScript with async/await", "Speak in Spanish"'}
-						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
+						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}
+						disabled={!vscodeWorkspacePath}>
 						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
 					</VSCodeTextArea>
 					<p
@@ -231,7 +233,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							alignItems: "center",
 							justifyContent: "center",
 						}}
-						onClick={() => document.getElementById("fileInput")?.click()}>
+						onClick={() => document.getElementById("fileInput")?.click()}
+						disabled={!vscodeWorkspacePath}>
 						<span className="codicon codicon-add" style={{ marginRight: "5px" }}></span>
 						Upload Instruction File
 					</VSCodeButton>
@@ -306,7 +309,11 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					</p>
 				</div>
 
-				<SettingsViewExtra setBuildContextOptions={setBuildContextOptions} buildContextOptions={buildContextOptions} />
+				<SettingsViewExtra
+					setBuildContextOptions={setBuildContextOptions}
+					buildContextOptions={buildContextOptions}
+					vscodeWorkspacePath={vscodeWorkspacePath}
+				/>
 
 				{IS_DEV && (
 					<>

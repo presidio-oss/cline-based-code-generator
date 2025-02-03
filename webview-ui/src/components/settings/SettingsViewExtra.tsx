@@ -54,10 +54,11 @@ const IndexingProgress = memo(({ buildContextOptions }: IndexingProgressProps) =
 
 type SettingsViewExtraProps = {
 	buildContextOptions?: HaiBuildContextOptions
+	vscodeWorkspacePath?: string
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
 }
 
-const SettingsViewExtra = ({ buildContextOptions, setBuildContextOptions }: SettingsViewExtraProps) => {
+const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildContextOptions }: SettingsViewExtraProps) => {
 	return (
 		<>
 			<div style={{ marginBottom: 5 }}>
@@ -68,7 +69,8 @@ const SettingsViewExtra = ({ buildContextOptions, setBuildContextOptions }: Sett
 							...buildContextOptions!,
 							useIndex: e.target?.checked,
 						})
-					}}>
+					}}
+					disabled={!vscodeWorkspacePath}>
 					<span style={{ fontWeight: "500" }}>Use Code Index</span>
 				</VSCodeCheckbox>
 				<IndexingProgress buildContextOptions={buildContextOptions} />
@@ -86,7 +88,7 @@ const SettingsViewExtra = ({ buildContextOptions, setBuildContextOptions }: Sett
 			<div style={{ marginBottom: 5 }}>
 				<VSCodeCheckbox
 					checked={buildContextOptions?.useContext}
-					disabled={!buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
 					onChange={(e: any) => {
 						setBuildContextOptions({
 							...buildContextOptions!,
@@ -110,7 +112,7 @@ const SettingsViewExtra = ({ buildContextOptions, setBuildContextOptions }: Sett
 					value={buildContextOptions?.appContext ?? ""}
 					style={{ width: "100%" }}
 					rows={4}
-					disabled={!buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
 					placeholder={'e.g. "This is an e-commerce application", "This is an CRM application"'}
 					onInput={(e: any) => {
 						setBuildContextOptions({
@@ -135,7 +137,7 @@ const SettingsViewExtra = ({ buildContextOptions, setBuildContextOptions }: Sett
 					value={buildContextOptions?.excludeFolders ?? ""}
 					style={{ width: "100%" }}
 					rows={4}
-					disabled={!buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
 					placeholder={"Comma separated list of folders to exclude from indexing"}
 					onInput={(e: any) => {
 						setBuildContextOptions({
