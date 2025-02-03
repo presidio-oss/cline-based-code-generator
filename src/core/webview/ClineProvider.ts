@@ -1729,6 +1729,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			chatSettings,
 			isLoggedIn: !!authToken,
 			userInfo,
+			vscodeWorkspacePath: this.vsCodeWorkSpaceFolderFsPath,
 		}
 	}
 
