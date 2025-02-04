@@ -14,12 +14,13 @@ import { createHash } from "node:crypto"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { EmbeddingConfiguration } from "../../shared/embeddings"
 import { fileExists } from "../../utils/runtime-downloader"
+import { OllamaEmbeddings } from "@langchain/ollama"
 
 export class VectorizeCodeAgent extends EventEmitter {
 	private srcFolder: string
 	private abortController = new AbortController()
 
-	private embeddings: OpenAIEmbeddings | BedrockEmbeddings
+	private embeddings: OpenAIEmbeddings | BedrockEmbeddings | OllamaEmbeddings
 	private vectorStore: FaissStore
 	private buildContextOptions: HaiBuildContextOptions
 	private contextDir: string
@@ -225,7 +226,7 @@ export class VectorizeCodeAgent extends EventEmitter {
 			const fileName = basename(codeFilePath)
 
 			const textSplitter = new RecursiveCharacterTextSplitter({
-				chunkSize: 8191,
+				chunkSize: this.embeddingConfig.provider !== "ollama" ? 8191 : 512,
 				chunkOverlap: 0,
 			})
 			const texts = await textSplitter.splitText(fileContent)

@@ -1,4 +1,4 @@
-export type EmbeddingProvider = "bedrock" | "openai-native" | "openai"
+export type EmbeddingProvider = "bedrock" | "openai-native" | "openai" | "ollama"
 
 export interface EmbeddingHandlerOptions {
 	modelId?: string
@@ -17,6 +17,8 @@ export interface EmbeddingHandlerOptions {
 	azureOpenAIApiEmbeddingsDeploymentName?: string
 	azureOpenAIApiVersion?: string
 	maxRetries?: number
+	ollamaBaseUrl?: string
+	ollamaModelId?: string
 }
 
 export type EmbeddingConfiguration = EmbeddingHandlerOptions & {
@@ -74,6 +76,7 @@ export const embeddingProviderModels = {
 	bedrock: bedrockEmbeddingModels,
 	"openai-native": openAiNativeEmbeddingModels,
 	openai: {},
+	ollama: {},
 } as const
 
 export const defaultEmbeddingConfigs: Record<EmbeddingProvider, { defaultModel: string }> = {
@@ -84,6 +87,9 @@ export const defaultEmbeddingConfigs: Record<EmbeddingProvider, { defaultModel: 
 		defaultModel: "text-embedding-3-small",
 	},
 	openai: {
+		defaultModel: "",
+	},
+	ollama: {
 		defaultModel: "",
 	},
 }

@@ -33,6 +33,7 @@ export interface ExtensionMessage {
 		| "llmConfigValidation"
 		| "embeddingConfigValidation"
 		| "existingFiles"
+		| "ollamaEmbeddingModels"
 	text?: string
 	bool?: boolean
 	action?:
@@ -49,6 +50,7 @@ export interface ExtensionMessage {
 	state?: ExtensionState
 	images?: string[]
 	ollamaModels?: string[]
+	ollamaEmbeddingModels?: string[]
 	lmStudioModels?: string[]
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	filePaths?: string[]

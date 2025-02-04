@@ -13,7 +13,7 @@ import {
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
-import { useDebounce, useDeepCompareEffect, useEvent } from "react-use"
+import { useDebounce, useDeepCompareEffect, useEvent, useInterval } from "react-use"
 import Info, { InfoStatus } from "../common/Info"
 import { validateEmbeddingConfiguration } from "../../utils/validate"
 
@@ -34,6 +34,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
 	const [validateEmbedding, setValidateEmbedding] = useState<EmbeddingConfiguration | undefined>(undefined)
+	const [ollamaModels, setOllamaModels] = useState<string[]>([])
 
 	useEffect(() => {
 		if (!apiConfiguration || !buildContextOptions?.useSyncWithApi) return
@@ -114,6 +115,32 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 		return normalizeEmbeddingConfiguration(embeddingConfiguration)
 	}, [embeddingConfiguration])
 
+	// Poll ollama models
+	const requestLocalModels = useCallback(() => {
+		if (selectedProvider === "ollama") {
+			vscode.postMessage({
+				type: "requestOllamaEmbeddingModels",
+				text: apiConfiguration?.ollamaBaseUrl,
+			})
+		}
+	}, [selectedProvider, apiConfiguration?.ollamaBaseUrl])
+	useEffect(() => {
+		if (selectedProvider === "ollama") {
+			requestLocalModels()
+		}
+	}, [selectedProvider, requestLocalModels])
+
+	useInterval(requestLocalModels, selectedProvider === "ollama" ? 2000 : null)
+
+	const handleMessage = useCallback((event: MessageEvent) => {
+		const message: ExtensionMessage = event.data
+		if (message.type === "ollamaEmbeddingModels" && message.ollamaEmbeddingModels) {
+			setOllamaModels(message.ollamaEmbeddingModels)
+		}
+	}, [])
+
+	useEvent("message", handleMessage)
+
 	useEffect(() => {
 		setEmbeddingConfiguration({
 			...embeddingConfiguration,
@@ -141,10 +168,11 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 					value={selectedProvider}
 					onChange={handleInputChange("provider")}
 					disabled={isLoading}
-					style={{ minWidth: 130, position: "relative" }}>
+					style={{ minWidth: 130, position: "relative", width: "100%" }}>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
 					<VSCodeOption value="openai-native">OpenAI</VSCodeOption>
 					<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
+					<VSCodeOption value="ollama">Ollama (experimental) </VSCodeOption>
 				</VSCodeDropdown>
 			</div>
 
@@ -294,6 +322,63 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 							onInput={handleInputChange("azureOpenAIApiVersion")}
 							placeholder={`Default: ${azureOpenAIApiVersion}`}></VSCodeTextField>
 					)}
+				</div>
+			)}
+
+			{selectedProvider === "ollama" && (
+				<div>
+					<VSCodeTextField
+						value={embeddingConfiguration?.ollamaBaseUrl || ""}
+						style={{ width: "100%" }}
+						type="url"
+						onInput={handleInputChange("ollamaBaseUrl")}
+						placeholder={"Default: http://localhost:11434"}>
+						<span style={{ fontWeight: 500 }}>Base URL (optional)</span>
+					</VSCodeTextField>
+					<div className="dropdown-container">
+						<label htmlFor="ollama-model-id">
+							<span style={{ fontWeight: 500 }}>Model</span>
+						</label>
+						<VSCodeDropdown
+							id="ollama-model-id"
+							value={embeddingConfiguration?.ollamaModelId || ""}
+							onChange={handleInputChange("ollamaModelId")}
+							style={{ width: "100%" }}>
+							<VSCodeOption value="">Select a model...</VSCodeOption>
+							{ollamaModels.map((modelId) => (
+								<VSCodeOption
+									key={modelId}
+									value={modelId}
+									style={{
+										whiteSpace: "normal",
+										wordWrap: "break-word",
+										maxWidth: "100%",
+									}}>
+									{modelId}
+								</VSCodeOption>
+							))}
+						</VSCodeDropdown>
+					</div>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						Ollama allows you to run models locally on your computer. For instructions on how to get started, see
+						their
+						<VSCodeLink
+							href="https://github.com/ollama/ollama/blob/main/README.md"
+							style={{ display: "inline", fontSize: "inherit" }}>
+							quickstart guide.
+						</VSCodeLink>
+						You can download list of supported embedding models from{" "}
+						<VSCodeLink
+							href="https://ollama.com/search?c=embedding"
+							style={{ display: "inline", fontSize: "inherit" }}>
+							here.
+						</VSCodeLink>
+					</p>
 				</div>
 			)}
 

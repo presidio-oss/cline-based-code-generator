@@ -15,12 +15,13 @@ import { basename, join } from "node:path"
 import { buildApiHandler } from "../../api"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
 import { EmbeddingConfiguration } from "../../shared/embeddings"
+import { OllamaEmbeddings } from "@langchain/ollama"
 
 export class FindFilesToEditAgent {
 	private srcFolder: string
 	private llmApiConfig: ApiConfiguration
 	private embeddingConfig: EmbeddingConfiguration
-	private embeddings: OpenAIEmbeddings | BedrockEmbeddings
+	private embeddings: OpenAIEmbeddings | BedrockEmbeddings | OllamaEmbeddings
 	private vectorStore: FaissStore
 	private task: string
 	private buildContextOptions: HaiBuildContextOptions
