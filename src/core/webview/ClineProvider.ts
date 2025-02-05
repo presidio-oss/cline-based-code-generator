@@ -197,6 +197,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			"embeddingAzureOpenAIApiInstanceName",
 			"embeddingAzureOpenAIApiEmbeddingsDeploymentName",
 			"embeddingAzureOpenAIApiVersion",
+			"embeddingOllamaBaseUrl",
+			"embeddingOllamaModelId",
 		]
 		return customGlobalKeys.includes(key)
 	}
@@ -989,6 +991,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							ollamaModels,
 						})
 						break
+					case "requestOllamaEmbeddingModels":
+						const ollamaEmbeddingModels = await this.getOllamaEmbeddingModels(message.text)
+						this.postMessageToWebview({
+							type: "ollamaEmbeddingModels",
+							ollamaEmbeddingModels,
+						})
+						break
 					case "requestLmStudioModels":
 						const lmStudioModels = await this.getLmStudioModels(message.text)
 						this.postMessageToWebview({
@@ -1125,6 +1134,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								azureOpenAIApiInstanceName,
 								azureOpenAIApiEmbeddingsDeploymentName,
 								azureOpenAIApiVersion,
+								ollamaBaseUrl,
+								ollamaModelId,
 							} = message.embeddingConfiguration
 
 							// Update Global State
@@ -1139,6 +1150,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								"embeddingAzureOpenAIApiEmbeddingsDeploymentName",
 								azureOpenAIApiEmbeddingsDeploymentName,
 							)
+							await this.customUpdateState("embeddingOllamaBaseUrl", ollamaBaseUrl)
+							await this.customUpdateState("embeddingOllamaModelId", ollamaModelId)
 							// Update Secrets
 							await this.customStoreSecret("embeddingAwsAccessKey", awsAccessKey)
 							await this.customStoreSecret("embeddingAwsSecretKey", awsSecretKey)
@@ -1364,6 +1377,41 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	// Ollama
+
+	async getOllamaEmbeddingModels(baseUrl?: string) {
+		try {
+			if (!baseUrl) {
+				baseUrl = "http://localhost:11434"
+			}
+			if (!URL.canParse(baseUrl)) {
+				return []
+			}
+			const response = await axios.get(`${baseUrl}/api/tags`)
+			const modelsArray = response.data?.models?.map((model: any) => model.name) || []
+			const models = [...new Set<string>(modelsArray)]
+			// TODO: Currently OLLAM local API doen't support diffrentiate between embedding and chat models
+			// so we are only considering models that have the following inclusion, as OLLAMA release new
+			// models this list has to be updated, or we have to wait for OLLAMA to support this natively.
+			// And diretctly fetching from the Public remote API is not also avaialble.
+			// https://ollama.com/search?c=embedding
+			const PUBLIC_KNOWN_MODELS = [
+				"nomic-embed-text",
+				"mxbai-embed-large",
+				"snowflake-arctic-embed",
+				"bge-m3",
+				"all-minilm",
+				"bge-large",
+				"snowflake-arctic-embed2",
+				"paraphrase-multilingual",
+				"granite-embedding",
+			]
+			return models.filter((model: string) =>
+				PUBLIC_KNOWN_MODELS.some((known) => model.toLowerCase().includes(known.toLowerCase())),
+			)
+		} catch (error) {
+			return []
+		}
+	}
 
 	async getOllamaModels(baseUrl?: string) {
 		try {
@@ -1841,6 +1889,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			azureOpenAIApiEmbeddingsDeploymentName,
 			azureOpenAIApiVersion,
 			isEmbeddingConfigurationValid,
+			embeddingOllamaBaseUrl,
+			embeddingOllamaModelId,
 		] = await Promise.all([
 			this.customGetState("apiProvider") as Promise<ApiProvider | undefined>,
 			this.customGetState("apiModelId") as Promise<string | undefined>,
@@ -1897,6 +1947,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("embeddingAzureOpenAIApiEmbeddingsDeploymentName") as Promise<string | undefined>,
 			this.customGetState("embeddingAzureOpenAIApiVersion") as Promise<string | undefined>,
 			this.customGetState("isEmbeddingConfigurationValid") as Promise<boolean | undefined>,
+			this.customGetState("embeddingOllamaBaseUrl") as Promise<string | undefined>,
+			this.customGetState("embeddingOllamaModelId") as Promise<string | undefined>,
 		])
 
 		let apiProvider: ApiProvider
@@ -1967,6 +2019,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				azureOpenAIApiEmbeddingsDeploymentName,
 				azureOpenAIApiVersion,
 				isEmbeddingConfigurationValid,
+				ollamaBaseUrl: embeddingOllamaBaseUrl,
+				ollamaModelId: embeddingOllamaModelId,
 			},
 			lastShownAnnouncementId,
 			customInstructions,

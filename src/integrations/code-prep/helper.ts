@@ -7,6 +7,7 @@ import { azureOpenAIApiVersion, EmbeddingConfiguration } from "../../shared/embe
 // @ts-ignore
 import walk from "ignore-walk"
 import ignore from "ignore"
+import { OllamaEmbeddings } from "@langchain/ollama"
 
 /**
  * Recursively retrieves all code files from a given source folder,
@@ -81,6 +82,16 @@ export function getEmbeddings(embeddingConfig: EmbeddingConfiguration) {
 				azureOpenAIBasePath: baseURL + "/openai/deployments",
 				azureOpenAIApiEmbeddingsDeploymentName: embeddingConfig.openAiModelId,
 				azureOpenAIApiVersion: embeddingConfig.azureOpenAIApiVersion || azureOpenAIApiVersion,
+			})
+		}
+
+		case "ollama": {
+			if (!embeddingConfig.ollamaModelId) {
+				throw new Error("Ollama model ID is required")
+			}
+			return new OllamaEmbeddings({
+				model: embeddingConfig.ollamaModelId,
+				baseUrl: embeddingConfig.ollamaBaseUrl || "http://localhost:11434",
 			})
 		}
 

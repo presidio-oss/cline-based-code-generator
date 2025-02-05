@@ -53,6 +53,7 @@ export interface WebviewMessage {
 		| "uploadInstruction"
 		| "deleteInstruction"
 		| "fileInstructions"
+		| "requestOllamaEmbeddingModels"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
