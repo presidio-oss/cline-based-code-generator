@@ -54,6 +54,10 @@ export interface WebviewMessage {
 		| "deleteInstruction"
 		| "fileInstructions"
 		| "requestOllamaEmbeddingModels"
+		| "stopIndex"
+		| "startIndex"
+		| "resetIndex"
+
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse

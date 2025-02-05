@@ -1215,6 +1215,34 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						)
 						break
 					}
+					case "stopIndex":
+						console.log("Stopping index")
+						this.codeIndexAbortController?.abort()
+						break
+					case "startIndex":
+						console.log("Starting index")
+						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
+						this.codeIndexAbortController = new AbortController()
+						this.codeIndexBackground()
+						break
+					case "resetIndex":
+						console.log("Resetting index")
+						const resetIndex = await vscode.window.showWarningMessage(
+							"Are you sure you want to reindex the repository? This will erase all existing indexed data and restart the indexing process from the beginning.",
+							"Yes",
+							"No",
+						)
+						if (resetIndex === "Yes") {
+							const haiFolderPath = path.join(
+								this.vsCodeWorkSpaceFolderFsPath,
+								HaiBuildDefaults.defaultContextDirectory,
+							)
+							await fs.rmdir(haiFolderPath, { recursive: true })
+							this.codeIndexAbortController = new AbortController()
+							this.codeIndexBackground()
+							break
+						}
+						break
 					default:
 						this.customWebViewMessageHandlers(message)
 						break

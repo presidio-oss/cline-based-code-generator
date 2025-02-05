@@ -1,8 +1,9 @@
-import { VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 import { HaiBuildContextOptions } from "../../interfaces/hai-context.interface"
 import { HaiBuildDefaults } from "../../../../src/shared/haiDefaults"
 import { memo } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
+import { vscode } from "../../utils/vscode"
 
 type IndexingProgressProps = {
 	buildContextOptions?: HaiBuildContextOptions
@@ -52,6 +53,50 @@ const IndexingProgress = memo(({ buildContextOptions }: IndexingProgressProps) =
 	)
 })
 
+type IndexControlButtonsProps = {
+	disabled?: boolean
+}
+
+const IndexControlButtons = memo(({ disabled }: IndexControlButtonsProps) => {
+	const { buildIndexProgress, buildContextOptions } = useExtensionState()
+	return (
+		<div style={{ display: "flex", gap: "4px", marginLeft: "auto" }}>
+			<VSCodeButton
+				appearance="icon"
+				title="Start Index"
+				onClick={() => {
+					vscode.postMessage({ type: "startIndex" })
+				}}
+				disabled={
+					disabled ||
+					!buildContextOptions?.useIndex ||
+					buildIndexProgress?.isInProgress ||
+					buildIndexProgress?.progress.toFixed(1) === "100.0"
+				}>
+				<span className="codicon codicon-play"></span>
+			</VSCodeButton>
+			<VSCodeButton
+				appearance="icon"
+				title="Stop Index"
+				onClick={() => {
+					vscode.postMessage({ type: "stopIndex" })
+				}}
+				disabled={disabled || !buildContextOptions?.useIndex || !buildIndexProgress?.isInProgress}>
+				<span className="codicon codicon-stop"></span>
+			</VSCodeButton>
+			<VSCodeButton
+				appearance="icon"
+				title="Reset Index"
+				onClick={() => {
+					vscode.postMessage({ type: "resetIndex" })
+				}}
+				disabled={disabled || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}>
+				<span className="codicon codicon-debug-restart"></span>
+			</VSCodeButton>
+		</div>
+	)
+})
+
 type SettingsViewExtraProps = {
 	buildContextOptions?: HaiBuildContextOptions
 	vscodeWorkspacePath?: string
@@ -62,17 +107,20 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 	return (
 		<>
 			<div style={{ marginBottom: 5 }}>
-				<VSCodeCheckbox
-					checked={buildContextOptions?.useIndex}
-					onChange={(e: any) => {
-						setBuildContextOptions({
-							...buildContextOptions!,
-							useIndex: e.target?.checked,
-						})
-					}}
-					disabled={!vscodeWorkspacePath}>
-					<span style={{ fontWeight: "500" }}>Use Code Index</span>
-				</VSCodeCheckbox>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+					<VSCodeCheckbox
+						checked={buildContextOptions?.useIndex}
+						onChange={(e: any) => {
+							setBuildContextOptions({
+								...buildContextOptions!,
+								useIndex: e.target?.checked,
+							})
+						}}
+						disabled={!vscodeWorkspacePath}>
+						<span style={{ fontWeight: "500" }}>Use Code Index</span>
+					</VSCodeCheckbox>
+					<IndexControlButtons disabled={!vscodeWorkspacePath} />
+				</div>
 				<IndexingProgress buildContextOptions={buildContextOptions} />
 				<p
 					style={{
