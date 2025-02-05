@@ -66,7 +66,7 @@ export async function downloadFile(
 }
 
 export async function unzip(zipFile: string, destinationDir: string): Promise<void> {
-	extract({
+	await extract({
 		file: zipFile,
 		cwd: destinationDir,
 	})
