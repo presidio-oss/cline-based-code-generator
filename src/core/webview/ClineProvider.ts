@@ -278,6 +278,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							"No",
 						)
 						if (userConfirmation === "No" || userConfirmation === undefined) {
+							const buildContextOptionsState = (await this.customGetState("buildContextOptions")) as Promise<
+								HaiBuildContextOptions | undefined
+							>
+							await this.customUpdateState("buildContextOptions", {
+								...buildContextOptionsState,
+								useIndex: false,
+							})
+							await this.postStateToWebview()
 							return
 						}
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
