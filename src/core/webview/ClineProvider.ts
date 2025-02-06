@@ -460,6 +460,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
+	async resetIndex() {
+		await this.customUpdateState("buildIndexProgress", {
+			progress: 0,
+			type: "codeIndex",
+			isInProgress: false,
+		})
+		await this.postStateToWebview()
+	}
 	/*
 	VSCode extensions use the disposable pattern to clean up resources when the sidebar/editor tab is closed by the user or system. This applies to event listening, commands, interacting with the UI, etc.
 	- https://vscode-docs.readthedocs.io/en/stable/extensions/patterns-and-principles/
@@ -1247,6 +1255,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							)
 							await fs.rmdir(haiFolderPath, { recursive: true })
 							this.codeIndexAbortController = new AbortController()
+							await this.resetIndex()
 							this.codeIndexBackground()
 							break
 						}

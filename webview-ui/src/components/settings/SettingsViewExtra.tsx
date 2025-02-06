@@ -90,7 +90,13 @@ const IndexControlButtons = memo(({ disabled }: IndexControlButtonsProps) => {
 				onClick={() => {
 					vscode.postMessage({ type: "resetIndex" })
 				}}
-				disabled={disabled || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}>
+				disabled={
+					disabled ||
+					!buildContextOptions?.useIndex ||
+					buildIndexProgress?.isInProgress ||
+					buildIndexProgress?.progress.toFixed(1) === "0.0" ||
+					buildIndexProgress?.progress === undefined
+				}>
 				<span className="codicon codicon-debug-restart"></span>
 			</VSCodeButton>
 		</div>
