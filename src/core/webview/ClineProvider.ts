@@ -278,14 +278,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							"No",
 						)
 						if (userConfirmation === "No" || userConfirmation === undefined) {
-							const buildContextOptionsState = (await this.customGetState("buildContextOptions")) as Promise<
-								HaiBuildContextOptions | undefined
-							>
-							await this.customUpdateState("buildContextOptions", {
-								...buildContextOptionsState,
-								useIndex: false,
+							buildContextOptions.useIndex = false
+							this.customWebViewMessageHandlers({
+								type: "buildContextOptions",
+								buildContextOptions: buildContextOptions,
 							})
-							await this.postStateToWebview()
 							return
 						}
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
@@ -1244,7 +1241,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "resetIndex":
 						console.log("Resetting index")
 						const resetIndex = await vscode.window.showWarningMessage(
-							"Are you sure you want to reindex the repository? This will erase all existing indexed data and restart the indexing process from the beginning.",
+							"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning.",
 							"Yes",
 							"No",
 						)
@@ -1253,7 +1250,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								this.vsCodeWorkSpaceFolderFsPath,
 								HaiBuildDefaults.defaultContextDirectory,
 							)
-							await fs.rmdir(haiFolderPath, { recursive: true })
+							if (await fileExistsAtPath(haiFolderPath)) {
+								await fs.rmdir(haiFolderPath, { recursive: true })
+							}
 							this.codeIndexAbortController = new AbortController()
 							await this.resetIndex()
 							this.codeIndexBackground()
@@ -1320,6 +1319,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				this.chooseHaiProject()
 				break
 			case "buildContextOptions":
+				console.log("buildContextOptions", message.buildContextOptions)
 				await this.customUpdateState("buildContextOptions", message.buildContextOptions ?? undefined)
 				if (this.cline) {
 					this.cline.buildContextOptions = message.buildContextOptions

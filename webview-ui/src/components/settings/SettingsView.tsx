@@ -313,6 +313,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					setBuildContextOptions={setBuildContextOptions}
 					buildContextOptions={buildContextOptions}
 					vscodeWorkspacePath={vscodeWorkspacePath}
+					buildIndexProgress={buildIndexProgress}
 				/>
 
 				{IS_DEV && (

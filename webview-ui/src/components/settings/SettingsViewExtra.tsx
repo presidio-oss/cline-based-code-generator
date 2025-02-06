@@ -4,6 +4,7 @@ import { HaiBuildDefaults } from "../../../../src/shared/haiDefaults"
 import { memo } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
+import { HaiBuildIndexProgress } from "../../../../src/shared/customApi"
 
 type IndexingProgressProps = {
 	buildContextOptions?: HaiBuildContextOptions
@@ -55,10 +56,11 @@ const IndexingProgress = memo(({ buildContextOptions }: IndexingProgressProps) =
 
 type IndexControlButtonsProps = {
 	disabled?: boolean
+	buildIndexProgress?: HaiBuildIndexProgress
+	buildContextOptions?: HaiBuildContextOptions
 }
 
-const IndexControlButtons = memo(({ disabled }: IndexControlButtonsProps) => {
-	const { buildIndexProgress, buildContextOptions } = useExtensionState()
+const IndexControlButtons = memo(({ disabled, buildIndexProgress, buildContextOptions }: IndexControlButtonsProps) => {
 	return (
 		<div style={{ display: "flex", gap: "4px", marginLeft: "auto" }}>
 			<VSCodeButton
@@ -107,9 +109,15 @@ type SettingsViewExtraProps = {
 	buildContextOptions?: HaiBuildContextOptions
 	vscodeWorkspacePath?: string
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
+	buildIndexProgress?: HaiBuildIndexProgress
 }
 
-const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildContextOptions }: SettingsViewExtraProps) => {
+const SettingsViewExtra = ({
+	buildContextOptions,
+	vscodeWorkspacePath,
+	setBuildContextOptions,
+	buildIndexProgress,
+}: SettingsViewExtraProps) => {
 	return (
 		<>
 			<div style={{ marginBottom: 5 }}>
@@ -122,10 +130,14 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 								useIndex: e.target?.checked,
 							})
 						}}
-						disabled={!vscodeWorkspacePath}>
+						disabled={!vscodeWorkspacePath || buildIndexProgress?.isInProgress}>
 						<span style={{ fontWeight: "500" }}>Use Code Index</span>
 					</VSCodeCheckbox>
-					<IndexControlButtons disabled={!vscodeWorkspacePath} />
+					<IndexControlButtons
+						disabled={!vscodeWorkspacePath}
+						buildIndexProgress={buildIndexProgress}
+						buildContextOptions={buildContextOptions}
+					/>
 				</div>
 				<IndexingProgress buildContextOptions={buildContextOptions} />
 				<p
@@ -142,7 +154,7 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 			<div style={{ marginBottom: 5 }}>
 				<VSCodeCheckbox
 					checked={buildContextOptions?.useContext}
-					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
 					onChange={(e: any) => {
 						setBuildContextOptions({
 							...buildContextOptions!,
@@ -166,7 +178,7 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 					value={buildContextOptions?.appContext ?? ""}
 					style={{ width: "100%" }}
 					rows={4}
-					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
 					placeholder={'e.g. "This is an e-commerce application", "This is an CRM application"'}
 					onInput={(e: any) => {
 						setBuildContextOptions({
@@ -191,7 +203,7 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 					value={buildContextOptions?.excludeFolders ?? ""}
 					style={{ width: "100%" }}
 					rows={4}
-					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
 					placeholder={"Comma separated list of folders to exclude from indexing"}
 					onInput={(e: any) => {
 						setBuildContextOptions({
