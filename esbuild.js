@@ -60,11 +60,11 @@ const copyWasmFiles = {
 			})
 
 			// tiktoken
-			const tiktokeSourceDir = path.join(__dirname, "node_modules", "tiktoken")
-			const tikoenTargetDir = path.join(__dirname, "dist")
+			// const tiktokeSourceDir = path.join(__dirname, "node_modules", "tiktoken")
+			// const tikoenTargetDir = path.join(__dirname, "dist")
 
 			// Copy tree-sitter.wasm
-			fs.copyFileSync(path.join(tiktokeSourceDir, "tiktoken_bg.wasm"), path.join(tikoenTargetDir, "tiktoken_bg.wasm"))
+			// fs.copyFileSync(path.join(tiktokeSourceDir, "tiktoken_bg.wasm"), path.join(tikoenTargetDir, "tiktoken_bg.wasm"))
 		})
 	},
 }
