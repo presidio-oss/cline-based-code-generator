@@ -17,6 +17,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	showWelcome: boolean
 	theme: any
 	openRouterModels: Record<string, ModelInfo>
+	openAiModels: string[]
 	mcpServers: McpServer[]
 	filePaths: string[]
 	haiConfig: { [key in string]: any }
@@ -54,6 +55,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
 	const [haiConfig, setHaiConfig] = useState({})
+
+	const [openAiModels, setOpenAiModels] = useState<string[]>([])
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 
 	const handleMessage = useCallback((event: MessageEvent) => {
@@ -127,6 +130,11 @@ export const ExtensionStateContextProvider: React.FC<{
 				setHaiConfig(message.haiConfig || {})
 				break
 			}
+			case "openAiModels": {
+				const updatedModels = message.openAiModels ?? []
+				setOpenAiModels(updatedModels)
+				break
+			}
 			case "mcpServers": {
 				setMcpServers(message.mcpServers ?? [])
 				break
@@ -146,6 +154,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		showWelcome,
 		theme,
 		openRouterModels,
+		openAiModels,
 		mcpServers,
 		filePaths,
 		haiConfig,

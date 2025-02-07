@@ -27,6 +27,7 @@ export interface WebviewMessage {
 		| "openMention"
 		| "cancelTask"
 		| "refreshOpenRouterModels"
+		| "refreshOpenAiModels"
 		| "openMcpSettings"
 		| "restartMcpServer"
 		| "autoApprovalSettings"
@@ -54,6 +55,8 @@ export interface WebviewMessage {
 		| "deleteInstruction"
 		| "fileInstructions"
 		| "requestOllamaEmbeddingModels"
+		| "subscribeEmail"
+	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse

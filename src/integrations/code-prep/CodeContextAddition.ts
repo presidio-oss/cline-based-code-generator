@@ -2,7 +2,6 @@ import { appendFileSync, createWriteStream, existsSync, readFileSync, writeFileS
 import { basename, dirname, extname, join } from "node:path"
 import EventEmitter from "node:events"
 import { isBinaryFileSync } from "isbinaryfile"
-import { encoding_for_model as encodingForModel } from "tiktoken"
 import { ApiConfiguration } from "../../shared/api"
 import { HaiBuildContextOptions } from "../../shared/customApi"
 import { ApiStreamChunk } from "../../api/transform/stream"

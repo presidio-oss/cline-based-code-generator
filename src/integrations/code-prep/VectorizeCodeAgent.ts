@@ -4,7 +4,7 @@ import { OpenAIEmbeddings } from "@langchain/openai"
 import { BedrockEmbeddings } from "@langchain/aws"
 import { isBinaryFileSync } from "isbinaryfile"
 import type { Document } from "@langchain/core/documents"
-import { ensureGitignorePattern, getCodeFiles, getEmbeddings } from "./helper"
+import { ensureGitignorePattern, getCodeFiles } from "./helper"
 import { existsSync, readFileSync } from "node:fs"
 import { basename, join } from "node:path"
 import { ApiConfiguration } from "../../shared/api"
@@ -15,6 +15,7 @@ import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { EmbeddingConfiguration } from "../../shared/embeddings"
 import { fileExists } from "../../utils/runtime-downloader"
 import { OllamaEmbeddings } from "@langchain/ollama"
+import { buildEmbeddingHandler } from "../../embedding"
 
 export class VectorizeCodeAgent extends EventEmitter {
 	private srcFolder: string
@@ -45,8 +46,11 @@ export class VectorizeCodeAgent extends EventEmitter {
 	) {
 		super()
 		this.srcFolder = srcFolder
+
 		this.embeddingConfig = embeddingConfig
-		this.embeddings = getEmbeddings(embeddingConfig)
+		const embeddingHandler = buildEmbeddingHandler(this.embeddingConfig)
+		this.embeddings = embeddingHandler.getClient()
+
 		this.vectorStore = new FaissStore(this.embeddings, {})
 		this.buildContextOptions = buildContextOptions
 		this.contextDir = contextDir
