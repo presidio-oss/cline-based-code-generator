@@ -1,8 +1,6 @@
 import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import { memo } from "react"
-// import VSCodeButtonLink from "./VSCodeButtonLink"
-// import { getOpenRouterAuthUrl } from "./ApiOptions"
-// import { vscode } from "../utils/vscode"
+import { getAsVar, VSC_DESCRIPTION_FOREGROUND, VSC_INACTIVE_SELECTION_BACKGROUND } from "../../utils/vscStyles"
 
 interface AnnouncementProps {
 	version: string
@@ -16,7 +14,7 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 	return (
 		<div
 			style={{
-				backgroundColor: "var(--vscode-editor-inactiveSelectionBackground)",
+				backgroundColor: getAsVar(VSC_INACTIVE_SELECTION_BACKGROUND),
 				borderRadius: "3px",
 				padding: "12px 16px",
 				margin: "5px 15px 5px 15px",
@@ -31,7 +29,7 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 			</h3>
 			<ul style={{ margin: "0 0 8px", paddingLeft: "12px" }}>
 				<li>
-					<b>Plan/Act mode toggle:</b> Plan mode turns HAI into an architect that gathers information, asks clarifying
+					<b>Plan/Act mode toggle:</b> Plan mode turns Cline into an architect that gathers information, asks clarifying
 					questions, and designs a solution. Switch back to Act mode to let him execute the plan!{" "}
 					<VSCodeLink href="https://x.com/sdrzn/status/1881761978986934582" style={{ display: "inline" }}>
 						See a demo here.
@@ -86,7 +84,7 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 							Switch to OpenRouter
 						</VSCodeButton>
 					)}
-				</li> 
+				</li>
 				<li>
 					<b>Edit Cline's changes before accepting!</b> When he creates or edits a file, you can modify his
 					changes directly in the right side of the diff view (+ hover over the 'Revert Block' arrow button in
@@ -104,7 +102,7 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 			<div
 				style={{
 					height: "1px",
-					background: "var(--vscode-foreground)",
+					background: getAsVar(VSC_DESCRIPTION_FOREGROUND),
 					opacity: 0.1,
 					margin: "8px 0",
 				}}

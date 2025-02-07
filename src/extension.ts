@@ -3,6 +3,7 @@
 import delay from "delay"
 import * as vscode from "vscode"
 import { ClineProvider } from "./core/webview/ClineProvider"
+import { Logger } from "./services/logging/Logger"
 import { createHaiAPI } from "./exports"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
@@ -27,7 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let haiTaskList: string
 
-	outputChannel.appendLine("HAI extension activated")
+	Logger.initialize(outputChannel)
+	Logger.log("HAI extension activated")
 
 	const sidebarProvider = new ClineProvider(context, outputChannel)
 
@@ -39,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.plusButtonClicked", async () => {
-			outputChannel.appendLine("Plus button Clicked")
+			Logger.log("Plus button Clicked")
 			await sidebarProvider.clearTask()
 			await sidebarProvider.postStateToWebview()
 			await sidebarProvider.postMessageToWebview({
@@ -59,7 +61,7 @@ export function activate(context: vscode.ExtensionContext) {
 	)
 
 	const openClineInNewTab = async () => {
-		outputChannel.appendLine("Opening HAI in new tab")
+		Logger.log("Opening HAI in new tab")
 		// (this example uses webviewProvider activation event which is necessary to deserialize cached webview, but since we use retainContextWhenHidden, we don't need to use that event)
 		// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 		const tabProvider = new ClineProvider(context, outputChannel, false)
@@ -204,5 +206,5 @@ export function activate(context: vscode.ExtensionContext) {
 
 // This method is called when your extension is deactivated
 export function deactivate() {
-	outputChannel.appendLine("HAI extension deactivated")
+	Logger.log("HAI extension deactivated")
 }
