@@ -44,6 +44,7 @@ import { buildEmbeddingHandler } from "../../embedding"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { BrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
 import { ChatSettings, DEFAULT_CHAT_SETTINGS } from "../../shared/ChatSettings"
+import { Logger } from "../../services/logging/Logger"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -278,11 +279,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						| undefined
 					if (!userConfirmationState) {
 						const userConfirmation = await vscode.window.showWarningMessage(
-							"hAI works best with code index. Do you want to allow to index on this workspace?",
+							"hAI performs best with a code index. Would you like to start indexing this workspace?",
 							"Yes",
 							"No",
 						)
-						if (userConfirmation === "No" || userConfirmation === undefined) {
+						if (userConfirmation === undefined) {
+							return
+						}
+						if (userConfirmation === "No") {
 							buildContextOptions.useIndex = false
 							this.customWebViewMessageHandlers({
 								type: "buildContextOptions",
@@ -1327,17 +1331,17 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					}
 					case "stopIndex":
-						console.log("Stopping index")
+						Logger.log("Stopping Code index")
 						this.codeIndexAbortController?.abort()
 						break
 					case "startIndex":
-						console.log("Starting index")
+						Logger.log("Starting Code index")
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
 						this.codeIndexAbortController = new AbortController()
 						this.codeIndexBackground()
 						break
 					case "resetIndex":
-						console.log("Resetting index")
+						Logger.log("Re-indexing workspace")
 						const resetIndex = await vscode.window.showWarningMessage(
 							"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning.",
 							"Yes",
@@ -1417,7 +1421,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				this.chooseHaiProject()
 				break
 			case "buildContextOptions":
-				console.log("buildContextOptions", message.buildContextOptions)
 				await this.customUpdateState("buildContextOptions", message.buildContextOptions ?? undefined)
 				if (this.cline) {
 					this.cline.buildContextOptions = message.buildContextOptions
