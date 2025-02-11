@@ -148,6 +148,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private isSideBar: boolean
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
 	private authManager: FirebaseAuthManager
+	private isCodeIndexInProgress: boolean = false
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -229,9 +230,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async codeIndexBackground(filePaths?: string[], reIndex: boolean = false) {
-		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted) {
+		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted || this.isCodeIndexInProgress) {
 			return
 		}
+
 		await ensureFaissPlatformDeps()
 		const state = (await this.customGetState("buildIndexProgress")) as HaiBuildIndexProgress | undefined
 		const updateProgressState = async (data: Partial<HaiBuildIndexProgress>) => {
@@ -296,6 +298,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
 					}
+
+					// Setting a flag to prevent multiple code index background tasks.
+					this.isCodeIndexInProgress = true
+
 					await vscode.window.withProgress(
 						{
 							cancellable: false,
@@ -322,6 +328,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 										type: "codeContext",
 										isInProgress: false,
 									})
+									this.isCodeIndexInProgress = false
 								})
 								codeContextAgent.on("progress", async (progress: ICodeIndexProgress) => {
 									this.outputChannel.appendLine(`codeContextAgentProgress ${progress.type} ${progress.value}%`)
@@ -371,6 +378,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									vscode.window.showErrorMessage(`Code context failed: ${error.message}`)
 
 									this.codeIndexAbortController.abort()
+									this.isCodeIndexInProgress = false
 								})
 								await codeContextAgent.start(filePaths, reIndex)
 								if (!this.codeIndexAbortController.signal.aborted) {
@@ -399,6 +407,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									type: "codeIndex",
 									isInProgress: false,
 								})
+								this.isCodeIndexInProgress = false
 							})
 							vectorizeCodeAgent.on("progress", async (progress: ICodeIndexProgress) => {
 								this.outputChannel.appendLine(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
@@ -446,6 +455,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								console.error("Error during indexing:", error.message, error.error)
 								vscode.window.showErrorMessage(`Indexing failed: ${error.message}`)
 								this.codeIndexAbortController.abort()
+								this.isCodeIndexInProgress = false
 							})
 							await vectorizeCodeAgent.start(filePaths)
 							if (!this.codeIndexAbortController.signal.aborted) {
@@ -456,12 +466,16 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									isInProgress: false,
 								})
 							}
+
+							// Resetting the flag after the entire process is complete.
+							this.isCodeIndexInProgress = false
 						},
 					)
 				}
 			} catch (error) {
 				console.error("codeIndexBackground", "Error listing files in workspace:", error)
 				vscode.window.showErrorMessage(CodeContextErrorMessage)
+				this.isCodeIndexInProgress = false
 			}
 		}
 	}
@@ -2359,6 +2373,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		vscode.window.showInformationMessage("Resetting state...")
 		if (!this.codeIndexAbortController.signal.aborted) {
 			this.codeIndexAbortController.abort()
+			this.isCodeIndexInProgress = false
 		}
 		for (const key of this.context.workspaceState.keys()) {
 			await this.context.workspaceState.update(key, undefined)
