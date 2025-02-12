@@ -66,6 +66,7 @@ import { getNextTruncationRange, getTruncatedMessages } from "./sliding-window"
 import { SYSTEM_PROMPT } from "./prompts/system"
 import { addUserInstructions } from "./prompts/system"
 import { OpenAiHandler } from "../api/providers/openai"
+import { isCommandIncludedInSecretScanning, isSecretFile } from "../integrations/secret-scanning"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
@@ -1839,9 +1840,19 @@ export class Cline {
 					}
 					case "read_file": {
 						const relPath: string | undefined = block.params.path
+						const readablePath = getReadablePath(cwd, removeClosingTag("path", relPath))
 						const sharedMessageProps: ClineSayTool = {
 							tool: "readFile",
-							path: getReadablePath(cwd, removeClosingTag("path", relPath)),
+							path: readablePath,
+						}
+						if (
+							isSecretFile(readablePath, this.buildContextOptions?.secretFilesPatternToIgnore) &&
+							this.buildContextOptions?.useSecretScanning
+						) {
+							pushToolResult(
+								"You are not allowed to read this file, because it contains some sensitive information, such as API keys, passwords, or other confidential data that shouldn't be shared. Please refrain from reading this file.",
+							)
+							break
 						}
 						try {
 							if (block.partial) {
@@ -1929,7 +1940,12 @@ export class Cline {
 								this.consecutiveMistakeCount = 0
 								const absolutePath = path.resolve(cwd, relDirPath)
 								const [files, didHitLimit] = await listFiles(absolutePath, recursive, 200)
-								const result = formatResponse.formatFilesList(absolutePath, files, didHitLimit)
+								const scannedCleanFiles = files.filter((file) => !isSecretFile(file))
+								const result = formatResponse.formatFilesList(
+									absolutePath,
+									this.buildContextOptions?.useSecretScanning ? scannedCleanFiles : files,
+									didHitLimit,
+								)
 								const completeMessage = JSON.stringify({
 									...sharedMessageProps,
 									content: result,
@@ -2261,6 +2277,19 @@ export class Cline {
 						const command: string | undefined = block.params.command
 						const requiresApprovalRaw: string | undefined = block.params.requires_approval
 						const requiresApproval = requiresApprovalRaw?.toLowerCase() === "true"
+						if (
+							isCommandIncludedInSecretScanning(command, this.buildContextOptions?.secretFilesPatternToIgnore) &&
+							this.buildContextOptions?.useSecretScanning
+						) {
+							pushToolResult(
+								formatResponse.toolResult(
+									`The command you entered include accessing secret file. You can't execute it. because it contains some sensitive information, such as API keys, passwords, or other confidential data that shouldn't be shared. Please refrain from reading this file.`,
+									[],
+								),
+							)
+							await this.saveCheckpoint()
+							break
+						}
 
 						try {
 							if (block.partial) {

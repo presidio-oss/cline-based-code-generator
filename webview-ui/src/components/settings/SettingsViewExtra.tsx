@@ -163,6 +163,59 @@ const SettingsViewExtra = ({ buildContextOptions, vscodeWorkspacePath, setBuildC
 					</span>
 				</p>
 			</div>
+
+			<div style={{ marginBottom: 5 }}>
+				<VSCodeCheckbox
+					checked={buildContextOptions?.useSecretScanning ?? false}
+					disabled={!vscodeWorkspacePath}
+					onChange={(e: any) => {
+						setBuildContextOptions({
+							...buildContextOptions!,
+							useSecretScanning: e.target?.checked,
+						})
+					}}>
+					<span style={{ fontWeight: "500" }}>Secret Scanning</span>
+				</VSCodeCheckbox>
+				<p
+					style={{
+						fontSize: "12px",
+						marginTop: "5px",
+						color: "var(--vscode-descriptionForeground)",
+					}}>
+					When enabled, HAI will try not to read secrets from your code. That matches below given patterns.
+				</p>
+			</div>
+
+			<div style={{ marginBottom: 5 }}>
+				<VSCodeTextArea
+					value={
+						buildContextOptions?.secretFilesPatternToIgnore
+							? buildContextOptions?.secretFilesPatternToIgnore.join("\n")
+							: HaiBuildDefaults.defaultSecretFilesPatternToIgnore.join("\n")
+					}
+					style={{ width: "100%" }}
+					rows={4}
+					disabled={!vscodeWorkspacePath || !buildContextOptions?.useSecretScanning}
+					placeholder={'e.g. ".env", ".env.local", ".env.development", ".env.production"'}
+					onInput={(e: any) => {
+						if (e.target?.value) {
+							setBuildContextOptions({
+								...buildContextOptions!,
+								secretFilesPatternToIgnore: e.target?.value.split("\n"),
+							})
+						}
+					}}>
+					<span style={{ fontWeight: "500" }}>Secret Files Patterns to Ignore</span>
+				</VSCodeTextArea>
+				<p
+					style={{
+						fontSize: "12px",
+						marginTop: "5px",
+						color: "var(--vscode-descriptionForeground)",
+					}}>
+					List of files to ignore when scanning for secrets. Separate each pattern with a new line.
+				</p>
+			</div>
 		</>
 	)
 }
