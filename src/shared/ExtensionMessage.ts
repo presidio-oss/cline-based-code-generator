@@ -23,6 +23,7 @@ export interface ExtensionMessage {
 		| "invoke"
 		| "partialMessage"
 		| "openRouterModels"
+		| "openAiModels"
 		| "mcpServers"
 		| "relinquishControl"
 		| "vsCodeLmModels"
@@ -34,6 +35,7 @@ export interface ExtensionMessage {
 		| "embeddingConfigValidation"
 		| "existingFiles"
 		| "ollamaEmbeddingModels"
+		| "emailSubscribed"
 	text?: string
 	bool?: boolean
 	action?:
@@ -56,6 +58,7 @@ export interface ExtensionMessage {
 	filePaths?: string[]
 	partialMessage?: ClineMessage
 	openRouterModels?: Record<string, ModelInfo>
+	openAiModels?: string[]
 	mcpServers?: McpServer[]
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
@@ -95,6 +98,7 @@ export interface ClineMessage {
 	ask?: ClineAsk
 	say?: ClineSay
 	text?: string
+	reasoning?: string
 	images?: string[]
 	partial?: boolean
 	lastCheckpointHash?: string
@@ -123,6 +127,7 @@ export type ClineSay =
 	| "api_req_started"
 	| "api_req_finished"
 	| "text"
+	| "reasoning"
 	| "completion_result"
 	| "user_feedback"
 	| "user_feedback_diff"

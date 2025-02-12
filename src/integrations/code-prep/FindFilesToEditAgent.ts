@@ -4,7 +4,6 @@ import { HaiBuildContextOptions } from "../../shared/customApi"
 import {
 	findFilesInDirectory,
 	getApiStreamResponse,
-	getEmbeddings,
 	getFolderStructure,
 	getFolderStructureString,
 	readAndProcessGitignore,
@@ -16,6 +15,7 @@ import { buildApiHandler } from "../../api"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
 import { EmbeddingConfiguration } from "../../shared/embeddings"
 import { OllamaEmbeddings } from "@langchain/ollama"
+import { buildEmbeddingHandler } from "../../embedding"
 
 export class FindFilesToEditAgent {
 	private srcFolder: string
@@ -41,8 +41,11 @@ export class FindFilesToEditAgent {
 	) {
 		this.srcFolder = srcFolder
 		this.llmApiConfig = llmApiConfig
+
 		this.embeddingConfig = embeddingConfig
-		this.embeddings = getEmbeddings(this.embeddingConfig)
+		const embeddingHandler = buildEmbeddingHandler(this.embeddingConfig)
+		this.embeddings = embeddingHandler.getClient()
+
 		this.vectorStore = new FaissStore(this.embeddings, {})
 		this.task = task
 		this.buildContextOptions = buildContextOptions

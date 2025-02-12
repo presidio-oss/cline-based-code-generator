@@ -1,6 +1,6 @@
 # Changelog
 
-## [3.0.2] - 2025-01-30
+## [3.0.2]
 
 ### Added
 
@@ -19,7 +19,7 @@
 - Fixed embedding configuration incorrectly validating when an LLM model name is provided
 - Fixed errors encountered during code context processing and indexing operations
 
-## [3.0.1] - 2024-12-20
+## [3.0.1]
 
 ### Added
 

@@ -44,6 +44,7 @@ import { buildEmbeddingHandler } from "../../embedding"
 import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
 import { BrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
 import { ChatSettings, DEFAULT_CHAT_SETTINGS } from "../../shared/ChatSettings"
+import { Logger } from "../../services/logging/Logger"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -104,6 +105,11 @@ type GlobalStateKey =
 	| "chatSettings"
 	| "vsCodeLmModelSelector"
 	| "userInfo"
+	| "previousModeApiProvider"
+	| "previousModeModelId"
+	| "previousModeModelInfo"
+	| "liteLlmBaseUrl"
+	| "liteLlmModelId"
 
 export const GlobalFileNames = {
 	apiConversationHistory: "api_conversation_history.json",
@@ -142,6 +148,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private isSideBar: boolean
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
 	private authManager: FirebaseAuthManager
+	private isCodeIndexInProgress: boolean = false
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -223,9 +230,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async codeIndexBackground(filePaths?: string[], reIndex: boolean = false) {
-		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted) {
+		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted || this.isCodeIndexInProgress) {
 			return
 		}
+
 		await ensureFaissPlatformDeps()
 		const state = (await this.customGetState("buildIndexProgress")) as HaiBuildIndexProgress | undefined
 		const updateProgressState = async (data: Partial<HaiBuildIndexProgress>) => {
@@ -273,15 +281,27 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						| undefined
 					if (!userConfirmationState) {
 						const userConfirmation = await vscode.window.showWarningMessage(
-							"hAI works best with code index. Do you want to allow to index on this workspace?",
+							"hAI performs best with a code index. Would you like to start indexing this workspace?",
 							"Yes",
 							"No",
 						)
-						if (userConfirmation === "No" || userConfirmation === undefined) {
+						if (userConfirmation === undefined) {
+							return
+						}
+						if (userConfirmation === "No") {
+							buildContextOptions.useIndex = false
+							this.customWebViewMessageHandlers({
+								type: "buildContextOptions",
+								buildContextOptions: buildContextOptions,
+							})
 							return
 						}
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
 					}
+
+					// Setting a flag to prevent multiple code index background tasks.
+					this.isCodeIndexInProgress = true
+
 					await vscode.window.withProgress(
 						{
 							cancellable: false,
@@ -308,6 +328,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 										type: "codeContext",
 										isInProgress: false,
 									})
+									this.isCodeIndexInProgress = false
 								})
 								codeContextAgent.on("progress", async (progress: ICodeIndexProgress) => {
 									this.outputChannel.appendLine(`codeContextAgentProgress ${progress.type} ${progress.value}%`)
@@ -357,6 +378,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									vscode.window.showErrorMessage(`Code context failed: ${error.message}`)
 
 									this.codeIndexAbortController.abort()
+									this.isCodeIndexInProgress = false
 								})
 								await codeContextAgent.start(filePaths, reIndex)
 								if (!this.codeIndexAbortController.signal.aborted) {
@@ -385,6 +407,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									type: "codeIndex",
 									isInProgress: false,
 								})
+								this.isCodeIndexInProgress = false
 							})
 							vectorizeCodeAgent.on("progress", async (progress: ICodeIndexProgress) => {
 								this.outputChannel.appendLine(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
@@ -432,6 +455,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								console.error("Error during indexing:", error.message, error.error)
 								vscode.window.showErrorMessage(`Indexing failed: ${error.message}`)
 								this.codeIndexAbortController.abort()
+								this.isCodeIndexInProgress = false
 							})
 							await vectorizeCodeAgent.start(filePaths)
 							if (!this.codeIndexAbortController.signal.aborted) {
@@ -442,16 +466,28 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									isInProgress: false,
 								})
 							}
+
+							// Resetting the flag after the entire process is complete.
+							this.isCodeIndexInProgress = false
 						},
 					)
 				}
 			} catch (error) {
 				console.error("codeIndexBackground", "Error listing files in workspace:", error)
 				vscode.window.showErrorMessage(CodeContextErrorMessage)
+				this.isCodeIndexInProgress = false
 			}
 		}
 	}
 
+	async resetIndex() {
+		await this.customUpdateState("buildIndexProgress", {
+			progress: 0,
+			type: "codeIndex",
+			isInProgress: false,
+		})
+		await this.postStateToWebview()
+	}
 	/*
 	VSCode extensions use the disposable pattern to clean up resources when the sidebar/editor tab is closed by the user or system. This applies to event listening, commands, interacting with the UI, etc.
 	- https://vscode-docs.readthedocs.io/en/stable/extensions/patterns-and-principles/
@@ -817,6 +853,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 								openRouterModelId,
 								openRouterModelInfo,
 								vsCodeLmModelSelector,
+								liteLlmBaseUrl,
+								liteLlmModelId,
 							} = message.apiConfiguration
 							await this.customUpdateState("apiProvider", apiProvider)
 							await this.customUpdateState("apiModelId", apiModelId)
@@ -845,6 +883,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							await this.customUpdateState("openRouterModelId", openRouterModelId)
 							await this.customUpdateState("openRouterModelInfo", openRouterModelInfo)
 							await this.customUpdateState("vsCodeLmModelSelector", vsCodeLmModelSelector)
+							await this.updateGlobalState("liteLlmBaseUrl", liteLlmBaseUrl)
+							await this.updateGlobalState("liteLlmModelId", liteLlmModelId)
 							if (this.cline) {
 								this.cline.api = buildApiHandler(message.apiConfiguration)
 							}
@@ -924,8 +964,85 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "chatSettings":
 						if (message.chatSettings) {
 							const didSwitchToActMode = message.chatSettings.mode === "act"
+
+							// Get previous model info that we will revert to after saving current mode api info
+							const {
+								apiConfiguration,
+								previousModeApiProvider: newApiProvider,
+								previousModeModelId: newModelId,
+								previousModeModelInfo: newModelInfo,
+							} = await this.getState()
+
+							// Save the last model used in this mode
+							await this.customUpdateState("previousModeApiProvider", apiConfiguration.apiProvider)
+							switch (apiConfiguration.apiProvider) {
+								case "anthropic":
+								case "bedrock":
+								case "vertex":
+								case "gemini":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.apiModelId)
+									break
+								case "openrouter":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.openRouterModelId)
+									await this.customUpdateState("previousModeModelInfo", apiConfiguration.openRouterModelInfo)
+									break
+								case "vscode-lm":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.vsCodeLmModelSelector)
+									break
+								case "openai":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.openAiModelId)
+									break
+								case "ollama":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.ollamaModelId)
+									break
+								case "lmstudio":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.lmStudioModelId)
+									break
+								case "litellm":
+									await this.customUpdateState("previousModeModelId", apiConfiguration.liteLlmModelId)
+									break
+							}
+
+							// Restore the model used in previous mode
+							if (newApiProvider && newModelId) {
+								await this.customUpdateState("apiProvider", newApiProvider)
+								switch (newApiProvider) {
+									case "anthropic":
+									case "bedrock":
+									case "vertex":
+									case "gemini":
+										await this.customUpdateState("apiModelId", newModelId)
+										break
+									case "openrouter":
+										await this.customUpdateState("openRouterModelId", newModelId)
+										await this.customUpdateState("openRouterModelInfo", newModelInfo)
+										break
+									case "vscode-lm":
+										await this.customUpdateState("vsCodeLmModelSelector", newModelId)
+										break
+									case "openai":
+										await this.customUpdateState("openAiModelId", newModelId)
+										break
+									case "ollama":
+										await this.customUpdateState("ollamaModelId", newModelId)
+										break
+									case "lmstudio":
+										await this.customUpdateState("lmStudioModelId", newModelId)
+										break
+									case "litellm":
+										await this.customUpdateState("liteLlmModelId", newModelId)
+										break
+								}
+
+								if (this.cline) {
+									const { apiConfiguration: updatedApiConfiguration } = await this.getState()
+									this.cline.api = buildApiHandler(updatedApiConfiguration)
+								}
+							}
+
 							await this.customUpdateState("chatSettings", message.chatSettings)
 							await this.postStateToWebview()
+							// console.log("chatSettings", message.chatSettings)
 							if (this.cline) {
 								this.cline.updateChatSettings(message.chatSettings)
 								if (this.cline.isAwaitingPlanResponse && didSwitchToActMode) {
@@ -1012,6 +1129,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "refreshOpenRouterModels":
 						await this.refreshOpenRouterModels()
 						break
+					case "refreshOpenAiModels":
+						const { apiConfiguration } = await this.getState()
+						const openAiModels = await this.getOpenAiModels(
+							apiConfiguration.openAiBaseUrl,
+							apiConfiguration.openAiApiKey,
+						)
+						this.postMessageToWebview({ type: "openAiModels", openAiModels })
+						break
 					case "openImage":
 						openImage(message.text!)
 						break
@@ -1053,6 +1178,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "getLatestState":
 						await this.postStateToWebview()
+						break
+					case "subscribeEmail":
+						this.subscribeEmail(message.text)
 						break
 					case "accountLoginClicked": {
 						// Generate nonce for state validation
@@ -1209,12 +1337,44 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						this.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" })
 						break
 					case "openExtensionSettings": {
+						const settingsFilter = message.text || ""
 						await vscode.commands.executeCommand(
 							"workbench.action.openSettings",
-							"@ext:presidio-inc.hai-build-code-generator",
+							`@ext:presidio-inc.hai-build-code-generator ${settingsFilter}`.trim(), // trim whitespace if no settings filter
 						)
 						break
 					}
+					case "stopIndex":
+						Logger.log("Stopping Code index")
+						this.codeIndexAbortController?.abort()
+						break
+					case "startIndex":
+						Logger.log("Starting Code index")
+						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
+						this.codeIndexAbortController = new AbortController()
+						this.codeIndexBackground()
+						break
+					case "resetIndex":
+						Logger.log("Re-indexing workspace")
+						const resetIndex = await vscode.window.showWarningMessage(
+							"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning.",
+							"Yes",
+							"No",
+						)
+						if (resetIndex === "Yes") {
+							const haiFolderPath = path.join(
+								this.vsCodeWorkSpaceFolderFsPath,
+								HaiBuildDefaults.defaultContextDirectory,
+							)
+							if (await fileExistsAtPath(haiFolderPath)) {
+								await fs.rmdir(haiFolderPath, { recursive: true })
+							}
+							this.codeIndexAbortController = new AbortController()
+							await this.resetIndex()
+							this.codeIndexBackground()
+							break
+						}
+						break
 					default:
 						this.customWebViewMessageHandlers(message)
 						break
@@ -1281,6 +1441,36 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				}
 				await this.postStateToWebview()
 				break
+		}
+	}
+
+	async subscribeEmail(email?: string) {
+		if (!email) {
+			return
+		}
+		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+		if (!emailRegex.test(email)) {
+			vscode.window.showErrorMessage("Please enter a valid email address")
+			return
+		}
+		console.log("Subscribing email:", email)
+		this.postMessageToWebview({ type: "emailSubscribed" })
+		// Currently ignoring errors to this endpoint, but after accounts we'll remove this anyways
+		try {
+			const response = await axios.post(
+				"https://app.cline.bot/api/mailing-list",
+				{
+					email: email,
+				},
+				{
+					headers: {
+						"Content-Type": "application/json",
+					},
+				},
+			)
+			console.log("Email subscribed successfully. Response:", response.data)
+		} catch (error) {
+			console.error("Failed to subscribe email:", error)
 		}
 	}
 
@@ -1472,6 +1662,32 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		} catch (error) {
 			console.error("Failed to handle auth callback:", error)
 			vscode.window.showErrorMessage("Failed to log in to HAI")
+		}
+	}
+
+	// OpenAi
+
+	async getOpenAiModels(baseUrl?: string, apiKey?: string) {
+		try {
+			if (!baseUrl) {
+				return []
+			}
+
+			if (!URL.canParse(baseUrl)) {
+				return []
+			}
+
+			const config: Record<string, any> = {}
+			if (apiKey) {
+				config["headers"] = { Authorization: `Bearer ${apiKey}` }
+			}
+
+			const response = await axios.get(`${baseUrl}/models`, config)
+			const modelsArray = response.data?.data?.map((model: any) => model.id) || []
+			const models = [...new Set<string>(modelsArray)]
+			return models
+		} catch (error) {
+			return []
 		}
 	}
 
@@ -1751,12 +1967,12 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			browserSettings,
 			chatSettings,
 			userInfo,
+			authToken,
 			buildContextOptions,
 			buildIndexProgress,
 			embeddingConfiguration,
 		} = await this.getState()
 
-		const authToken = await this.getSecret("authToken")
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
@@ -1867,7 +2083,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			browserSettings,
 			chatSettings,
 			vsCodeLmModelSelector,
+			liteLlmBaseUrl,
+			liteLlmModelId,
 			userInfo,
+			authToken,
+			previousModeApiProvider,
+			previousModeModelId,
+			previousModeModelInfo,
 			isCustomInstructionsEnabled,
 			fileInstructions,
 			buildContextOptions,
@@ -1925,7 +2147,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.customGetState("browserSettings") as Promise<BrowserSettings | undefined>,
 			this.customGetState("chatSettings") as Promise<ChatSettings | undefined>,
 			this.customGetState("vsCodeLmModelSelector") as Promise<vscode.LanguageModelChatSelector | undefined>,
+			this.customGetState("liteLlmBaseUrl") as Promise<string | undefined>,
+			this.customGetState("liteLlmModelId") as Promise<string | undefined>,
 			this.customGetState("userInfo") as Promise<UserInfo | undefined>,
+			this.customGetSecret("authToken") as Promise<string | undefined>,
+			this.customGetState("previousModeApiProvider") as Promise<ApiProvider | undefined>,
+			this.customGetState("previousModeModelId") as Promise<string | undefined>,
+			this.customGetState("previousModeModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("isCustomInstructionsEnabled") as Promise<boolean | undefined>,
 			this.customGetState("fileInstructions") as Promise<HaiInstructionFile[] | undefined>,
 			this.customGetState("buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
@@ -2001,6 +2229,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				openRouterModelId,
 				openRouterModelInfo,
 				vsCodeLmModelSelector,
+				liteLlmBaseUrl,
+				liteLlmModelId,
 				isApiConfigurationValid,
 			},
 			embeddingConfiguration: {
@@ -2038,6 +2268,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			browserSettings: browserSettings || DEFAULT_BROWSER_SETTINGS,
 			chatSettings: chatSettings || DEFAULT_CHAT_SETTINGS,
 			userInfo,
+			authToken,
+			previousModeApiProvider,
+			previousModeModelId,
+			previousModeModelInfo,
 		}
 	}
 
@@ -2140,6 +2374,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		vscode.window.showInformationMessage("Resetting state...")
 		if (!this.codeIndexAbortController.signal.aborted) {
 			this.codeIndexAbortController.abort()
+			this.isCodeIndexInProgress = false
 		}
 		for (const key of this.context.workspaceState.keys()) {
 			await this.context.workspaceState.update(key, undefined)
