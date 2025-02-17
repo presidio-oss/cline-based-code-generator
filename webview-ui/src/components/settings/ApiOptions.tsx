@@ -38,7 +38,7 @@ import { vscode } from "../../utils/vscode"
 import VSCodeButtonLink from "../common/VSCodeButtonLink"
 import OpenRouterModelPicker, { ModelDescriptionMarkdown } from "./OpenRouterModelPicker"
 import Info, { InfoStatus } from "../common/Info"
-import { validateApiConfiguration } from "../../utils/validate"
+import { validateApiConfiguration, validateModelId } from "../../utils/validate"
 import styled from "styled-components"
 import * as vscodemodels from "vscode"
 
@@ -75,15 +75,8 @@ declare module "vscode" {
 	}
 }
 
-const ApiOptions = ({
-	showModelOptions,
-	showModelError = true,
-	apiErrorMessage,
-	modelIdErrorMessage,
-	isPopup,
-	onValid,
-}: ApiOptionsProps) => {
-	const { apiConfiguration, setApiConfiguration, uriScheme } = useExtensionState()
+const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid }: ApiOptionsProps) => {
+	const { apiConfiguration, setApiConfiguration, uriScheme, openRouterModels } = useExtensionState()
 	const [ollamaModels, setOllamaModels] = useState<string[]>([])
 	const [lmStudioModels, setLmStudioModels] = useState<string[]>([])
 	const [vsCodeLmModels, setVsCodeLmModels] = useState<vscodemodels.LanguageModelChatSelector[]>([])
@@ -106,10 +99,13 @@ const ApiOptions = ({
 
 	useDeepCompareEffect(() => {
 		const error = validateApiConfiguration(apiConfiguration)
-		if (!error) {
-			setValidateLLM(apiConfiguration)
-		} else {
+		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
+
+		if (error || modelIdValidationResult) {
 			setIsKeyValid(null)
+			vscode.postMessage({ type: "validateLLMConfig", apiConfiguration, text: error || modelIdValidationResult })
+		} else {
+			setValidateLLM(apiConfiguration)
 		}
 	}, [apiConfiguration])
 
@@ -252,7 +248,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("apiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>Anthropic API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							Anthropic API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 
 					<VSCodeCheckbox
@@ -309,7 +307,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("openAiNativeApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>OpenAI API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							OpenAI API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -340,7 +340,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("deepSeekApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>DeepSeek API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							DeepSeek API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -371,7 +373,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("mistralApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>Mistral API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							Mistral API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -402,7 +406,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("openRouterApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>OpenRouter API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							OpenRouter API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					{!apiConfiguration?.openRouterApiKey && (
 						<VSCodeButtonLink
@@ -442,7 +448,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("awsAccessKey")}
 						placeholder="Enter Access Key...">
-						<span style={{ fontWeight: 500 }}>AWS Access Key</span>
+						<span style={{ fontWeight: 500 }}>
+							AWS Access Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={apiConfiguration?.awsSecretKey || ""}
@@ -450,7 +458,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("awsSecretKey")}
 						placeholder="Enter Secret Key...">
-						<span style={{ fontWeight: 500 }}>AWS Secret Key</span>
+						<span style={{ fontWeight: 500 }}>
+							AWS Secret Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={apiConfiguration?.awsSessionToken || ""}
@@ -462,7 +472,9 @@ const ApiOptions = ({
 					</VSCodeTextField>
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 1} className="dropdown-container">
 						<label htmlFor="aws-region-dropdown">
-							<span style={{ fontWeight: 500 }}>AWS Region</span>
+							<span style={{ fontWeight: 500 }}>
+								AWS Region <span style={{ color: "#e8912d" }}>*</span>
+							</span>
 						</label>
 						<VSCodeDropdown
 							id="aws-region-dropdown"
@@ -533,11 +545,15 @@ const ApiOptions = ({
 						style={{ width: "100%" }}
 						onInput={handleInputChange("vertexProjectId")}
 						placeholder="Enter Project ID...">
-						<span style={{ fontWeight: 500 }}>Google Cloud Project ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Google Cloud Project ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 						<label htmlFor="vertex-region-dropdown">
-							<span style={{ fontWeight: 500 }}>Google Cloud Region</span>
+							<span style={{ fontWeight: 500 }}>
+								Google Cloud Region <span style={{ color: "#e8912d" }}>*</span>
+							</span>
 						</label>
 						<VSCodeDropdown
 							id="vertex-region-dropdown"
@@ -581,7 +597,9 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("geminiApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>Gemini API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							Gemini API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -612,7 +630,9 @@ const ApiOptions = ({
 						type="url"
 						onInput={handleInputChange("openAiBaseUrl")}
 						placeholder={"Enter base URL..."}>
-						<span style={{ fontWeight: 500 }}>Base URL</span>
+						<span style={{ fontWeight: 500 }}>
+							Base URL <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={apiConfiguration?.openAiApiKey || ""}
@@ -620,14 +640,18 @@ const ApiOptions = ({
 						type="password"
 						onInput={handleInputChange("openAiApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={apiConfiguration?.openAiModelId || ""}
 						style={{ width: "100%" }}
 						onInput={handleInputChange("openAiModelId")}
 						placeholder={"Enter Model ID..."}>
-						<span style={{ fontWeight: 500 }}>Model ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Model ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeCheckbox
 						checked={azureApiVersionSelected}
@@ -658,7 +682,9 @@ const ApiOptions = ({
 				<div>
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 						<label htmlFor="vscode-lm-model">
-							<span style={{ fontWeight: 500 }}>Language Model</span>
+							<span style={{ fontWeight: 500 }}>
+								Language Model <span style={{ color: "#e8912d" }}>*</span>
+							</span>
 						</label>
 						{vsCodeLmModels.length > 0 ? (
 							<VSCodeDropdown
@@ -731,7 +757,9 @@ const ApiOptions = ({
 						style={{ width: "100%" }}
 						onInput={handleInputChange("lmStudioModelId")}
 						placeholder={"e.g. meta-llama-3.1-8b-instruct"}>
-						<span style={{ fontWeight: 500 }}>Model ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Model ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					{lmStudioModels.length > 0 && (
 						<VSCodeRadioGroup
@@ -793,7 +821,9 @@ const ApiOptions = ({
 						style={{ width: "100%" }}
 						onInput={handleInputChange("liteLlmModelId")}
 						placeholder={"e.g. gpt-4"}>
-						<span style={{ fontWeight: 500 }}>Model ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Model ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -825,7 +855,9 @@ const ApiOptions = ({
 						style={{ width: "100%" }}
 						onInput={handleInputChange("ollamaModelId")}
 						placeholder={"e.g. llama3.1"}>
-						<span style={{ fontWeight: 500 }}>Model ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Model ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					{ollamaModels.length > 0 && (
 						<VSCodeRadioGroup
@@ -876,7 +908,9 @@ const ApiOptions = ({
 					<>
 						<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 							<label htmlFor="model-id">
-								<span style={{ fontWeight: 500 }}>Model</span>
+								<span style={{ fontWeight: 500 }}>
+									Model <span style={{ color: "#e8912d" }}>*</span>
+								</span>
 							</label>
 							{selectedProvider === "anthropic" && createDropdown(anthropicModels)}
 							{selectedProvider === "bedrock" && createDropdown(bedrockModels)}
@@ -898,28 +932,6 @@ const ApiOptions = ({
 				)}
 
 			{selectedProvider === "openrouter" && showModelOptions && <OpenRouterModelPicker isPopup={isPopup} />}
-
-			{apiErrorMessage && (
-				<p
-					style={{
-						margin: "-10px 0 4px 0",
-						fontSize: 12,
-						color: "var(--vscode-errorForeground)",
-					}}>
-					{apiErrorMessage}
-				</p>
-			)}
-
-			{modelIdErrorMessage && (
-				<p
-					style={{
-						margin: "-10px 0 4px 0",
-						fontSize: 12,
-						color: "var(--vscode-errorForeground)",
-					}}>
-					{modelIdErrorMessage}
-				</p>
-			)}
 
 			{showModelError && isKeyValid !== null && (
 				<Info

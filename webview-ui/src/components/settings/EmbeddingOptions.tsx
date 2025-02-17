@@ -21,11 +21,10 @@ interface EmbeddingOptionsProps {
 	showModelOptions: boolean
 	showModelError?: boolean
 	embeddingConfiguration?: EmbeddingConfiguration
-	errorMessage?: string
 	onValid?: (isValid: boolean) => void
 }
 
-const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessage, onValid }: EmbeddingOptionsProps) => {
+const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: EmbeddingOptionsProps) => {
 	const { embeddingConfiguration, setEmbeddingConfiguration, apiConfiguration, setBuildContextOptions, buildContextOptions } =
 		useExtensionState()
 	const [azureOpenAIApiVersionSelected, setAzureOpenAIApiVersionSelected] = useState(
@@ -78,10 +77,12 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 
 	useDeepCompareEffect(() => {
 		const error = validateEmbeddingConfiguration(embeddingConfiguration)
-		if (!error) {
-			setValidateEmbedding(embeddingConfiguration)
-		} else {
+
+		if (error) {
 			setIsEmbeddingValid(null)
+			vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration, text: error })
+		} else {
+			setValidateEmbedding(embeddingConfiguration)
 		}
 	}, [embeddingConfiguration])
 
@@ -184,7 +185,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="password"
 						onInput={handleInputChange("openAiNativeApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>OpenAI API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							OpenAI API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<p
 						style={{
@@ -212,7 +215,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="password"
 						onInput={handleInputChange("awsAccessKey")}
 						placeholder="Enter Access Key...">
-						<span style={{ fontWeight: 500 }}>AWS Access Key</span>
+						<span style={{ fontWeight: 500 }}>
+							AWS Access Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={embeddingConfiguration?.awsSecretKey || ""}
@@ -220,7 +225,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="password"
 						onInput={handleInputChange("awsSecretKey")}
 						placeholder="Enter Secret Key...">
-						<span style={{ fontWeight: 500 }}>AWS Secret Key</span>
+						<span style={{ fontWeight: 500 }}>
+							AWS Secret Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={embeddingConfiguration?.awsSessionToken || ""}
@@ -232,7 +239,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 					</VSCodeTextField>
 					<div className="dropdown-container">
 						<label htmlFor="aws-region-dropdown">
-							<span style={{ fontWeight: 500 }}>AWS Region</span>
+							<span style={{ fontWeight: 500 }}>
+								AWS Region <span style={{ color: "#e8912d" }}>*</span>
+							</span>
 						</label>
 						<VSCodeDropdown
 							id="aws-region-dropdown"
@@ -286,7 +295,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="text"
 						onInput={handleInputChange("openAiBaseUrl")}
 						placeholder="Enter base URL...">
-						<span style={{ fontWeight: 500 }}>Base URL</span>
+						<span style={{ fontWeight: 500 }}>
+							Base URL <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={embeddingConfiguration?.openAiApiKey || ""}
@@ -294,7 +305,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="password"
 						onInput={handleInputChange("openAiApiKey")}
 						placeholder="Enter API Key...">
-						<span style={{ fontWeight: 500 }}>API Key</span>
+						<span style={{ fontWeight: 500 }}>
+							API Key <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
 						value={embeddingConfiguration?.openAiModelId || ""}
@@ -302,7 +315,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 						type="text"
 						onInput={handleInputChange("openAiModelId")}
 						placeholder="Enter Model ID...">
-						<span style={{ fontWeight: 500 }}>Model ID</span>
+						<span style={{ fontWeight: 500 }}>
+							Model ID <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</VSCodeTextField>
 					<VSCodeCheckbox
 						checked={azureOpenAIApiVersionSelected}
@@ -337,7 +352,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 					</VSCodeTextField>
 					<div className="dropdown-container">
 						<label htmlFor="ollama-model-id">
-							<span style={{ fontWeight: 500 }}>Model</span>
+							<span style={{ fontWeight: 500 }}>
+								Model <span style={{ color: "#e8912d" }}>*</span>
+							</span>
 						</label>
 						<VSCodeDropdown
 							id="ollama-model-id"
@@ -385,7 +402,9 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 			{selectedProvider && Object.keys(availableModels).length > 0 && (
 				<div className="dropdown-container">
 					<label htmlFor="embedding-model">
-						<span style={{ fontWeight: 500 }}>Embedding Model</span>
+						<span style={{ fontWeight: 500 }}>
+							Embedding Model <span style={{ color: "#e8912d" }}>*</span>
+						</span>
 					</label>
 					<VSCodeDropdown
 						id="embedding-model"
@@ -443,17 +462,6 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, errorMessag
 				}}>
 				Same as LLM API configuration
 			</VSCodeCheckbox>
-
-			{errorMessage && (
-				<p
-					style={{
-						margin: "5px 0",
-						fontSize: 12,
-						color: "var(--vscode-errorForeground)",
-					}}>
-					{errorMessage}
-				</p>
-			)}
 
 			{showModelError && isEmbeddingValid !== null && (
 				<Info

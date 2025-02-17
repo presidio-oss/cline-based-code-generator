@@ -1,7 +1,6 @@
 import { VSCodeButton, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
-import { memo, useEffect, useState } from "react"
+import { memo, useState } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
-import { validateApiConfiguration, validateEmbeddingConfiguration, validateModelId } from "../../utils/validate"
 import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
@@ -9,14 +8,11 @@ import EmbeddingOptions from "./EmbeddingOptions"
 import { ACCEPTED_FILE_EXTENSIONS } from "../../utils/constants"
 import { HaiInstructionFile } from "../../../../src/shared/customApi"
 import SettingsButton from "../common/SettingsButton"
+import { useDebounce, useDeepCompareEffect } from "react-use"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
-type SettingsViewProps = {
-	onDone: () => void
-}
-
-const SettingsView = ({ onDone }: SettingsViewProps) => {
+const SettingsView = () => {
 	const {
 		apiConfiguration,
 		version,
@@ -31,9 +27,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		setFileInstructions,
 		vscodeWorkspacePath,
 	} = useExtensionState()
-	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
-	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
-	const [embeddingErrorMessage, setEmbeddingErrorMessage] = useState<string | undefined>(undefined)
 	const [showCopied, setShowCopied] = useState(false)
 	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set())
 
@@ -47,29 +40,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			}
 			return newSet
 		})
-	}
-
-	useEffect(() => {
-		setApiErrorMessage(undefined)
-		setModelIdErrorMessage(undefined)
-		setEmbeddingErrorMessage(undefined)
-	}, [apiConfiguration, embeddingConfiguration])
-
-	const handleSubmit = () => {
-		const apiValidationResult = validateApiConfiguration(apiConfiguration)
-		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
-		const embeddingValidationResult = validateEmbeddingConfiguration(embeddingConfiguration)
-
-		setApiErrorMessage(apiValidationResult)
-		setEmbeddingErrorMessage(embeddingValidationResult)
-
-		if (!apiValidationResult && !modelIdValidationResult) {
-			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			vscode.postMessage({ type: "customInstructions", text: customInstructions })
-			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
-			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
-			onDone()
-		}
 	}
 
 	const [fileInput, setFileInput] = useState<HaiInstructionFile[]>([])
@@ -160,6 +130,21 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		setTimeout(() => setShowCopied(false), 2000)
 	}
 
+	useDebounce(
+		() => {
+			const defaultInstruction = (customInstructions || "").trim()
+			if (defaultInstruction) {
+				vscode.postMessage({ type: "customInstructions", text: defaultInstruction })
+			}
+		},
+		500,
+		[customInstructions],
+	)
+
+	useDeepCompareEffect(() => {
+		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
+	}, [buildContextOptions])
+
 	return (
 		<div
 			style={{
@@ -182,7 +167,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					paddingRight: 17,
 				}}>
 				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
-				<VSCodeButton onClick={handleSubmit}>Done</VSCodeButton>
 			</div>
 			<div
 				style={{
@@ -194,16 +178,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 				}}>
 				<div style={{ marginBottom: 10 }}>
 					<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-					<ApiOptions
-						showModelOptions={true}
-						apiErrorMessage={apiErrorMessage}
-						modelIdErrorMessage={modelIdErrorMessage}
-					/>
+					<ApiOptions showModelOptions={true} />
 				</div>
 
 				<div style={{ marginBottom: 10 }}>
 					<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-					<EmbeddingOptions showModelOptions={true} errorMessage={embeddingErrorMessage} />
+					<EmbeddingOptions showModelOptions={true} />
 				</div>
 
 				<div style={{ marginBottom: 5 }}>
