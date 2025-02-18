@@ -186,7 +186,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("openAiNativeApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							OpenAI API Key <span style={{ color: "#e8912d" }}>*</span>
+							OpenAI API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -216,7 +216,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("awsAccessKey")}
 						placeholder="Enter Access Key...">
 						<span style={{ fontWeight: 500 }}>
-							AWS Access Key <span style={{ color: "#e8912d" }}>*</span>
+							AWS Access Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -226,7 +226,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("awsSecretKey")}
 						placeholder="Enter Secret Key...">
 						<span style={{ fontWeight: 500 }}>
-							AWS Secret Key <span style={{ color: "#e8912d" }}>*</span>
+							AWS Secret Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -240,7 +240,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 					<div className="dropdown-container">
 						<label htmlFor="aws-region-dropdown">
 							<span style={{ fontWeight: 500 }}>
-								AWS Region <span style={{ color: "#e8912d" }}>*</span>
+								AWS Region <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 							</span>
 						</label>
 						<VSCodeDropdown
@@ -296,7 +296,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("openAiBaseUrl")}
 						placeholder="Enter base URL...">
 						<span style={{ fontWeight: 500 }}>
-							Base URL <span style={{ color: "#e8912d" }}>*</span>
+							Base URL <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -306,7 +306,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("openAiApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							API Key <span style={{ color: "#e8912d" }}>*</span>
+							API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -316,7 +316,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						onInput={handleInputChange("openAiModelId")}
 						placeholder="Enter Model ID...">
 						<span style={{ fontWeight: 500 }}>
-							Model ID <span style={{ color: "#e8912d" }}>*</span>
+							Model ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeCheckbox
@@ -353,7 +353,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 					<div className="dropdown-container">
 						<label htmlFor="ollama-model-id">
 							<span style={{ fontWeight: 500 }}>
-								Model <span style={{ color: "#e8912d" }}>*</span>
+								Model <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 							</span>
 						</label>
 						<VSCodeDropdown
@@ -403,7 +403,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 				<div className="dropdown-container">
 					<label htmlFor="embedding-model">
 						<span style={{ fontWeight: 500 }}>
-							Embedding Model <span style={{ color: "#e8912d" }}>*</span>
+							Embedding Model <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</label>
 					<VSCodeDropdown

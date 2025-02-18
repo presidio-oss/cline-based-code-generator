@@ -148,7 +148,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 			<div style={{ display: "flex", flexDirection: "column" }}>
 				<label htmlFor="model-search">
 					<span style={{ fontWeight: 500 }}>
-						Model <span style={{ color: "#e8912d" }}>*</span>
+						Model <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 					</span>
 				</label>
 				<DropdownWrapper ref={dropdownRef}>

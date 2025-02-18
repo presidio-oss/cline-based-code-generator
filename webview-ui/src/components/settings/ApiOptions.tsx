@@ -249,7 +249,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("apiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							Anthropic API Key <span style={{ color: "#e8912d" }}>*</span>
+							Anthropic API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 
@@ -308,7 +308,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("openAiNativeApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							OpenAI API Key <span style={{ color: "#e8912d" }}>*</span>
+							OpenAI API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -341,7 +341,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("deepSeekApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							DeepSeek API Key <span style={{ color: "#e8912d" }}>*</span>
+							DeepSeek API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -374,7 +374,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("mistralApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							Mistral API Key <span style={{ color: "#e8912d" }}>*</span>
+							Mistral API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -407,7 +407,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("openRouterApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							OpenRouter API Key <span style={{ color: "#e8912d" }}>*</span>
+							OpenRouter API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					{!apiConfiguration?.openRouterApiKey && (
@@ -449,7 +449,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("awsAccessKey")}
 						placeholder="Enter Access Key...">
 						<span style={{ fontWeight: 500 }}>
-							AWS Access Key <span style={{ color: "#e8912d" }}>*</span>
+							AWS Access Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -459,7 +459,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("awsSecretKey")}
 						placeholder="Enter Secret Key...">
 						<span style={{ fontWeight: 500 }}>
-							AWS Secret Key <span style={{ color: "#e8912d" }}>*</span>
+							AWS Secret Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -473,7 +473,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 1} className="dropdown-container">
 						<label htmlFor="aws-region-dropdown">
 							<span style={{ fontWeight: 500 }}>
-								AWS Region <span style={{ color: "#e8912d" }}>*</span>
+								AWS Region <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 							</span>
 						</label>
 						<VSCodeDropdown
@@ -546,13 +546,13 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("vertexProjectId")}
 						placeholder="Enter Project ID...">
 						<span style={{ fontWeight: 500 }}>
-							Google Cloud Project ID <span style={{ color: "#e8912d" }}>*</span>
+							Google Cloud Project ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 						<label htmlFor="vertex-region-dropdown">
 							<span style={{ fontWeight: 500 }}>
-								Google Cloud Region <span style={{ color: "#e8912d" }}>*</span>
+								Google Cloud Region <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 							</span>
 						</label>
 						<VSCodeDropdown
@@ -598,7 +598,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("geminiApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							Gemini API Key <span style={{ color: "#e8912d" }}>*</span>
+							Gemini API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -631,7 +631,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("openAiBaseUrl")}
 						placeholder={"Enter base URL..."}>
 						<span style={{ fontWeight: 500 }}>
-							Base URL <span style={{ color: "#e8912d" }}>*</span>
+							Base URL <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -641,7 +641,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("openAiApiKey")}
 						placeholder="Enter API Key...">
 						<span style={{ fontWeight: 500 }}>
-							API Key <span style={{ color: "#e8912d" }}>*</span>
+							API Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeTextField
@@ -650,7 +650,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("openAiModelId")}
 						placeholder={"Enter Model ID..."}>
 						<span style={{ fontWeight: 500 }}>
-							Model ID <span style={{ color: "#e8912d" }}>*</span>
+							Model ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<VSCodeCheckbox
@@ -683,7 +683,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 					<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 						<label htmlFor="vscode-lm-model">
 							<span style={{ fontWeight: 500 }}>
-								Language Model <span style={{ color: "#e8912d" }}>*</span>
+								Language Model <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 							</span>
 						</label>
 						{vsCodeLmModels.length > 0 ? (
@@ -758,7 +758,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("lmStudioModelId")}
 						placeholder={"e.g. meta-llama-3.1-8b-instruct"}>
 						<span style={{ fontWeight: 500 }}>
-							Model ID <span style={{ color: "#e8912d" }}>*</span>
+							Model ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					{lmStudioModels.length > 0 && (
@@ -822,7 +822,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("liteLlmModelId")}
 						placeholder={"e.g. gpt-4"}>
 						<span style={{ fontWeight: 500 }}>
-							Model ID <span style={{ color: "#e8912d" }}>*</span>
+							Model ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					<p
@@ -856,7 +856,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						onInput={handleInputChange("ollamaModelId")}
 						placeholder={"e.g. llama3.1"}>
 						<span style={{ fontWeight: 500 }}>
-							Model ID <span style={{ color: "#e8912d" }}>*</span>
+							Model ID <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 						</span>
 					</VSCodeTextField>
 					{ollamaModels.length > 0 && (
@@ -909,7 +909,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						<DropdownContainer zIndex={DROPDOWN_Z_INDEX - 2} className="dropdown-container">
 							<label htmlFor="model-id">
 								<span style={{ fontWeight: 500 }}>
-									Model <span style={{ color: "#e8912d" }}>*</span>
+									Model <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 								</span>
 							</label>
 							{selectedProvider === "anthropic" && createDropdown(anthropicModels)}
