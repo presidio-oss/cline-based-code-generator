@@ -229,7 +229,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		}
 	}
 
-	async codeIndexBackground(filePaths?: string[], reIndex: boolean = false) {
+	async codeIndexBackground(filePaths?: string[], reIndex: boolean = false, isManualTrigger: boolean = false) {
 		if (!this.isSideBar || this.codeIndexAbortController.signal.aborted || this.isCodeIndexInProgress) {
 			return
 		}
@@ -266,7 +266,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			}
 			return progress
 		}
-		const { apiConfiguration, buildContextOptions, embeddingConfiguration } = await this.getState()
+		const { apiConfiguration, buildContextOptions, embeddingConfiguration, buildIndexProgress } = await this.getState()
 		const isValidApiConfiguration = validateApiConfiguration(apiConfiguration) === undefined
 		const isValidEmbeddingConfiguration = validateEmbeddingConfiguration(embeddingConfiguration) === undefined
 
@@ -276,13 +276,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					return
 				}
 				if (buildContextOptions.useIndex) {
-					const userConfirmationState = (await this.getWorkspaceState("codeIndexUserConfirmation")) as
-						| boolean
-						| undefined
-					if (!userConfirmationState) {
+					if (!isManualTrigger && (!buildIndexProgress || !buildIndexProgress.progress)) {
 						const userConfirmation = await vscode.window.showWarningMessage(
-							"hAI performs best with a code index. Would you like to start indexing this workspace?",
-							"Yes",
+							"hAI performs best with a code index. Would you like to navigate to Settings to start indexing for this workspace?",
+							"Open Settings",
 							"No",
 						)
 						if (userConfirmation === undefined) {
@@ -296,7 +293,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							})
 							return
 						}
-						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
+						if (userConfirmation === "Open Settings") {
+							await this.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
+							return
+						}
 					}
 
 					// Setting a flag to prevent multiple code index background tasks.
@@ -1371,7 +1371,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						Logger.log("Starting Code index")
 						await this.updateWorkspaceState("codeIndexUserConfirmation", true)
 						this.codeIndexAbortController = new AbortController()
-						this.codeIndexBackground()
+						this.codeIndexBackground(undefined, undefined, true)
 						break
 					case "resetIndex":
 						Logger.log("Re-indexing workspace")
@@ -1390,7 +1390,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 							}
 							this.codeIndexAbortController = new AbortController()
 							await this.resetIndex()
-							this.codeIndexBackground()
+							this.codeIndexBackground(undefined, undefined, true)
 							break
 						}
 						break

@@ -149,6 +149,18 @@ const SettingsViewExtra = ({
 					When enabled, HAI will automatically index your code. This is useful for finding relevant files for the tasks
 					you are working on.
 				</p>
+				<p
+					style={{
+						fontSize: "12px",
+						marginTop: "5px",
+						color: "var(--vscode-descriptionForeground)",
+					}}>
+					<span style={{ color: "var(--vscode-errorForeground)" }}>
+						(<span style={{ fontWeight: 500 }}>Note:</span> Code indexing will read all your file content and send it
+						to the LLM to generate embeddings. If not excluded, sensitive or private data may be included in this
+						process. Use this feature at your own risk.)
+					</span>
+				</p>
 			</div>
 
 			<div style={{ marginBottom: 5 }}>
