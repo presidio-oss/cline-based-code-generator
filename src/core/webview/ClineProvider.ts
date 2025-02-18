@@ -2280,6 +2280,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 				useIndex: true, // Enable Indexing by default
 				useContext: true, // Enable Use Context by default
 				useSyncWithApi: true, // Enable Sync with API by default
+				useSecretScanning: true, // Enable Secret Scanning by default
 			},
 			buildIndexProgress: buildIndexProgress,
 			autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string

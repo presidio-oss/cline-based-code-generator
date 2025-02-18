@@ -9,3 +9,5 @@ tmp
 
 pnpm-lock.yaml
 .hai/
+
+.env
