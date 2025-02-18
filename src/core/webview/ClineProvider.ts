@@ -15,7 +15,7 @@ import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
-import { ApiProvider, ModelInfo } from "../../shared/api"
+import { ApiConfiguration, ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
 import { ExtensionMessage, ExtensionState } from "../../shared/ExtensionMessage"
 import { HistoryItem } from "../../shared/HistoryItem"
@@ -33,7 +33,7 @@ import { CodeContextErrorMessage, CodeIndexStartMessage } from "./customClientPr
 import { ICodeIndexProgress } from "../../integrations/code-prep/type"
 import { validateApiConfiguration, validateEmbeddingConfiguration } from "../../shared/validate"
 import { getFormattedDateTime } from "../../utils/date"
-import { EmbeddingProvider } from "../../shared/embeddings"
+import { EmbeddingConfiguration, EmbeddingProvider } from "../../shared/embeddings"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
 import { ACCEPTED_FILE_EXTENSIONS, FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
@@ -766,6 +766,113 @@ export class ClineProvider implements vscode.WebviewViewProvider {
       `
 	}
 
+	private async updateApiConfiguration(apiConfiguration: ApiConfiguration) {
+		const {
+			apiProvider,
+			apiModelId,
+			apiKey,
+			openRouterApiKey,
+			awsAccessKey,
+			awsSecretKey,
+			awsSessionToken,
+			awsRegion,
+			awsUseCrossRegionInference,
+			vertexProjectId,
+			vertexRegion,
+			openAiBaseUrl,
+			openAiApiKey,
+			openAiModelId,
+			ollamaModelId,
+			ollamaBaseUrl,
+			lmStudioModelId,
+			lmStudioBaseUrl,
+			anthropicBaseUrl,
+			geminiApiKey,
+			openAiNativeApiKey,
+			deepSeekApiKey,
+			mistralApiKey,
+			azureApiVersion,
+			openRouterModelId,
+			openRouterModelInfo,
+			vsCodeLmModelSelector,
+			liteLlmBaseUrl,
+			liteLlmModelId,
+		} = apiConfiguration
+		await this.customUpdateState("apiProvider", apiProvider)
+		await this.customUpdateState("apiModelId", apiModelId)
+		await this.customStoreSecret("apiKey", apiKey, true)
+		await this.customStoreSecret("openRouterApiKey", openRouterApiKey, true)
+		await this.customStoreSecret("awsAccessKey", awsAccessKey, true)
+		await this.customStoreSecret("awsSecretKey", awsSecretKey, true)
+		await this.customStoreSecret("awsSessionToken", awsSessionToken, true)
+		await this.customUpdateState("awsRegion", awsRegion)
+		await this.customUpdateState("awsUseCrossRegionInference", awsUseCrossRegionInference)
+		await this.customUpdateState("vertexProjectId", vertexProjectId)
+		await this.customUpdateState("vertexRegion", vertexRegion)
+		await this.customUpdateState("openAiBaseUrl", openAiBaseUrl)
+		await this.customStoreSecret("openAiApiKey", openAiApiKey, true)
+		await this.customUpdateState("openAiModelId", openAiModelId)
+		await this.customUpdateState("ollamaModelId", ollamaModelId)
+		await this.customUpdateState("ollamaBaseUrl", ollamaBaseUrl)
+		await this.customUpdateState("lmStudioModelId", lmStudioModelId)
+		await this.customUpdateState("lmStudioBaseUrl", lmStudioBaseUrl)
+		await this.customUpdateState("anthropicBaseUrl", anthropicBaseUrl)
+		await this.customStoreSecret("geminiApiKey", geminiApiKey, true)
+		await this.customStoreSecret("openAiNativeApiKey", openAiNativeApiKey, true)
+		await this.customStoreSecret("deepSeekApiKey", deepSeekApiKey, true)
+		await this.customStoreSecret("mistralApiKey", mistralApiKey, true)
+		await this.customUpdateState("azureApiVersion", azureApiVersion)
+		await this.customUpdateState("openRouterModelId", openRouterModelId)
+		await this.customUpdateState("openRouterModelInfo", openRouterModelInfo)
+		await this.customUpdateState("vsCodeLmModelSelector", vsCodeLmModelSelector)
+		await this.updateGlobalState("liteLlmBaseUrl", liteLlmBaseUrl)
+		await this.updateGlobalState("liteLlmModelId", liteLlmModelId)
+		if (this.cline) {
+			this.cline.api = buildApiHandler(apiConfiguration)
+		}
+	}
+
+	private async updateEmbeddingConfiguration(embeddingConfiguration: EmbeddingConfiguration) {
+		const {
+			provider,
+			modelId,
+			awsAccessKey,
+			awsSecretKey,
+			awsSessionToken,
+			awsRegion,
+			openAiBaseUrl,
+			openAiModelId,
+			openAiApiKey,
+			openAiNativeApiKey,
+			azureOpenAIApiKey,
+			azureOpenAIApiInstanceName,
+			azureOpenAIApiEmbeddingsDeploymentName,
+			azureOpenAIApiVersion,
+			ollamaBaseUrl,
+			ollamaModelId,
+		} = embeddingConfiguration
+
+		// Update Global State
+		await this.customUpdateState("embeddingProvider", provider)
+		await this.customUpdateState("embeddingModelId", modelId)
+		await this.customUpdateState("embeddingAwsRegion", awsRegion)
+		await this.customUpdateState("embeddingOpenAiBaseUrl", openAiBaseUrl)
+		await this.customUpdateState("embeddingOpenAiModelId", openAiModelId)
+		await this.customUpdateState("embeddingAzureOpenAIApiInstanceName", azureOpenAIApiInstanceName)
+		await this.customUpdateState("embeddingAzureOpenAIApiVersion", azureOpenAIApiVersion)
+		await this.customUpdateState("embeddingAzureOpenAIApiEmbeddingsDeploymentName", azureOpenAIApiEmbeddingsDeploymentName)
+		await this.customUpdateState("embeddingOllamaBaseUrl", ollamaBaseUrl)
+		await this.customUpdateState("embeddingOllamaModelId", ollamaModelId)
+		// Update Secrets
+		await this.customStoreSecret("embeddingAwsAccessKey", awsAccessKey, true)
+		await this.customStoreSecret("embeddingAwsSecretKey", awsSecretKey, true)
+		await this.customStoreSecret("embeddingAwsSecretKey", awsSecretKey, true)
+		await this.customStoreSecret("embeddingAwsSessionToken", awsSessionToken, true)
+		await this.customStoreSecret("embeddingOpenAiApiKey", openAiApiKey, true)
+		await this.customStoreSecret("embeddingOpenAiNativeApiKey", openAiNativeApiKey, true)
+		await this.customStoreSecret("embeddingAzureOpenAIApiKey", azureOpenAIApiKey, true)
+	}
+
 	/**
 	 * Sets up an event listener to listen for messages passed from the webview context and
 	 * executes code based on the message that is recieved.
@@ -825,69 +932,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "apiConfiguration":
 						if (message.apiConfiguration) {
-							const {
-								apiProvider,
-								apiModelId,
-								apiKey,
-								openRouterApiKey,
-								awsAccessKey,
-								awsSecretKey,
-								awsSessionToken,
-								awsRegion,
-								awsUseCrossRegionInference,
-								vertexProjectId,
-								vertexRegion,
-								openAiBaseUrl,
-								openAiApiKey,
-								openAiModelId,
-								ollamaModelId,
-								ollamaBaseUrl,
-								lmStudioModelId,
-								lmStudioBaseUrl,
-								anthropicBaseUrl,
-								geminiApiKey,
-								openAiNativeApiKey,
-								deepSeekApiKey,
-								mistralApiKey,
-								azureApiVersion,
-								openRouterModelId,
-								openRouterModelInfo,
-								vsCodeLmModelSelector,
-								liteLlmBaseUrl,
-								liteLlmModelId,
-							} = message.apiConfiguration
-							await this.customUpdateState("apiProvider", apiProvider)
-							await this.customUpdateState("apiModelId", apiModelId)
-							await this.customStoreSecret("apiKey", apiKey)
-							await this.customStoreSecret("openRouterApiKey", openRouterApiKey)
-							await this.customStoreSecret("awsAccessKey", awsAccessKey)
-							await this.customStoreSecret("awsSecretKey", awsSecretKey)
-							await this.customStoreSecret("awsSessionToken", awsSessionToken)
-							await this.customUpdateState("awsRegion", awsRegion)
-							await this.customUpdateState("awsUseCrossRegionInference", awsUseCrossRegionInference)
-							await this.customUpdateState("vertexProjectId", vertexProjectId)
-							await this.customUpdateState("vertexRegion", vertexRegion)
-							await this.customUpdateState("openAiBaseUrl", openAiBaseUrl)
-							await this.customStoreSecret("openAiApiKey", openAiApiKey)
-							await this.customUpdateState("openAiModelId", openAiModelId)
-							await this.customUpdateState("ollamaModelId", ollamaModelId)
-							await this.customUpdateState("ollamaBaseUrl", ollamaBaseUrl)
-							await this.customUpdateState("lmStudioModelId", lmStudioModelId)
-							await this.customUpdateState("lmStudioBaseUrl", lmStudioBaseUrl)
-							await this.customUpdateState("anthropicBaseUrl", anthropicBaseUrl)
-							await this.customStoreSecret("geminiApiKey", geminiApiKey)
-							await this.customStoreSecret("openAiNativeApiKey", openAiNativeApiKey)
-							await this.customStoreSecret("deepSeekApiKey", deepSeekApiKey)
-							await this.customStoreSecret("mistralApiKey", mistralApiKey)
-							await this.customUpdateState("azureApiVersion", azureApiVersion)
-							await this.customUpdateState("openRouterModelId", openRouterModelId)
-							await this.customUpdateState("openRouterModelInfo", openRouterModelInfo)
-							await this.customUpdateState("vsCodeLmModelSelector", vsCodeLmModelSelector)
-							await this.updateGlobalState("liteLlmBaseUrl", liteLlmBaseUrl)
-							await this.updateGlobalState("liteLlmModelId", liteLlmModelId)
-							if (this.cline) {
-								this.cline.api = buildApiHandler(message.apiConfiguration)
-							}
+							await this.updateApiConfiguration(message.apiConfiguration)
 						}
 						await this.postStateToWebview()
 						break
@@ -1247,88 +1292,62 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 					case "embeddingConfiguration":
 						if (message.embeddingConfiguration) {
-							const {
-								provider,
-								modelId,
-								awsAccessKey,
-								awsSecretKey,
-								awsSessionToken,
-								awsRegion,
-								openAiBaseUrl,
-								openAiModelId,
-								openAiApiKey,
-								openAiNativeApiKey,
-								azureOpenAIApiKey,
-								azureOpenAIApiInstanceName,
-								azureOpenAIApiEmbeddingsDeploymentName,
-								azureOpenAIApiVersion,
-								ollamaBaseUrl,
-								ollamaModelId,
-							} = message.embeddingConfiguration
-
-							// Update Global State
-							await this.customUpdateState("embeddingProvider", provider)
-							await this.customUpdateState("embeddingModelId", modelId)
-							await this.customUpdateState("embeddingAwsRegion", awsRegion)
-							await this.customUpdateState("embeddingOpenAiBaseUrl", openAiBaseUrl)
-							await this.customUpdateState("embeddingOpenAiModelId", openAiModelId)
-							await this.customUpdateState("embeddingAzureOpenAIApiInstanceName", azureOpenAIApiInstanceName)
-							await this.customUpdateState("embeddingAzureOpenAIApiVersion", azureOpenAIApiVersion)
-							await this.customUpdateState(
-								"embeddingAzureOpenAIApiEmbeddingsDeploymentName",
-								azureOpenAIApiEmbeddingsDeploymentName,
-							)
-							await this.customUpdateState("embeddingOllamaBaseUrl", ollamaBaseUrl)
-							await this.customUpdateState("embeddingOllamaModelId", ollamaModelId)
-							// Update Secrets
-							await this.customStoreSecret("embeddingAwsAccessKey", awsAccessKey)
-							await this.customStoreSecret("embeddingAwsSecretKey", awsSecretKey)
-							await this.customStoreSecret("embeddingAwsSecretKey", awsSecretKey)
-							await this.customStoreSecret("embeddingAwsSessionToken", awsSessionToken)
-							await this.customStoreSecret("embeddingOpenAiApiKey", openAiApiKey)
-							await this.customStoreSecret("embeddingOpenAiNativeApiKey", openAiNativeApiKey)
-							await this.customStoreSecret("embeddingAzureOpenAIApiKey", azureOpenAIApiKey)
+							await this.updateEmbeddingConfiguration(message.embeddingConfiguration)
 						}
 						await this.postStateToWebview()
 						break
 					case "validateLLMConfig":
 						let isValid = false
 						if (message.apiConfiguration) {
-							try {
-								const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
-								isValid = await apiHandler.validateAPIKey()
-							} catch (error) {
-								vscode.window.showErrorMessage(`LLM validation failed: ${error}`)
+							// Save the LLM configuration in the state
+							await this.updateApiConfiguration(message.apiConfiguration)
+
+							// If no validation error is encountered, validate the LLM configuration by sending a test message.
+							if (!message.text) {
+								try {
+									const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
+									isValid = await apiHandler.validateAPIKey()
+								} catch (error) {
+									vscode.window.showErrorMessage(`LLM validation failed: ${error}`)
+								}
 							}
 						}
 
-						this.postMessageToWebview({
-							type: "llmConfigValidation",
-							bool: isValid,
-						})
+						if (!message.text) {
+							this.postMessageToWebview({
+								type: "llmConfigValidation",
+								bool: isValid,
+							})
+						}
 						await this.customUpdateState("isApiConfigurationValid", isValid)
-
 						break
 					case "validateEmbeddingConfig":
 						let isEmbeddingValid = false
 						if (message.embeddingConfiguration) {
-							try {
-								const embeddingHandler = buildEmbeddingHandler({
-									...message.embeddingConfiguration,
-									maxRetries: 0,
-								})
-								isEmbeddingValid = await embeddingHandler.validateAPIKey()
-							} catch (error) {
-								vscode.window.showErrorMessage(`Embedding validation failed: ${error}`)
+							// Save the Embedding configuration in the state
+							await this.updateEmbeddingConfiguration(message.embeddingConfiguration)
+
+							// If no validation error is encountered, validate the Embedding configuration by sending a test message.
+							if (!message.text) {
+								try {
+									const embeddingHandler = buildEmbeddingHandler({
+										...message.embeddingConfiguration,
+										maxRetries: 0,
+									})
+									isEmbeddingValid = await embeddingHandler.validateAPIKey()
+								} catch (error) {
+									vscode.window.showErrorMessage(`Embedding validation failed: ${error}`)
+								}
 							}
 						}
 
-						this.postMessageToWebview({
-							type: "embeddingConfigValidation",
-							bool: isEmbeddingValid,
-						})
+						if (!message.text) {
+							this.postMessageToWebview({
+								type: "embeddingConfigValidation",
+								bool: isEmbeddingValid,
+							})
+						}
 						await this.customUpdateState("isEmbeddingConfigurationValid", isEmbeddingValid)
-
 						break
 					case "openHistory":
 						this.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
