@@ -18,7 +18,6 @@ const SettingsView = () => {
 		version,
 		customInstructions,
 		setCustomInstructions,
-		openRouterModels,
 		buildContextOptions,
 		setBuildContextOptions,
 		buildIndexProgress,
