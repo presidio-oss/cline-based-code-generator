@@ -1299,6 +1299,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "validateLLMConfig":
 						let isValid = false
 						if (message.apiConfiguration) {
+							// Save the LLM configuration in the state
+							await this.updateApiConfiguration(message.apiConfiguration)
+
 							// If no validation error is encountered, validate the LLM configuration by sending a test message.
 							if (!message.text) {
 								try {
@@ -1308,9 +1311,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									vscode.window.showErrorMessage(`LLM validation failed: ${error}`)
 								}
 							}
-
-							// Save the LLM configuration in the state
-							await this.updateApiConfiguration(message.apiConfiguration)
 						}
 
 						if (!message.text) {
@@ -1324,6 +1324,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "validateEmbeddingConfig":
 						let isEmbeddingValid = false
 						if (message.embeddingConfiguration) {
+							// Save the Embedding configuration in the state
+							await this.updateEmbeddingConfiguration(message.embeddingConfiguration)
+
 							// If no validation error is encountered, validate the Embedding configuration by sending a test message.
 							if (!message.text) {
 								try {
@@ -1336,9 +1339,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 									vscode.window.showErrorMessage(`Embedding validation failed: ${error}`)
 								}
 							}
-
-							// Save the Embedding configuration in the state
-							await this.updateEmbeddingConfiguration(message.embeddingConfiguration)
 						}
 
 						if (!message.text) {

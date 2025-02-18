@@ -132,10 +132,7 @@ const SettingsView = () => {
 
 	useDebounce(
 		() => {
-			const defaultInstruction = (customInstructions || "").trim()
-			if (defaultInstruction) {
-				vscode.postMessage({ type: "customInstructions", text: defaultInstruction })
-			}
+			vscode.postMessage({ type: "customInstructions", text: customInstructions || "" })
 		},
 		500,
 		[customInstructions],
