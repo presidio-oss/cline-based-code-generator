@@ -156,9 +156,8 @@ const SettingsViewExtra = ({
 						color: "var(--vscode-descriptionForeground)",
 					}}>
 					<span style={{ color: "var(--vscode-errorForeground)" }}>
-						(<span style={{ fontWeight: 500 }}>Note:</span> Code indexing will read all your file content and send it
-						to the LLM to generate embeddings. If not excluded, sensitive or private data may be included in this
-						process. Use this feature at your own risk.)
+						(<span style={{ fontWeight: 500 }}>Note:</span> Code indexing reads all file content and sends it to the
+						LLM to generate embeddings. Exclude sensitive data to prevent unintended inclusion.)
 					</span>
 				</p>
 			</div>
