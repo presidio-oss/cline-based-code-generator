@@ -291,7 +291,16 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 			default:
 				return [null, null]
 		}
-	}, [type, cost, apiRequestFailedMessage, isCommandExecuting, apiReqCancelReason, isMcpServerResponding, message.text])
+	}, [
+		type,
+		cost,
+		apiRequestFailedMessage,
+		isCommandExecuting,
+		apiReqCancelReason,
+		isMcpServerResponding,
+		message.text,
+		mcpMarketplaceCatalog,
+	])
 
 	const headerStyle: React.CSSProperties = {
 		display: "flex",
