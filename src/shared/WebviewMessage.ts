@@ -4,6 +4,7 @@ import { ApiConfiguration } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
+import { ChatContent } from "./ChatContent"
 
 export interface WebviewMessage {
 	type:
@@ -32,7 +33,7 @@ export interface WebviewMessage {
 		| "restartMcpServer"
 		| "autoApprovalSettings"
 		| "browserSettings"
-		| "chatSettings"
+		| "togglePlanActMode"
 		| "checkpointDiff"
 		| "checkpointRestore"
 		| "taskCompletionViewChanges"
@@ -59,6 +60,12 @@ export interface WebviewMessage {
 		| "startIndex"
 		| "resetIndex"
 		| "subscribeEmail"
+		| "fetchMcpMarketplace"
+		| "downloadMcp"
+		| "silentlyRefreshMcpMarketplace"
+		| "searchCommits"
+		| "showMcpView"
+		| "fetchLatestMcpServersFromHub"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean
@@ -70,6 +77,8 @@ export interface WebviewMessage {
 	autoApprovalSettings?: AutoApprovalSettings
 	browserSettings?: BrowserSettings
 	chatSettings?: ChatSettings
+	chatContent?: ChatContent
+	mcpId?: string
 
 	// For toggleToolAutoApprove
 	serverName?: string

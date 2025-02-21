@@ -34,4 +34,14 @@ describe("Extension Tests", function () {
 		await vscode.commands.executeCommand("hai.historyButtonClicked")
 		// Success if no error thrown
 	})
+
+	it("should handle advanced settings configuration", async () => {
+		// Test browser session setting
+		await vscode.workspace.getConfiguration().update("hai.disableBrowserTool", true, true)
+		const updatedConfig = vscode.workspace.getConfiguration("hai")
+		expect(updatedConfig.get("disableBrowserTool")).to.be.true
+
+		// Reset settings
+		await vscode.workspace.getConfiguration().update("hai.disableBrowserTool", undefined, true)
+	})
 })
