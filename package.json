@@ -187,6 +187,11 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Enables extension to save checkpoints of workspace throughout the task."
+				},
+				"hai.inlineEditing": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enables inline editing with HAI"
 				}
 			}
 		}

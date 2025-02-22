@@ -339,10 +339,18 @@ export class InlineEditingProvider {
 	registerCodeLensProvider() {
 		this.activeCodeLensProvider?.dispose()
 		const isEditing = this.isEditing
+		const isInlineEditEnabled = vscode.workspace.getConfiguration("hai").get<boolean>("inlineEditing") ?? true
 		const provider = vscode.languages.registerCodeLensProvider("*", {
 			provideCodeLenses(document) {
 				const editor = vscode.window.activeTextEditor
-				if (editor && editor.document === document && editor.selection && !isEditing && !editor.selection.isEmpty) {
+				if (
+					editor &&
+					editor.document === document &&
+					editor.selection &&
+					!isEditing &&
+					!editor.selection.isEmpty &&
+					isInlineEditEnabled
+				) {
 					return [
 						new vscode.CodeLens(editor.selection, {
 							title: "⌥⇧K Edit with hAI",
