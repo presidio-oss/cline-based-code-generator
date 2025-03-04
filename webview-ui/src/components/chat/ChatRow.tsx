@@ -13,7 +13,7 @@ import {
 } from "../../../../src/shared/ExtensionMessage"
 import { COMMAND_OUTPUT_STRING, COMMAND_REQ_APP_STRING } from "../../../../src/shared/combineCommandSequences"
 import { useExtensionState } from "../../context/ExtensionStateContext"
-import { findMatchingResourceOrTemplate } from "../../utils/mcp"
+import { findMatchingResourceOrTemplate, getMcpServerDisplayName } from "../../utils/mcp"
 import { vscode } from "../../utils/vscode"
 import { CheckpointControls, CheckpointOverlay } from "../common/CheckpointControls"
 import CodeAccordian, { cleanPathPrefix } from "../common/CodeAccordian"
@@ -24,6 +24,7 @@ import Thumbnails from "../common/Thumbnails"
 import McpResourceRow from "../mcp/McpResourceRow"
 import McpToolRow from "../mcp/McpToolRow"
 import { highlightMentions } from "./TaskHeader"
+import { CheckmarkControl } from "../common/CheckmarkControl"
 
 const ChatRowContainer = styled.div`
 	padding: 10px 6px 10px 15px;
@@ -59,8 +60,8 @@ const ChatRow = memo(
 				message.ask === "tool" ||
 				message.say === "command" ||
 				message.ask === "command" ||
-				message.say === "completion_result" ||
-				message.ask === "completion_result" ||
+				// message.say === "completion_result" ||
+				// message.ask === "completion_result" ||
 				message.say === "use_mcp_server" ||
 				message.ask === "use_mcp_server")
 
@@ -99,7 +100,7 @@ const ChatRow = memo(
 export default ChatRow
 
 export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifiedMessage, isLast }: ChatRowContentProps) => {
-	const { mcpServers } = useExtensionState()
+	const { mcpServers, mcpMarketplaceCatalog } = useExtensionState()
 
 	const [seeNewChangesDisabled, setSeeNewChangesDisabled] = useState(false)
 
@@ -185,9 +186,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 								marginBottom: "-1.5px",
 							}}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>
-						{message.type === "ask" ? "HAI wants to execute this command:" : "HAI executed this command:"}
-					</span>,
+					<span style={{ color: normalColor, fontWeight: "bold" }}>HAI wants to execute this command:</span>,
 				]
 			case "use_mcp_server":
 				const mcpServerUse = JSON.parse(message.text || "{}") as ClineAskUseMcpServer
@@ -202,18 +201,12 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 								marginBottom: "-1.5px",
 							}}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>
-						{message.type === "ask" ? (
-							<>
-								HAI wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
-								<code>{mcpServerUse.serverName}</code> MCP server:
-							</>
-						) : (
-							<>
-								HAI {mcpServerUse.type === "use_mcp_tool" ? "used a tool" : "accessed a resource"} on the{" "}
-								<code>{mcpServerUse.serverName}</code> MCP server:
-							</>
-						)}
+					<span style={{ color: normalColor, fontWeight: "bold", wordBreak: "break-word" }}>
+						HAI wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
+						<code style={{ wordBreak: "break-all" }}>
+							{getMcpServerDisplayName(mcpServerUse.serverName, mcpMarketplaceCatalog)}
+						</code>{" "}
+						MCP server:
 					</span>,
 				]
 			case "completion_result":
@@ -306,7 +299,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 		apiReqCancelReason,
 		isMcpServerResponding,
 		message.text,
-		message.type,
+		mcpMarketplaceCatalog,
 	])
 
 	const headerStyle: React.CSSProperties = {
@@ -346,9 +339,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 					<>
 						<div style={headerStyle}>
 							{toolIcon("edit")}
-							<span style={{ fontWeight: "bold" }}>
-								{message.type === "ask" ? "HAI wants to edit this file:" : "HAI is editing this file:"}
-							</span>
+							<span style={{ fontWeight: "bold" }}>HAI wants to edit this file:</span>
 						</div>
 						<CodeAccordian
 							// isLoading={message.partial}
@@ -364,9 +355,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 					<>
 						<div style={headerStyle}>
 							{toolIcon("new-file")}
-							<span style={{ fontWeight: "bold" }}>
-								{message.type === "ask" ? "HAI wants to create a new file:" : "HAI is creating a new file:"}
-							</span>
+							<span style={{ fontWeight: "bold" }}>HAI wants to create a new file:</span>
 						</div>
 						<CodeAccordian
 							isLoading={message.partial}
@@ -383,7 +372,8 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 						<div style={headerStyle}>
 							{toolIcon("file-code")}
 							<span style={{ fontWeight: "bold" }}>
-								{message.type === "ask" ? "HAI wants to read this file:" : "HAI read this file:"}
+								{/* {message.type === "ask" ? "" : "Cline read this file:"} */}
+								HAI wants to read this file:
 							</span>
 						</div>
 						{/* <CodeAccordian
@@ -505,15 +495,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 						<div style={headerStyle}>
 							{toolIcon("search")}
 							<span style={{ fontWeight: "bold" }}>
-								{message.type === "ask" ? (
-									<>
-										HAI wants to search this directory for <code>{tool.regex}</code>:
-									</>
-								) : (
-									<>
-										HAI searched this directory for <code>{tool.regex}</code>:
-									</>
-								)}
+								HAI wants to search this directory for <code>{tool.regex}</code>:
 							</span>
 						</div>
 						<CodeAccordian
@@ -751,7 +733,7 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 									}}>
 									{icon}
 									{title}
-									{/* Need to render this everytime since it affects height of row by 2px */}
+									{/* Need to render this every time since it affects height of row by 2px */}
 									<VSCodeBadge
 										style={{
 											opacity: cost != null && cost > 0 ? 1 : 0,
@@ -987,6 +969,53 @@ export const ChatRowContent = ({ message, isExpanded, onToggleExpand, lastModifi
 									file. Retrying...
 								</div>
 							</div>
+						</>
+					)
+				case "clineignore_error":
+					return (
+						<>
+							<div
+								style={{
+									display: "flex",
+									flexDirection: "column",
+									backgroundColor: "rgba(255, 191, 0, 0.1)",
+									padding: 8,
+									borderRadius: 3,
+									fontSize: 12,
+								}}>
+								<div
+									style={{
+										display: "flex",
+										alignItems: "center",
+										marginBottom: 4,
+									}}>
+									<i
+										className="codicon codicon-error"
+										style={{
+											marginRight: 8,
+											fontSize: 18,
+											color: "#FFA500",
+										}}></i>
+									<span
+										style={{
+											fontWeight: 500,
+											color: "#FFA500",
+										}}>
+										Access Denied
+									</span>
+								</div>
+								<div>
+									HAI tried to access <code>{message.text}</code> which is blocked by the{" "}
+									<code>.haiignore</code>
+									file.
+								</div>
+							</div>
+						</>
+					)
+				case "checkpoint_created":
+					return (
+						<>
+							<CheckmarkControl messageTs={message.ts} isCheckpointCheckedOut={message.isCheckpointCheckedOut} />
 						</>
 					)
 				case "completion_result":

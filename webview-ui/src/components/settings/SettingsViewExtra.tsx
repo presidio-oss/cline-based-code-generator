@@ -71,9 +71,10 @@ const IndexControlButtons = memo(({ disabled, buildIndexProgress, buildContextOp
 				}}
 				disabled={
 					disabled ||
-					!buildContextOptions?.useIndex ||
-					buildIndexProgress?.isInProgress ||
-					buildIndexProgress?.progress.toFixed(1) === "100.0"
+					(buildContextOptions && !buildContextOptions.useIndex) ||
+					(buildIndexProgress &&
+						(buildIndexProgress.isInProgress ||
+							(!!buildIndexProgress.progress && buildIndexProgress.progress.toFixed(1) === "100.0")))
 				}>
 				<span className="codicon codicon-play"></span>
 			</VSCodeButton>
@@ -94,10 +95,11 @@ const IndexControlButtons = memo(({ disabled, buildIndexProgress, buildContextOp
 				}}
 				disabled={
 					disabled ||
-					!buildContextOptions?.useIndex ||
-					buildIndexProgress?.isInProgress ||
-					buildIndexProgress?.progress.toFixed(1) === "0.0" ||
-					buildIndexProgress?.progress === undefined
+					(buildContextOptions && !buildContextOptions.useIndex) ||
+					(buildIndexProgress &&
+						(buildIndexProgress.isInProgress ||
+							buildIndexProgress.progress === undefined ||
+							buildIndexProgress.progress.toFixed(1) === "0.0"))
 				}>
 				<span className="codicon codicon-debug-restart"></span>
 			</VSCodeButton>

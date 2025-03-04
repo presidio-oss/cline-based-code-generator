@@ -130,7 +130,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 				padding: "0 15px",
 				userSelect: "none",
 				borderTop: isExpanded
-					? `0.5px solid color-mix(in srgb, var(--vscode-titleBar-inactiveForeground) 20%, transparent)`
+					? `0.5px solid color-mix(in srgb, ${getAsVar(VSC_TITLEBAR_INACTIVE_FOREGROUND)} 20%, transparent)`
 					: "none",
 				overflowY: "auto",
 				...style,
@@ -170,7 +170,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 					// }}
 					onClick={(e) => {
 						/*
-						vscode web toolkit bug: when changing the value of a vscodecheckbox programatically, it will call its onChange with stale state. This led to updateEnabled being called with an old vesion of autoApprovalSettings, effectively undoing the state change that was triggered by the last action being unchecked. A simple workaround is to just not use onChange and intead use onClick. We are lucky this is a checkbox and the newvalue is simply opposite of current state.
+						vscode web toolkit bug: when changing the value of a vscodecheckbox programmatically, it will call its onChange with stale state. This led to updateEnabled being called with an old version of autoApprovalSettings, effectively undoing the state change that was triggered by the last action being unchecked. A simple workaround is to just not use onChange and instead use onClick. We are lucky this is a checkbox and the newvalue is simply opposite of current state.
 						*/
 						if (!hasEnabledActions) return
 						e.stopPropagation() // stops click from bubbling up to the parent, in this case stopping the expanding/collapsing

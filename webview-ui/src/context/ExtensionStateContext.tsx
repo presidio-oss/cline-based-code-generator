@@ -1,12 +1,12 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react"
 import { useEvent } from "react-use"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../../src/shared/AutoApprovalSettings"
-import { ExtensionMessage, ExtensionState } from "../../../src/shared/ExtensionMessage"
+import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "../../../src/shared/ExtensionMessage"
 import { EmbeddingConfiguration } from "../../../src/shared/embeddings"
 import { HaiBuildContextOptions, HaiInstructionFile } from "../../../src/shared/customApi"
 import { ApiConfiguration, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../../src/shared/api"
 import { findLastIndex } from "../../../src/shared/array"
-import { McpServer } from "../../../src/shared/mcp"
+import { McpMarketplaceCatalog, McpServer } from "../../../src/shared/mcp"
 import { convertTextMateToHljs } from "../utils/textMateToHljs"
 import { vscode } from "../utils/vscode"
 import { DEFAULT_BROWSER_SETTINGS } from "../../../src/shared/BrowserSettings"
@@ -19,6 +19,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	openRouterModels: Record<string, ModelInfo>
 	openAiModels: string[]
 	mcpServers: McpServer[]
+	mcpMarketplaceCatalog: McpMarketplaceCatalog
 	filePaths: string[]
 	haiConfig: { [key in string]: any }
 	setApiConfiguration: (config: ApiConfiguration) => void
@@ -46,6 +47,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		browserSettings: DEFAULT_BROWSER_SETTINGS,
 		chatSettings: DEFAULT_CHAT_SETTINGS,
 		isLoggedIn: false,
+		platform: DEFAULT_PLATFORM,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -58,6 +60,7 @@ export const ExtensionStateContextProvider: React.FC<{
 
 	const [openAiModels, setOpenAiModels] = useState<string[]>([])
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
+	const [mcpMarketplaceCatalog, setMcpMarketplaceCatalog] = useState<McpMarketplaceCatalog>({ items: [] })
 
 	const handleMessage = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
@@ -74,9 +77,13 @@ export const ExtensionStateContextProvider: React.FC<{
 							config.openAiApiKey,
 							config.ollamaModelId,
 							config.lmStudioModelId,
+							config.liteLlmApiKey,
 							config.geminiApiKey,
 							config.openAiNativeApiKey,
 							config.deepSeekApiKey,
+							config.requestyApiKey,
+							config.togetherApiKey,
+							config.qwenApiKey,
 							config.mistralApiKey,
 							config.vsCodeLmModelSelector,
 						].some((key) => key !== undefined)
@@ -139,6 +146,12 @@ export const ExtensionStateContextProvider: React.FC<{
 				setMcpServers(message.mcpServers ?? [])
 				break
 			}
+			case "mcpMarketplaceCatalog": {
+				if (message.mcpMarketplaceCatalog) {
+					setMcpMarketplaceCatalog(message.mcpMarketplaceCatalog)
+				}
+				break
+			}
 		}
 	}, [])
 
@@ -156,6 +169,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		openRouterModels,
 		openAiModels,
 		mcpServers,
+		mcpMarketplaceCatalog,
 		filePaths,
 		haiConfig,
 		setApiConfiguration: (value) =>

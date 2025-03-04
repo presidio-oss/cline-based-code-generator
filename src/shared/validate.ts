@@ -10,8 +10,8 @@ export function validateApiConfiguration(apiConfiguration?: ApiConfiguration): s
 				}
 				break
 			case "bedrock":
-				if (!apiConfiguration.awsRegion || !apiConfiguration.awsAccessKey || !apiConfiguration.awsSecretKey) {
-					return "You must provide a valid Access Key, Secret Key and Region to use AWS Bedrock."
+				if (!apiConfiguration.awsRegion) {
+					return "You must choose a region to use with AWS Bedrock."
 				}
 				break
 			case "openrouter":
@@ -39,6 +39,11 @@ export function validateApiConfiguration(apiConfiguration?: ApiConfiguration): s
 					return "You must provide a valid API key or choose a different provider."
 				}
 				break
+			case "qwen":
+				if (!apiConfiguration.qwenApiKey) {
+					return "You must provide a valid API key or choose a different provider."
+				}
+				break
 			case "mistral":
 				if (!apiConfiguration.mistralApiKey) {
 					return "You must provide a valid API key or choose a different provider."
@@ -47,6 +52,16 @@ export function validateApiConfiguration(apiConfiguration?: ApiConfiguration): s
 			case "openai":
 				if (!apiConfiguration.openAiBaseUrl || !apiConfiguration.openAiApiKey || !apiConfiguration.openAiModelId) {
 					return "You must provide a valid base URL, API key, and model ID."
+				}
+				break
+			case "requesty":
+				if (!apiConfiguration.requestyApiKey || !apiConfiguration.requestyModelId) {
+					return "You must provide a valid API key or choose a different provider."
+				}
+				break
+			case "together":
+				if (!apiConfiguration.togetherApiKey || !apiConfiguration.togetherModelId) {
+					return "You must provide a valid API key or choose a different provider."
 				}
 				break
 			case "ollama":

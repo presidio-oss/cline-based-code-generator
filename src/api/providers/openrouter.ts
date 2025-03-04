@@ -2,6 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import axios from "axios"
 import delay from "delay"
 import OpenAI from "openai"
+import { withRetry } from "../retry"
 import { ApiHandler } from "../"
 import { ApiHandlerOptions, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
@@ -25,6 +26,7 @@ export class OpenRouterHandler implements ApiHandler {
 		})
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		const model = this.getModel()
 
@@ -102,14 +104,11 @@ export class OpenRouterHandler implements ApiHandler {
 
 		let temperature = 0
 		let topP: number | undefined = undefined
-		// Handle models based on deepseek-r1
 		if (this.getModel().id.startsWith("deepseek/deepseek-r1") || this.getModel().id === "perplexity/sonar-reasoning") {
-			// Recommended temperature for DeepSeek reasoning models
-			temperature = 0.6
-			// DeepSeek highly recommends using user instead of system role
-			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
-			// Some provider support topP and 0.95 is value that Deepseek used in their benchmarks
+			// Recommended values from DeepSeek
+			temperature = 0.7
 			topP = 0.95
+			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
 		}
 
 		// Removes messages in the middle when close to context window limit. Should not be applied to models that support prompt caching since it would continuously break the cache.
@@ -129,6 +128,7 @@ export class OpenRouterHandler implements ApiHandler {
 			stream: true,
 			transforms: shouldApplyMiddleOutTransform ? ["middle-out"] : undefined,
 			include_reasoning: true,
+			...(model.id === "openai/o3-mini" ? { reasoning_effort: this.options.o3MiniReasoningEffort || "medium" } : {}),
 		})
 
 		let genId: string | undefined
@@ -192,8 +192,31 @@ export class OpenRouterHandler implements ApiHandler {
 			// }
 		}
 
-		await delay(500) // FIXME: necessary delay to ensure generation endpoint is ready
+		if (genId) {
+			await delay(500) // FIXME: necessary delay to ensure generation endpoint is ready
+			try {
+				const generationIterator = this.fetchGenerationDetails(genId)
+				const generation = (await generationIterator.next()).value
+				// console.log("OpenRouter generation details:", generation)
+				yield {
+					type: "usage",
+					// cacheWriteTokens: 0,
+					// cacheReadTokens: 0,
+					// openrouter generation endpoint fails often
+					inputTokens: generation?.native_tokens_prompt || 0,
+					outputTokens: generation?.native_tokens_completion || 0,
+					totalCost: generation?.total_cost || 0,
+				}
+			} catch (error) {
+				// ignore if fails
+				console.error("Error fetching OpenRouter generation details:", error)
+			}
+		}
+	}
 
+	@withRetry({ maxRetries: 4, baseDelay: 250, maxDelay: 1000, retryAllErrors: true })
+	async *fetchGenerationDetails(genId: string) {
+		// console.log("Fetching generation details for:", genId)
 		try {
 			const response = await axios.get(`https://openrouter.ai/api/v1/generation?id=${genId}`, {
 				headers: {
@@ -201,21 +224,11 @@ export class OpenRouterHandler implements ApiHandler {
 				},
 				timeout: 5_000, // this request hangs sometimes
 			})
-
-			const generation = response.data?.data
-			console.log("OpenRouter generation details:", response.data)
-			yield {
-				type: "usage",
-				// cacheWriteTokens: 0,
-				// cacheReadTokens: 0,
-				// openrouter generation endpoint fails often
-				inputTokens: generation?.native_tokens_prompt || 0,
-				outputTokens: generation?.native_tokens_completion || 0,
-				totalCost: generation?.total_cost || 0,
-			}
+			yield response.data?.data
 		} catch (error) {
 			// ignore if fails
 			console.error("Error fetching OpenRouter generation details:", error)
+			throw error
 		}
 	}
 
