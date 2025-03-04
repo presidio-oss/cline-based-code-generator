@@ -145,6 +145,10 @@ export class AwsBedrockHandler implements ApiHandler {
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
+			if (!this.client) {
+				await this.initializeClient()
+			}
+
 			await this.client.messages.create({
 				model: this.getModel().id,
 				max_tokens: 1,

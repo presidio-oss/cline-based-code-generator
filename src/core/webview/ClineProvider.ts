@@ -792,11 +792,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			awsSessionToken,
 			awsRegion,
 			awsUseCrossRegionInference,
+			awsProfile,
+			awsUseProfile,
 			vertexProjectId,
 			vertexRegion,
 			openAiBaseUrl,
 			openAiApiKey,
 			openAiModelId,
+			openAiModelInfo,
 			ollamaModelId,
 			ollamaBaseUrl,
 			lmStudioModelId,
@@ -805,6 +808,11 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			geminiApiKey,
 			openAiNativeApiKey,
 			deepSeekApiKey,
+			requestyApiKey,
+			requestyModelId,
+			togetherApiKey,
+			togetherModelId,
+			qwenApiKey,
 			mistralApiKey,
 			azureApiVersion,
 			openRouterModelId,
@@ -812,6 +820,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			vsCodeLmModelSelector,
 			liteLlmBaseUrl,
 			liteLlmModelId,
+			liteLlmApiKey,
+			qwenApiLine,
 		} = apiConfiguration
 		await this.customUpdateState("apiProvider", apiProvider)
 		await this.customUpdateState("apiModelId", apiModelId)
@@ -822,11 +832,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.customStoreSecret("awsSessionToken", awsSessionToken, true)
 		await this.customUpdateState("awsRegion", awsRegion)
 		await this.customUpdateState("awsUseCrossRegionInference", awsUseCrossRegionInference)
+		await this.customUpdateState("awsProfile", awsProfile)
+		await this.customUpdateState("awsUseProfile", awsUseProfile)
 		await this.customUpdateState("vertexProjectId", vertexProjectId)
 		await this.customUpdateState("vertexRegion", vertexRegion)
 		await this.customUpdateState("openAiBaseUrl", openAiBaseUrl)
 		await this.customStoreSecret("openAiApiKey", openAiApiKey, true)
 		await this.customUpdateState("openAiModelId", openAiModelId)
+		await this.customUpdateState("openAiModelInfo", openAiModelInfo)
 		await this.customUpdateState("ollamaModelId", ollamaModelId)
 		await this.customUpdateState("ollamaBaseUrl", ollamaBaseUrl)
 		await this.customUpdateState("lmStudioModelId", lmStudioModelId)
@@ -835,13 +848,20 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.customStoreSecret("geminiApiKey", geminiApiKey, true)
 		await this.customStoreSecret("openAiNativeApiKey", openAiNativeApiKey, true)
 		await this.customStoreSecret("deepSeekApiKey", deepSeekApiKey, true)
+		await this.customStoreSecret("requestyApiKey", requestyApiKey, true)
+		await this.customStoreSecret("togetherApiKey", togetherApiKey, true)
+		await this.customStoreSecret("qwenApiKey", qwenApiKey, true)
 		await this.customStoreSecret("mistralApiKey", mistralApiKey, true)
+		await this.customStoreSecret("liteLlmApiKey", liteLlmApiKey, true)
 		await this.customUpdateState("azureApiVersion", azureApiVersion)
 		await this.customUpdateState("openRouterModelId", openRouterModelId)
 		await this.customUpdateState("openRouterModelInfo", openRouterModelInfo)
 		await this.customUpdateState("vsCodeLmModelSelector", vsCodeLmModelSelector)
 		await this.customUpdateState("liteLlmBaseUrl", liteLlmBaseUrl)
 		await this.customUpdateState("liteLlmModelId", liteLlmModelId)
+		await this.customUpdateState("qwenApiLine", qwenApiLine)
+		await this.customUpdateState("requestyModelId", requestyModelId)
+		await this.customUpdateState("togetherModelId", togetherModelId)
 		if (this.cline) {
 			this.cline.api = buildApiHandler(apiConfiguration)
 		}
