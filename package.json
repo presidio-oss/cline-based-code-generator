@@ -207,6 +207,11 @@
 					"type": "string",
 					"default": null,
 					"description": "Path to Chrome executable for browser use functionality. If not set, the extension will attempt to find or download it automatically."
+				},
+				"hai.inlineEditing": {
+					"type": "boolean",
+					"default": true,
+					"description": "Enables inline editing with HAI"
 				}
 			}
 		}
