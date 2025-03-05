@@ -93,6 +93,5 @@ Do not include additional context, information or explanation in response.`,
 		"go.work",
 	],
 	defaultRepoHashFileName: "hai.repo.hash",
-	defaultInstructionsDirectory: ".vscode/hai-instructions",
 	defaultSecretFilesPatternToIgnore: [".env*", ".npmrc", ".ssh/id_*", ".aws/credentials"],
 }

@@ -1,5 +1,5 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
-import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "./customApi"
+import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
 import { IHaiStory } from "../../webview-ui/src/interfaces/hai-task.interface"
 import { EmbeddingConfiguration } from "./embeddings"
 import { GitCommit } from "../utils/git"
@@ -33,7 +33,6 @@ export interface ExtensionMessage {
 		| "haiConfig"
 		| "llmConfigValidation"
 		| "embeddingConfigValidation"
-		| "existingFiles"
 		| "ollamaEmbeddingModels"
 		| "emailSubscribed"
 		| "mcpMarketplaceCatalog"
@@ -69,7 +68,6 @@ export interface ExtensionMessage {
 	commits?: GitCommit[]
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
-	instructions?: { name: string; enabled: boolean }[]
 }
 
 export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sunos" | "win32" | "unknown"
@@ -80,8 +78,7 @@ export interface ExtensionState {
 	version: string
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
-	isCustomInstructionsEnabled: boolean
-	fileInstructions?: HaiInstructionFile[]
+	isHaiRulesPresent?: boolean
 	uriScheme?: string
 	currentTaskItem?: HistoryItem
 	checkpointTrackerErrorMessage?: string

@@ -8,8 +8,6 @@ import { getAsVar, VSC_FOREGROUND, VSC_TITLEBAR_INACTIVE_FOREGROUND, VSC_DESCRIP
 
 interface AutoApproveMenuProps {
 	style?: React.CSSProperties
-	isExpanded: boolean
-	onToggleExpand: () => void
 }
 
 const ACTION_METADATA: {
@@ -51,8 +49,9 @@ const ACTION_METADATA: {
 	},
 ]
 
-const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuProps) => {
+const AutoApproveMenu = ({ style }: AutoApproveMenuProps) => {
 	const { autoApprovalSettings } = useExtensionState()
+	const [isExpanded, setIsExpanded] = useState(false)
 	const [isHoveringCollapsibleSection, setIsHoveringCollapsibleSection] = useState(false)
 
 	// Careful not to use partials to mutate since spread operator only does shallow copy
@@ -155,7 +154,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 				}}
 				onClick={() => {
 					if (!hasEnabledActions) {
-						onToggleExpand()
+						setIsExpanded((prev) => !prev)
 					}
 				}}>
 				<VSCodeCheckbox
@@ -183,7 +182,7 @@ const AutoApproveMenu = ({ style, isExpanded, onToggleExpand }: AutoApproveMenuP
 					onClick={() => {
 						// to prevent this from counteracting parent
 						if (hasEnabledActions) {
-							onToggleExpand()
+							setIsExpanded((prev) => !prev)
 						}
 					}}>
 					<span

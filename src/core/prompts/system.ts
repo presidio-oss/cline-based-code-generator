@@ -991,7 +991,6 @@ ${customObjectivePrompt(supportsCodeIndex)}`
 export function addUserInstructions(
 	settingsCustomInstructions?: string,
 	clineRulesFileInstructions?: string,
-	fileInstructions?: string,
 	clineIgnoreInstructions?: string,
 ) {
 	let customInstructions = ""
@@ -1000,9 +999,6 @@ export function addUserInstructions(
 	}
 	if (clineRulesFileInstructions) {
 		customInstructions += clineRulesFileInstructions + "\n\n"
-	}
-	if (fileInstructions) {
-		customInstructions += fileInstructions + "\n\n"
 	}
 	if (clineIgnoreInstructions) {
 		customInstructions += clineIgnoreInstructions

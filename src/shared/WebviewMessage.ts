@@ -1,4 +1,4 @@
-import { HaiBuildContextOptions, HaiInstructionFile } from "./customApi"
+import { HaiBuildContextOptions } from "./customApi"
 import { EmbeddingConfiguration } from "./embeddings"
 import { ApiConfiguration } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
@@ -52,9 +52,6 @@ export interface WebviewMessage {
 		| "openHistory"
 		| "openHaiTasks"
 		| "showToast"
-		| "uploadInstruction"
-		| "deleteInstruction"
-		| "fileInstructions"
 		| "requestOllamaEmbeddingModels"
 		| "stopIndex"
 		| "startIndex"
@@ -66,6 +63,7 @@ export interface WebviewMessage {
 		| "searchCommits"
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
+		| "checkHaiRules"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean
@@ -87,7 +85,6 @@ export interface WebviewMessage {
 
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
-	fileInstructions?: HaiInstructionFile[]
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
 }
 

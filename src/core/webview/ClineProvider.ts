@@ -14,7 +14,7 @@ import { selectImages } from "../../integrations/misc/process-images"
 import { getTheme } from "../../integrations/theme/getTheme"
 import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
-import { McpDownloadResponse, McpMarketplaceCatalog, McpMarketplaceItem, McpServer } from "../../shared/mcp"
+import { McpDownloadResponse, McpMarketplaceCatalog, McpServer } from "../../shared/mcp"
 import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
 import { ApiConfiguration, ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
@@ -26,7 +26,7 @@ import { Cline } from "../Cline"
 import { openMention } from "../mentions"
 import { getNonce } from "./getNonce"
 import { getUri } from "./getUri"
-import { HaiBuildContextOptions, HaiBuildIndexProgress, HaiInstructionFile } from "../../shared/customApi"
+import { HaiBuildContextOptions, HaiBuildIndexProgress } from "../../shared/customApi"
 import { IHaiStory } from "../../../webview-ui/src/interfaces/hai-task.interface"
 import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
 import { VectorizeCodeAgent } from "../../integrations/code-prep/VectorizeCodeAgent"
@@ -36,7 +36,7 @@ import { validateApiConfiguration, validateEmbeddingConfiguration } from "../../
 import { getFormattedDateTime } from "../../utils/date"
 import { EmbeddingConfiguration, EmbeddingProvider } from "../../shared/embeddings"
 import { ensureFaissPlatformDeps } from "../../utils/faiss"
-import { ACCEPTED_FILE_EXTENSIONS, FileOperations } from "../../utils/constants"
+import { FileOperations } from "../../utils/constants"
 import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import delay from "delay"
@@ -46,7 +46,6 @@ import { AutoApprovalSettings, DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shar
 import { BrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
 import { ChatSettings, DEFAULT_CHAT_SETTINGS } from "../../shared/ChatSettings"
 import { Logger } from "../../services/logging/Logger"
-import { DIFF_VIEW_URI_SCHEME } from "../../integrations/editor/DiffViewProvider"
 import { searchCommits } from "../../utils/git"
 import { ChatContent } from "../../shared/ChatContent"
 
@@ -91,7 +90,6 @@ type GlobalStateKey =
 	| "vertexRegion"
 	| "lastShownAnnouncementId"
 	| "customInstructions"
-	| "isCustomInstructionsEnabled"
 	| "taskHistory"
 	| "openAiBaseUrl"
 	| "openAiModelId"
@@ -110,7 +108,6 @@ type GlobalStateKey =
 	| "embeddingAwsRegion"
 	| "embeddingOpenAiBaseUrl"
 	| "embeddingOpenAiModelId"
-	| "fileInstructions"
 	| "autoApprovalSettings"
 	| "browserSettings"
 	| "chatSettings"
@@ -646,8 +643,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
-			isCustomInstructionsEnabled,
-			fileInstructions,
 			buildContextOptions,
 			autoApprovalSettings,
 			browserSettings,
@@ -661,11 +656,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			chatSettings,
 			embeddingConfiguration,
 			customInstructions,
-			fileInstructions,
 			task,
 			images,
 			undefined,
-			isCustomInstructionsEnabled,
 		)
 		this.cline.buildContextOptions = buildContextOptions
 	}
@@ -676,8 +669,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
-			isCustomInstructionsEnabled,
-			fileInstructions,
 			autoApprovalSettings,
 			buildContextOptions,
 			browserSettings,
@@ -691,11 +682,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			chatSettings,
 			embeddingConfiguration,
 			customInstructions,
-			fileInstructions,
 			undefined,
 			undefined,
 			historyItem,
-			isCustomInstructionsEnabled,
 		)
 
 		this.cline.buildContextOptions = buildContextOptions
@@ -908,6 +897,21 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.customStoreSecret("embeddingAzureOpenAIApiKey", azureOpenAIApiKey, true)
 	}
 
+	async updateHaiRulesState(postToWebview: boolean = false) {
+		const workspaceFolder = this.getWorkspacePath()
+		if (!workspaceFolder) {
+			return
+		}
+		const haiRulesPath = path.join(workspaceFolder, GlobalFileNames.clineRules)
+		const isHaiRulePresent = await fileExistsAtPath(haiRulesPath)
+
+		await this.customUpdateState("isHaiRulesPresent", isHaiRulePresent)
+
+		if (postToWebview) {
+			await this.postStateToWebview()
+		}
+	}
+
 	/**
 	 * Sets up an event listener to listen for messages passed from the webview context and
 	 * executes code based on the message that is recieved.
@@ -919,8 +923,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			async (message: WebviewMessage) => {
 				switch (message.type) {
 					case "webviewDidLaunch":
+						await this.updateHaiRulesState()
 						this.postStateToWebview()
-						await this.checkInstructionFilesFromFileSystem()
 						this.workspaceTracker?.populateFilePaths() // don't await
 						getTheme().then((theme) =>
 							this.postMessageToWebview({
@@ -976,6 +980,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						// initializing new instance of Cline will make sure that any agentically running promises in old instance don't affect our new task. this essentially creates a fresh slate for the new task
 						await this.initClineWithTask(message.text, message.images)
 						break
+					case "checkHaiRules":
+						await this.updateHaiRulesState(true)
+						break
 					case "apiConfiguration":
 						if (message.apiConfiguration) {
 							await this.updateApiConfiguration(message.apiConfiguration)
@@ -997,42 +1004,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "customInstructions":
 						await this.updateCustomInstructions(message.text, message.bool)
-						break
-					case "uploadInstruction":
-						if (message.fileInstructions) {
-							const instructionsDir = path.join(
-								this.vsCodeWorkSpaceFolderFsPath,
-								HaiBuildDefaults.defaultInstructionsDirectory,
-							)
-							await fs.mkdir(instructionsDir, { recursive: true })
-							for (const fileInstruction of message.fileInstructions) {
-								const filePath = path.join(instructionsDir, fileInstruction.name)
-								if (fileInstruction.content) {
-									await fs.writeFile(filePath, fileInstruction.content, "utf8")
-								}
-							}
-							vscode.window.showInformationMessage(`${message.fileInstructions.length} files uploaded successfully`)
-						}
-						break
-					case "deleteInstruction":
-						const dir = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultInstructionsDirectory)
-						if (message.text) {
-							try {
-								const filePath = path.join(dir, message.text)
-								let doesFileExist = await fileExistsAtPath(filePath)
-								if (!doesFileExist) {
-									vscode.window.showErrorMessage(`${message.text} does not exist.`)
-									break
-								}
-								await fs.unlink(filePath)
-								vscode.window.showInformationMessage(message.text + " has been deleted.")
-							} catch (error) {
-								console.error(`Failed to delete file ${message.text}:`, error)
-							}
-						}
-						break
-					case "fileInstructions":
-						await this.updateFileInstructions(message.fileInstructions)
 						break
 					case "autoApprovalSettings":
 						if (message.autoApprovalSettings) {
@@ -1445,47 +1416,6 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		)
 	}
 
-	async updateFileInstructions(fileInstructions: HaiInstructionFile[] | undefined) {
-		await this.customUpdateState("fileInstructions", fileInstructions)
-		if (this.cline) {
-			this.cline.fileInstructions = fileInstructions
-		}
-		await this.postStateToWebview()
-	}
-
-	async checkInstructionFilesFromFileSystem() {
-		const workspaceFolder = this.getWorkspacePath()
-		if (!workspaceFolder) {
-			return
-		}
-		const instructionsPath = path.join(workspaceFolder, HaiBuildDefaults.defaultInstructionsDirectory)
-		try {
-			const files = await fs.readdir(instructionsPath)
-			const filesInSystemSet = new Set(
-				files.filter((file) => {
-					const extension = file.split(".").pop()?.trim().toLowerCase()
-					return extension ? ACCEPTED_FILE_EXTENSIONS.includes(extension) : false
-				}),
-			)
-			const fileInstructions = (await this.customGetState("fileInstructions")) as HaiInstructionFile[]
-			const existingInstructionsMap = new Map(
-				fileInstructions?.map((instruction) => [instruction.name, instruction.enabled]),
-			)
-
-			const updatedInstructions = Array.from(filesInSystemSet, (name) => ({
-				name,
-				enabled: existingInstructionsMap.get(name) || false,
-			}))
-
-			await this.updateFileInstructions(updatedInstructions)
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-				await this.updateFileInstructions([])
-				return
-			}
-			console.error("Error checking instruction files:", error)
-		}
-	}
 	async customWebViewMessageHandlers(message: WebviewMessage) {
 		switch (message.type) {
 			case "onHaiConfigure":
@@ -1661,14 +1591,10 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	}
 
 	async updateCustomInstructions(instructions?: string, enable?: boolean) {
-		const { isCustomInstructionsEnabled } = await this.getState()
-		enable = enable ?? isCustomInstructionsEnabled
-
-		await this.customUpdateState("customInstructions", instructions)
-		await this.customUpdateState("isCustomInstructionsEnabled", enable)
+		// User may be clearing the field
+		await this.customUpdateState("customInstructions", instructions || undefined)
 		if (this.cline) {
 			this.cline.customInstructions = instructions || undefined
-			this.cline.isCustomInstructionsEnabled = enable
 		}
 		await this.postStateToWebview()
 	}
@@ -2282,8 +2208,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			apiConfiguration,
 			lastShownAnnouncementId,
 			customInstructions,
-			isCustomInstructionsEnabled,
-			fileInstructions,
+			isHaiRulesPresent,
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
@@ -2299,8 +2224,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
-			isCustomInstructionsEnabled,
-			fileInstructions,
+			isHaiRulesPresent,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskItem: this.cline?.taskId ? (taskHistory || []).find((item) => item.id === this.cline?.taskId) : undefined,
 			checkpointTrackerErrorMessage: this.cline?.checkpointTrackerErrorMessage,
@@ -2423,8 +2347,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			previousModeModelInfo,
 			qwenApiLine,
 			liteLlmApiKey,
-			isCustomInstructionsEnabled,
-			fileInstructions,
+			isHaiRulesPresent,
 			buildContextOptions,
 			buildIndexProgress,
 			isApiConfigurationValid,
@@ -2497,8 +2420,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.customGetState("previousModeModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("qwenApiLine") as Promise<string | undefined>,
 			this.customGetSecret("liteLlmApiKey") as Promise<string | undefined>,
-			this.customGetState("isCustomInstructionsEnabled") as Promise<boolean | undefined>,
-			this.customGetState("fileInstructions") as Promise<HaiInstructionFile[] | undefined>,
+			this.customGetState("isHaiRulesPresent") as Promise<boolean | undefined>,
 			this.customGetState("buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 			this.customGetState("buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 			this.customGetState("isApiConfigurationValid") as Promise<boolean | undefined>,
@@ -2612,8 +2534,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			},
 			lastShownAnnouncementId,
 			customInstructions,
-			isCustomInstructionsEnabled: isCustomInstructionsEnabled ?? true,
-			fileInstructions,
+			isHaiRulesPresent,
 			taskHistory,
 			buildContextOptions: buildContextOptions ?? {
 				useIndex: true, // Enable Indexing by default
@@ -2773,7 +2694,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.cline = undefined
 		}
 		vscode.window.showInformationMessage("State reset")
-		await this.checkInstructionFilesFromFileSystem()
 		await this.postStateToWebview()
 		await this.postMessageToWebview({
 			type: "action",

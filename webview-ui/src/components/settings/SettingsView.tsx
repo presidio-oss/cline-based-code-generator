@@ -5,117 +5,30 @@ import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
-import { ACCEPTED_FILE_EXTENSIONS } from "../../utils/constants"
-import { HaiInstructionFile } from "../../../../src/shared/customApi"
 import SettingsButton from "../common/SettingsButton"
 import { useDebounce, useDeepCompareEffect } from "react-use"
+import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
-const SettingsView = () => {
+type SettingsViewProps = {
+	onDone: () => void
+}
+
+const SettingsView = ({ onDone }: SettingsViewProps) => {
 	const {
 		apiConfiguration,
 		version,
 		customInstructions,
 		setCustomInstructions,
+		isHaiRulesPresent,
 		buildContextOptions,
 		setBuildContextOptions,
 		buildIndexProgress,
 		embeddingConfiguration,
-		fileInstructions,
-		setFileInstructions,
 		vscodeWorkspacePath,
 	} = useExtensionState()
 	const [showCopied, setShowCopied] = useState(false)
-	const [trashClickedFiles, setTrashClickedFiles] = useState<Set<string>>(new Set())
-
-	const toggleTrashClicked = (filename: string) => {
-		setTrashClickedFiles((prev) => {
-			const newSet = new Set(prev)
-			if (newSet.has(filename)) {
-				newSet.delete(filename)
-			} else {
-				newSet.add(filename)
-			}
-			return newSet
-		})
-	}
-
-	const [fileInput, setFileInput] = useState<HaiInstructionFile[]>([])
-
-	const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-		if (e.target.files) {
-			const newFiles = Array.from(e.target.files)
-			const existingFiles = new Set(fileInstructions?.map((file) => file.name))
-			for (const file of newFiles) {
-				const fileExtension = file.name.split(".").pop()?.toLowerCase()
-
-				if (!fileExtension || !ACCEPTED_FILE_EXTENSIONS.includes(fileExtension)) {
-					vscode.postMessage({
-						type: "showToast",
-						toast: {
-							message: "Only markdown files are supported",
-							toastType: "warning",
-						},
-					})
-					e.target.value = ""
-					e.target.files = null
-					continue
-				}
-
-				if (existingFiles.has(file.name)) {
-					vscode.postMessage({
-						type: "showToast",
-						toast: {
-							message: `${file.name} already exists. Please upload a different file.`,
-							toastType: "warning",
-						},
-					})
-					e.target.value = ""
-					e.target.files = null
-					continue
-				}
-
-				const content = await new Promise<string>((resolve) => {
-					const reader = new FileReader()
-					reader.onload = () => {
-						if (typeof reader.result === "string") {
-							resolve(reader.result)
-						}
-					}
-					reader.readAsText(file)
-				})
-
-				fileInput.push({
-					name: file.name,
-					content: content,
-					enabled: false,
-				})
-				setFileInput(fileInput)
-			}
-			if (fileInput.length > 0) {
-				vscode.postMessage({
-					type: "uploadInstruction",
-					fileInstructions: fileInput,
-				})
-			}
-		}
-		setFileInput([])
-		e.target.value = ""
-		e.target.files = null
-	}
-
-	const handleDeleteFile = (filename: string) => {
-		vscode.postMessage({
-			type: "deleteInstruction",
-			text: filename,
-		})
-
-		let newFileInstructions = fileInstructions?.filter((file) => file.name !== filename)
-		if (newFileInstructions) {
-			setFileInstructions(newFileInstructions)
-		}
-	}
 
 	const handleResetState = () => {
 		vscode.postMessage({ type: "resetState" })
@@ -127,6 +40,18 @@ const SettingsView = () => {
 		)
 		setShowCopied(true)
 		setTimeout(() => setShowCopied(false), 2000)
+	}
+
+	const handleHaiRules = (mode: "create" | "edit") => {
+		switch (mode) {
+			case "create":
+				vscode.postMessage({ type: "newTask", text: CREATE_HAI_RULES_PROMPT })
+				onDone()
+				break
+			case "edit":
+				vscode.postMessage({ type: "openFile", text: `${vscodeWorkspacePath}/${HAI_RULES_PATH}` })
+				break
+		}
 	}
 
 	useDebounce(
@@ -199,90 +124,25 @@ const SettingsView = () => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						The default instructions are added to the end of the system prompt sent with every request.
+						These instructions are appended to the end of the system prompt sent with every request. You can also use
+						.hairules at the root of your workspace to define custom instructions.
 					</p>
 					<VSCodeButton
 						style={{
 							width: "100%",
 							marginTop: "10px",
+							marginBottom: "10px",
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "center",
 						}}
-						onClick={() => document.getElementById("fileInput")?.click()}
+						onClick={() => handleHaiRules(isHaiRulesPresent ? "edit" : "create")}
 						disabled={!vscodeWorkspacePath}>
-						<span className="codicon codicon-add" style={{ marginRight: "5px" }}></span>
-						Upload Instruction File
+						<span
+							className={"codicon codicon-" + (isHaiRulesPresent ? "link-external" : "add")}
+							style={{ marginRight: "5px" }}></span>
+						{isHaiRulesPresent ? "Edit" : "Create"} .hairules
 					</VSCodeButton>
-					<input
-						id="fileInput"
-						type="file"
-						accept=".md"
-						style={{ display: "none" }}
-						onChange={handleFileUpload}
-						multiple
-					/>
-
-					{fileInstructions && fileInstructions.length > 0 && (
-						<div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "5px" }}>
-							{fileInstructions.map((file) => (
-								<div
-									key={file.name}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										justifyContent: "space-between",
-										padding: "8px",
-										backgroundColor: "var(--vscode-input-background)",
-										borderRadius: "3px",
-										color: "var(--vscode-foreground)",
-										opacity: 0.6,
-									}}>
-									<span
-										style={{
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-											marginRight: "10px",
-										}}>
-										{file.name}
-									</span>
-									{!trashClickedFiles.has(file.name) ? (
-										<VSCodeButton appearance="icon" onClick={() => toggleTrashClicked(file.name)}>
-											<span className="codicon codicon-trash"></span>
-										</VSCodeButton>
-									) : (
-										<div style={{ display: "flex", gap: "4px" }}>
-											<VSCodeButton appearance="icon" onClick={() => toggleTrashClicked(file.name)}>
-												<span className="codicon codicon-close"></span>
-											</VSCodeButton>
-											<VSCodeButton
-												appearance="icon"
-												onClick={() => {
-													handleDeleteFile(file.name)
-													toggleTrashClicked(file.name)
-												}}>
-												<span className="codicon codicon-check"></span>
-											</VSCodeButton>
-										</div>
-									)}
-								</div>
-							))}
-						</div>
-					)}
-
-					<p
-						style={{
-							fontSize: "12px",
-							marginTop: "5px",
-							color: "var(--vscode-descriptionForeground)",
-						}}>
-						This feature enables the addition of markdown (.md) instruction files that provide specific behavioral
-						guidelines to the LLM [ex: "always write tests first", "follow BEM naming for CSS"]. Each enabled
-						instruction file's content is automatically appended to the system prompt for every API request. For
-						workspace-wide instructions that apply across all directories, create a .hairules file in your root
-						directory [ex: global code style preferences, project-specific documentation requirements].{" "}
-					</p>
 				</div>
 
 				<SettingsViewExtra
@@ -331,7 +191,6 @@ const SettingsView = () => {
 										buildIndexProgress,
 										apiConfiguration,
 										embeddingConfiguration,
-										fileInstructions,
 									},
 									null,
 									2,

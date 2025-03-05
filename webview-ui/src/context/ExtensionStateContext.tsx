@@ -3,7 +3,7 @@ import { useEvent } from "react-use"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../../src/shared/AutoApprovalSettings"
 import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "../../../src/shared/ExtensionMessage"
 import { EmbeddingConfiguration } from "../../../src/shared/embeddings"
-import { HaiBuildContextOptions, HaiInstructionFile } from "../../../src/shared/customApi"
+import { HaiBuildContextOptions } from "../../../src/shared/customApi"
 import { ApiConfiguration, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../../src/shared/api"
 import { findLastIndex } from "../../../src/shared/array"
 import { McpMarketplaceCatalog, McpServer } from "../../../src/shared/mcp"
@@ -24,8 +24,6 @@ interface ExtensionStateContextType extends ExtensionState {
 	haiConfig: { [key in string]: any }
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
-	setFileInstructions: (value: HaiInstructionFile[]) => void
-	setIsCustomInstructionsEnabled: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
 	setHaiConfig: (value: { [key in string]: any }) => void
 	setEmbeddingConfiguration: (config: EmbeddingConfiguration) => void
@@ -41,8 +39,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		version: "",
 		clineMessages: [],
 		taskHistory: [],
+		isHaiRulesPresent: false,
 		shouldShowAnnouncement: false,
-		isCustomInstructionsEnabled: true,
 		autoApprovalSettings: DEFAULT_AUTO_APPROVAL_SETTINGS,
 		browserSettings: DEFAULT_BROWSER_SETTINGS,
 		chatSettings: DEFAULT_CHAT_SETTINGS,
@@ -191,16 +189,6 @@ export const ExtensionStateContextProvider: React.FC<{
 			setHaiConfig((prevState) => ({
 				...prevState,
 				...value,
-			})),
-		setIsCustomInstructionsEnabled: (value) =>
-			setState((prevState) => ({
-				...prevState,
-				isCustomInstructionsEnabled: value,
-			})),
-		setFileInstructions: (value) =>
-			setState((prevState) => ({
-				...prevState,
-				fileInstructions: value,
 			})),
 		setBuildContextOptions: (value) =>
 			setState((prevState) => ({

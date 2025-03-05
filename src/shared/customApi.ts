@@ -17,9 +17,3 @@ export type HaiBuildIndexProgress = {
 	isCodeContextEverCompleted?: boolean
 	isPaused?: boolean
 }
-
-export type HaiInstructionFile = {
-	name: string
-	enabled?: boolean
-	content?: string
-}
