@@ -907,7 +907,9 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 
 		await this.customUpdateState("isHaiRulesPresent", isHaiRulePresent)
 
-		if (postToWebview) await this.postStateToWebview()
+		if (postToWebview) {
+			await this.postStateToWebview()
+		}
 	}
 
 	/**
