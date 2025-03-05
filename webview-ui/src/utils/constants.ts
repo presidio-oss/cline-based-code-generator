@@ -43,4 +43,21 @@ export const FEATURE_TILES = [
 			"Generate unit tests focusing on edge cases, error handling, and business logic validation. Include tests for different input scenarios, boundary conditions, and error paths. Consider integration points, mocking strategies, and test coverage goals. Follow testing best practices for the specific framework or language being used.",
 	},
 ]
-export const ACCEPTED_FILE_EXTENSIONS = ["md"]
+
+export const CREATE_HAI_RULES_PROMPT = `Create a .hairules file for my project. It should include the following sections:
+
+1. Code Style & Patterns: 
+Include coding standards, architectural patterns, and best practices (e.g., repository pattern, composition over inheritance).
+
+2. Testing Standards: 
+Outline requirements for unit, integration, and end-to-end testing.
+
+3. Security: 
+Define rules to protect sensitive information, such as ignoring .env files and using environment variables for secrets.
+
+4. Documentation Requirements: 
+Specify guidelines for keeping README.md in sync and maintaining a changelog.
+
+Place the .hairules file in the root directory of the project. Ensure it is well-structured and adheres to the project's needs.`
+
+export const HAI_RULES_PATH = ".hairules"

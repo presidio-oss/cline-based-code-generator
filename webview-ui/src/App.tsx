@@ -189,7 +189,7 @@ const AppContent = () => {
 									onStoryClick={handleStoryClick}
 								/>
 							)}
-							{showSettings && <SettingsView />}
+							{showSettings && <SettingsView onDone={() => setShowSettings(false)} />}
 							{showHistory && <HistoryView onDone={() => setShowHistory(false)} />}
 							{showMcp && <McpView onDone={() => setShowMcp(false)} />}
 							{showAccount && <AccountView onDone={() => setShowAccount(false)} />}

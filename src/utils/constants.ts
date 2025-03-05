@@ -3,5 +3,3 @@ export enum FileOperations {
 	Delete,
 	Change,
 }
-
-export const ACCEPTED_FILE_EXTENSIONS = ["md"]

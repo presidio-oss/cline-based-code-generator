@@ -3,7 +3,7 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import ignore from "ignore"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
-import { ClineProvider } from "../../core/webview/ClineProvider"
+import { ClineProvider, GlobalFileNames } from "../../core/webview/ClineProvider"
 import { FileOperations } from "../../utils/constants"
 
 class HaiFileSystemWatcher {
@@ -11,13 +11,11 @@ class HaiFileSystemWatcher {
 	private ig: ReturnType<typeof ignore>
 	private providerRef: WeakRef<ClineProvider>
 	private watcher: Watcher | undefined
-	private instructionsDir: string
 
 	constructor(provider: ClineProvider, sourceFolder: string) {
 		this.sourceFolder = sourceFolder
 		this.providerRef = new WeakRef(provider)
 		this.ig = ignore()
-		this.instructionsDir = path.join(this.sourceFolder, HaiBuildDefaults.defaultInstructionsDirectory)
 		this.initializeWatcher().then()
 	}
 
@@ -26,7 +24,11 @@ class HaiFileSystemWatcher {
 			const gitignorePath = path.join(this.sourceFolder, ".gitignore")
 			const content = await fs.readFile(gitignorePath, "utf-8")
 
-			this.ig.add(content.split("\n").filter((line) => line.trim() && !line.startsWith("#") && !line.includes(".vscode")))
+			this.ig.add(
+				content
+					.split("\n")
+					.filter((line) => line.trim() && !line.startsWith("#") && !line.includes(GlobalFileNames.clineRules)),
+			)
 		} catch (error) {
 			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
 		}
@@ -63,30 +65,37 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("unlink", (filePath) => {
 			console.log("HaiFileSystemWatcher File deleted", filePath)
-			if (filePath.includes(this.instructionsDir)) {
-				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
-			} else {
-				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete)
+
+			// Check for .hairules
+			if (this.isHaiRulesPath(filePath)) {
+				this.providerRef.deref()?.updateHaiRulesState(true)
 			}
+
+			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Delete)
 		})
 
 		this.watcher.on("add", (filePath) => {
 			console.log("HaiFileSystemWatcher File added", filePath)
-			if (filePath.includes(this.instructionsDir)) {
-				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
-			} else {
-				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
+
+			// Check for .hairules
+			if (this.isHaiRulesPath(filePath)) {
+				this.providerRef.deref()?.updateHaiRulesState(true)
 			}
+
+			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Create)
 		})
 
 		this.watcher.on("change", (filePath) => {
 			console.log("HaiFileSystemWatcher File changes", filePath)
-			if (filePath.includes(this.instructionsDir)) {
-				this.providerRef.deref()?.checkInstructionFilesFromFileSystem()
-			} else {
-				this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
-			}
+			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
 		})
+	}
+
+	isHaiRulesPath(path: string) {
+		const pathSplit = path.split(this.sourceFolder)
+		const hairulesPath = pathSplit.length === 2 ? pathSplit[1].replace("/", "") : ""
+
+		return hairulesPath === GlobalFileNames.clineRules
 	}
 
 	async dispose() {

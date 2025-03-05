@@ -16,6 +16,7 @@ const WelcomeView = () => {
 	const handleSubmit = () => {
 		vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
 		vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+		vscode.postMessage({ type: "checkHaiRules" })
 	}
 
 	return (

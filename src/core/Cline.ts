@@ -54,12 +54,11 @@ import { arePathsEqual, getReadablePath } from "../utils/path"
 import { fixModelHtmlEscaping, removeInvalidChars } from "../utils/string"
 import { AssistantMessageContent, parseAssistantMessage, ToolParamName, ToolUseName } from "./assistant-message"
 import { constructNewFileContent } from "./assistant-message/diff"
-import { HaiBuildContextOptions, HaiInstructionFile } from "../shared/customApi"
+import { HaiBuildContextOptions } from "../shared/customApi"
 import { buildTreeString } from "../utils/customFs"
 import { FindFilesToEditAgent } from "../integrations/code-prep/FindFilesToEditAgent"
 import { CodeScanner } from "../integrations/security/code-scan"
 import { ToolUse } from "./assistant-message"
-import { readInstructionsFromFiles } from "../utils/instructions"
 import { isCommandIncludedInSecretScanning, isSecretFile } from "../integrations/secret-scanning"
 import { ClineIgnoreController, LOCK_TEXT_SYMBOL } from "./ignore/ClineIgnoreController"
 import { parseMentions } from "./mentions"
@@ -80,7 +79,6 @@ export class Cline {
 	api: ApiHandler
 	private terminalManager: TerminalManager
 	private urlContentFetcher: UrlContentFetcher
-	isCustomInstructionsEnabled: boolean
 	browserSession: BrowserSession
 	private didEditFile: boolean = false
 	customInstructions?: string
@@ -126,7 +124,6 @@ export class Cline {
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
-	fileInstructions: HaiInstructionFile[] | undefined
 	private didAutomaticallyRetryFailedApiRequest = false
 
 	constructor(
@@ -137,11 +134,9 @@ export class Cline {
 		chatSettings: ChatSettings,
 		embeddingConfiguration: EmbeddingConfiguration,
 		customInstructions?: string,
-		fileInstructions?: HaiInstructionFile[],
 		task?: string,
 		images?: string[],
 		historyItem?: HistoryItem,
-		isCustomInstructionsEnabled: boolean = true,
 	) {
 		this.clineIgnoreController = new ClineIgnoreController(cwd)
 		this.clineIgnoreController.initialize().catch((error) => {
@@ -154,8 +149,6 @@ export class Cline {
 		this.browserSession = new BrowserSession(provider.context, browserSettings)
 		this.diffViewProvider = new DiffViewProvider(cwd)
 		this.customInstructions = customInstructions
-		this.isCustomInstructionsEnabled = isCustomInstructionsEnabled
-		this.fileInstructions = fileInstructions
 		this.autoApprovalSettings = autoApprovalSettings
 		this.browserSettings = browserSettings
 		this.chatSettings = chatSettings
@@ -1289,10 +1282,7 @@ export class Cline {
 
 		const supportsCodeIndex = this.buildContextOptions?.useIndex ?? false
 		let systemPrompt = await SYSTEM_PROMPT(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, this.browserSettings)
-		let isCustomInstructionsEnabled = (await this.providerRef.deref()?.customGetState("isCustomInstructionsEnabled")) as any
-		let settingsCustomInstructions = isCustomInstructionsEnabled ? this.customInstructions?.trim() : undefined
-		let instructionStates = (await this.providerRef.deref()?.customGetState("fileInstructions")) as any
-		let fileInstructions = await readInstructionsFromFiles(instructionStates)
+		let settingsCustomInstructions = this.customInstructions?.trim()
 
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)
 		let clineRulesFileInstructions: string | undefined
@@ -1313,14 +1303,9 @@ export class Cline {
 			clineIgnoreInstructions = `# .haiignore\n\n(The following is provided by a root-level .haiignore file where the user has specified files and directories that should not be accessed. When using list_files, you'll notice a ${LOCK_TEXT_SYMBOL} next to files that are blocked. Attempting to access the file's contents e.g. through read_file will result in an error.)\n\n${clineIgnoreContent}\n.haiignore`
 		}
 
-		if (settingsCustomInstructions || clineRulesFileInstructions || fileInstructions) {
+		if (settingsCustomInstructions || clineRulesFileInstructions) {
 			// altering the system prompt mid-task will break the prompt cache, but in the grand scheme this will not change often so it's better to not pollute user messages with it the way we have to with <potentially relevant details>
-			systemPrompt += addUserInstructions(
-				settingsCustomInstructions,
-				clineRulesFileInstructions,
-				fileInstructions,
-				clineIgnoreInstructions,
-			)
+			systemPrompt += addUserInstructions(settingsCustomInstructions, clineRulesFileInstructions, clineIgnoreInstructions)
 		}
 
 		// If the previous API request's total token usage is close to the context window, truncate the conversation history to free up space for the new request
