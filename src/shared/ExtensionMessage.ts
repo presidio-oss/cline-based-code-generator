@@ -49,6 +49,7 @@ export interface ExtensionMessage {
 		| "accountLoginClicked"
 		| "accountLogoutClicked"
 		| "haiBuildTaskListClicked"
+		| "expertsButtonClicked"
 		| "onHaiConfigure"
 	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
 	state?: ExtensionState

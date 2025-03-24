@@ -107,6 +107,11 @@
 				"icon": "$(settings-gear)"
 			},
 			{
+				"command": "hai.expertsButtonClicked",
+				"title": "Experts",
+				"icon": "$(person)"
+			},
+			{
 				"command": "hai.openInNewTab",
 				"title": "Open In New Tab",
 				"category": "HAI Build"
@@ -147,6 +152,11 @@
 				{
 					"command": "hai.settingsButtonClicked",
 					"group": "navigation@5",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
+					"command": "hai.expertsButtonClicked",
+					"group": "navigation@6",
 					"when": "view == hai.SidebarProvider"
 				}
 			]
