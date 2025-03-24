@@ -6,6 +6,7 @@ export type HaiBuildContextOptions = {
 	useSyncWithApi: boolean
 	useSecretScanning: boolean
 	secretFilesPatternToIgnore?: string[]
+	systemPromptVersion?: string
 }
 
 export type HaiBuildIndexProgress = {

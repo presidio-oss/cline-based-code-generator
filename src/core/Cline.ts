@@ -63,9 +63,10 @@ import { isCommandIncludedInSecretScanning, isSecretFile } from "../integrations
 import { ClineIgnoreController, LOCK_TEXT_SYMBOL } from "./ignore/ClineIgnoreController"
 import { parseMentions } from "./mentions"
 import { formatResponse } from "./prompts/responses"
-import { addUserInstructions, SYSTEM_PROMPT } from "./prompts/system"
+import { addUserInstructions } from "./prompts/system"
 import { getNextTruncationRange, getTruncatedMessages } from "./sliding-window"
 import { ClineProvider, GlobalFileNames } from "./webview/ClineProvider"
+import { haiSystemPrompt } from "./prompts/system.hai"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
@@ -1281,7 +1282,14 @@ export class Cline {
 		const supportsComputerUse = modelSupportsComputerUse && !disableBrowserTool // only enable computer use if the model supports it and the user hasn't disabled it
 
 		const supportsCodeIndex = this.buildContextOptions?.useIndex ?? false
-		let systemPrompt = await SYSTEM_PROMPT(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, this.browserSettings)
+		let systemPrompt = await haiSystemPrompt(
+			cwd,
+			supportsComputerUse,
+			supportsCodeIndex,
+			mcpHub,
+			this.browserSettings,
+			this.buildContextOptions?.systemPromptVersion,
+		)
 		let settingsCustomInstructions = this.customInstructions?.trim()
 
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)
