@@ -38,6 +38,7 @@ export interface ExtensionMessage {
 		| "mcpMarketplaceCatalog"
 		| "mcpDownloadDetails"
 		| "commitSearchResults"
+		| "expertsUpdated"
 	text?: string
 	bool?: boolean
 	action?:
@@ -69,6 +70,7 @@ export interface ExtensionMessage {
 	commits?: GitCommit[]
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
+	experts?: any[] // Expert data array
 }
 
 export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sunos" | "win32" | "unknown"

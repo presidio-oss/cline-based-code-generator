@@ -16,6 +16,8 @@ import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpDownloadResponse, McpMarketplaceCatalog, McpServer } from "../../shared/mcp"
 import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
+import { ExpertManager } from "../experts/ExpertManager"
+import { ExpertData } from "../../../webview-ui/src/types/experts"
 import { ApiConfiguration, ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
 import { ExtensionMessage, ExtensionState, Platform } from "../../shared/ExtensionMessage"
@@ -160,6 +162,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private isSideBar: boolean
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
 	private authManager: FirebaseAuthManager
+	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
 
 	constructor(
@@ -172,6 +175,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
 		this.authManager = new FirebaseAuthManager(this)
+		this.expertManager = new ExpertManager()
 		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (this.getWorkspacePath() || "").trim()
@@ -1050,6 +1054,31 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.postMessageToWebview({
 							type: "selectedImages",
 							images,
+						})
+						break
+					case "saveExpert":
+						if (message.text) {
+							if (message.text.startsWith("delete:")) {
+								const expertId = message.text.substring(7)
+								await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertId)
+							} else {
+								const expert = JSON.parse(message.text) as ExpertData
+								await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
+							}
+
+							// Send updated experts list back to webview
+							const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+							await this.postMessageToWebview({
+								type: "expertsUpdated",
+								experts,
+							})
+						}
+						break
+					case "loadExperts":
+						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+						await this.postMessageToWebview({
+							type: "expertsUpdated",
+							experts,
 						})
 						break
 					case "exportCurrentTask":

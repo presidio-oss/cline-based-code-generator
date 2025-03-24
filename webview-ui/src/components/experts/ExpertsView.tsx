@@ -47,16 +47,22 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
-	// Handle messages from VSCode (keeping other message handling)
+	// Handle messages from VSCode
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
 			const message = event.data
 
-			// Keep other message handling (not related to file upload)
-			// File upload is now handled directly in the component
+			// Handle messages from the extension
+			if (message.type === "expertsUpdated" && message.experts) {
+				// Update experts list with custom experts from the backend
+				setExperts([...DEFAULT_EXPERTS, ...message.experts])
+			}
 		}
 
 		window.addEventListener("message", messageHandler)
+
+		// Request custom experts from backend when component mounts
+		vscode.postMessage({ type: "loadExperts" })
 
 		return () => {
 			window.removeEventListener("message", messageHandler)
@@ -103,16 +109,22 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const handleSaveExpert = () => {
 		if (!newExpertName.trim()) {
 			vscode.postMessage({
-				type: "newTask",
-				text: "Expert name cannot be empty",
+				type: "showToast",
+				toast: {
+					message: "Expert name cannot be empty",
+					toastType: "error",
+				},
 			})
 			return
 		}
 
 		if (!newExpertPrompt.trim() && !isFileUploaded) {
 			vscode.postMessage({
-				type: "newTask",
-				text: "Expert prompt cannot be empty",
+				type: "showToast",
+				toast: {
+					message: "Expert prompt cannot be empty",
+					toastType: "error",
+				},
 			})
 			return
 		}
@@ -120,8 +132,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		// Only allow editing custom experts
 		if (selectedExpert && selectedExpert.isDefault) {
 			vscode.postMessage({
-				type: "newTask",
-				text: "Default experts cannot be modified",
+				type: "showToast",
+				toast: {
+					message: "Default experts cannot be modified",
+					toastType: "error",
+				},
 			})
 			return
 		}
@@ -136,9 +151,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				filePath: uploadedFilePath,
 			}
 
-			// In a real implementation, this would save to the file system
+			// Save to the file system
 			vscode.postMessage({
-				type: "selectImages",
+				type: "saveExpert",
 				text: JSON.stringify(updatedExpert),
 			})
 
@@ -154,9 +169,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				filePath: uploadedFilePath,
 			}
 
-			// In a real implementation, this would save to the file system
+			// Save to the file system
 			vscode.postMessage({
-				type: "selectImages",
+				type: "saveExpert",
 				text: JSON.stringify(newExpert),
 			})
 
@@ -186,9 +201,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		const expertToDelete = experts.find((expert) => expert.id === expertId)
 
 		if (expertToDelete && !expertToDelete.isDefault) {
-			// In a real implementation, this would delete from the file system
+			// Delete from the file system
 			vscode.postMessage({
-				type: "selectImages",
+				type: "saveExpert",
 				text: `delete:${expertId}`,
 			})
 
@@ -246,7 +261,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 											style={{
 												width: "100%",
 												marginBottom: "2px",
-												paddingRight: "28px", // Make room for delete button
 												textOverflow: "ellipsis",
 												overflow: "hidden",
 											}}>
