@@ -20,6 +20,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [uploadedFilePath, setUploadedFilePath] = useState<string>("")
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [formMode, setFormMode] = useState<"view" | "edit" | "create">("create")
+	const [nameError, setNameError] = useState<string | null>(null)
 
 	// Create a reference to the file input element
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -78,35 +79,30 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setSelectedExpert(null)
 		setIsFormReadOnly(false)
 		setFormMode("create")
+		setNameError(null)
 	}
 
 	// Handle expert selection and unselection
 	const handleSelectExpert = (expert: ExpertData) => {
 		// If the expert is already selected, unselect it
-		if (selectedExpert && selectedExpert.id === expert.id) {
-			resetForm() // This will clear the form and set selectedExpert to null
+		if (selectedExpert && selectedExpert.name === expert.name) {
+			setSelectedExpert(null)
 			return
 		}
 
-		// Otherwise, select the expert
+		// Otherwise, just select the expert without populating the form
 		setSelectedExpert(expert)
-		setNewExpertName(expert.name)
-		setNewExpertPrompt(expert.prompt)
-		setIsFileUploaded(expert.fileUpload || false)
-		setUploadedFilePath(expert.filePath || "")
 
-		// Set form mode based on whether the expert is default or custom
-		if (expert.isDefault) {
-			setIsFormReadOnly(true)
-			setFormMode("view")
-		} else {
-			setIsFormReadOnly(false)
-			setFormMode("edit")
-		}
+		// Always keep form in create mode
+		setIsFormReadOnly(false)
+		setFormMode("create")
 	}
 
-	// Handle saving an expert (new or edited)
+	// Handle saving a new expert
 	const handleSaveExpert = () => {
+		// Reset any previous error
+		setNameError(null)
+
 		if (!newExpertName.trim()) {
 			vscode.postMessage({
 				type: "showToast",
@@ -129,83 +125,75 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			return
 		}
 
-		// Only allow editing custom experts
-		if (selectedExpert && selectedExpert.isDefault) {
+		// Check if an expert with this name already exists
+		const expertExists = [...experts, ...experts.filter((e) => !e.isDefault)].some(
+			(expert) => expert.name.toLowerCase() === newExpertName.toLowerCase(),
+		)
+
+		if (expertExists) {
+			setNameError("An expert with this name already exists")
 			vscode.postMessage({
 				type: "showToast",
 				toast: {
-					message: "Default experts cannot be modified",
+					message: "An expert with this name already exists",
 					toastType: "error",
 				},
 			})
 			return
 		}
 
-		if (selectedExpert && !selectedExpert.isDefault) {
-			// Update existing custom expert
-			const updatedExpert = {
-				...selectedExpert,
-				name: newExpertName,
-				prompt: newExpertPrompt,
-			}
-
-			// Save to the file system
-			vscode.postMessage({
-				type: "saveExpert",
-				text: JSON.stringify(updatedExpert),
-			})
-
-			setExperts(experts.map((expert) => (expert.id === selectedExpert.id ? updatedExpert : expert)))
-		} else {
-			// Create new expert
-			const newExpert: ExpertData = {
-				id: Date.now().toString(),
-				name: newExpertName,
-				prompt: newExpertPrompt,
-				isDefault: false,
-			}
-
-			// Save to the file system
-			vscode.postMessage({
-				type: "saveExpert",
-				text: JSON.stringify(newExpert),
-			})
-
-			setExperts([...experts, newExpert])
+		// Create new expert
+		const newExpert: ExpertData = {
+			name: newExpertName,
+			prompt: newExpertPrompt,
+			isDefault: false,
+			createdAt: new Date().toISOString(),
 		}
 
+		// Save to the file system
+		vscode.postMessage({
+			type: "saveExpert",
+			text: JSON.stringify(newExpert),
+		})
+
+		setExperts([...experts, newExpert])
 		resetForm()
 	}
 
 	// Handle file upload
 	const handleFileUpload = () => {
+		// Check if there's existing content in the prompt
+		if (newExpertPrompt.trim()) {
+			// Show warning that uploading will override existing content
+			vscode.postMessage({
+				type: "showToast",
+				toast: {
+					message: "Uploading a file will override existing prompt content",
+					toastType: "warning",
+				},
+			})
+		}
+
 		// Trigger the hidden file input
 		if (fileInputRef.current) {
 			fileInputRef.current.click()
 		}
 	}
 
-	// Handle removing uploaded file
-	const handleRemoveFile = () => {
-		setIsFileUploaded(false)
-		setUploadedFilePath("")
-		setNewExpertPrompt("") // Clear the prompt content when file is removed
-	}
-
 	// Handle expert deletion
-	const handleDeleteExpert = (expertId: string) => {
-		const expertToDelete = experts.find((expert) => expert.id === expertId)
+	const handleDeleteExpert = (expertName: string) => {
+		const expertToDelete = experts.find((expert) => expert.name === expertName)
 
 		if (expertToDelete && !expertToDelete.isDefault) {
 			// Delete from the file system
 			vscode.postMessage({
 				type: "saveExpert",
-				text: `delete:${expertId}`,
+				text: `delete:${expertName}`,
 			})
 
-			setExperts(experts.filter((expert) => expert.id !== expertId))
+			setExperts(experts.filter((expert) => expert.name !== expertName))
 
-			if (selectedExpert && selectedExpert.id === expertId) {
+			if (selectedExpert && selectedExpert.name === expertName) {
 				resetForm()
 			}
 		}
@@ -228,8 +216,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 							.filter((expert) => expert.isDefault)
 							.map((expert) => (
 								<VSCodeButton
-									key={expert.id}
-									appearance={selectedExpert?.id === expert.id ? "primary" : "secondary"}
+									key={expert.name}
+									appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
 									onClick={() => handleSelectExpert(expert)}
 									style={{
 										width: "100%",
@@ -250,9 +238,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 							experts
 								.filter((expert) => !expert.isDefault)
 								.map((expert) => (
-									<div key={expert.id} style={{ position: "relative", width: "100%" }}>
+									<div key={expert.name} style={{ position: "relative", width: "100%" }}>
 										<VSCodeButton
-											appearance={selectedExpert?.id === expert.id ? "primary" : "secondary"}
+											appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
 											onClick={() => handleSelectExpert(expert)}
 											style={{
 												width: "100%",
@@ -266,7 +254,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 											appearance="icon"
 											onClick={(e: React.MouseEvent) => {
 												e.stopPropagation()
-												handleDeleteExpert(expert.id)
+												handleDeleteExpert(expert.name)
 											}}
 											style={{
 												position: "absolute",
@@ -293,13 +281,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 				{/* Add/Edit Form Section */}
 				<Section>
-					<SectionHeader>
-						{formMode === "view"
-							? `Viewing ${selectedExpert?.name}`
-							: formMode === "edit"
-								? `Edit ${selectedExpert?.name}`
-								: "Add New Expert"}
-					</SectionHeader>
+					<SectionHeader>Add New Expert</SectionHeader>
 					<FormContainer>
 						<FormGroup>
 							<label htmlFor="expert-name">Name</label>
@@ -311,25 +293,23 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								style={{ width: "100%" }}
 								disabled={isFormReadOnly}
 							/>
+							{nameError && (
+								<p style={{ color: "var(--vscode-errorForeground)", fontSize: "12px", marginTop: "4px" }}>
+									{nameError}
+								</p>
+							)}
 						</FormGroup>
 
 						<FormGroup>
-							<label htmlFor="expert-prompt">
-								Prompt
-								{isFileUploaded && (
-									<FilePathLabel>
-										<span className="codicon codicon-file"></span>
-										{uploadedFilePath}
-									</FilePathLabel>
-								)}
-							</label>
+							<label htmlFor="expert-prompt">Prompt</label>
 							<VSCodeTextArea
 								id="expert-prompt"
 								value={newExpertPrompt}
 								onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
 								placeholder="Enter expert prompt"
+								resize="vertical"
 								rows={6}
-								disabled={isFormReadOnly || isFileUploaded}
+								disabled={isFormReadOnly}
 								style={{ width: "100%" }}
 							/>
 							<p className="description-text">
@@ -339,23 +319,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 						{!isFormReadOnly && (
 							<FormGroup>
-								{isFileUploaded ? (
-									<FileUploadContainer>
-										<FileUploadIndicator>
-											<span className="codicon codicon-check"></span>
-											File uploaded
-										</FileUploadIndicator>
-										<VSCodeButton appearance="secondary" onClick={handleRemoveFile}>
-											<span className="codicon codicon-close" style={{ marginRight: "5px" }}></span>
-											Remove File
-										</VSCodeButton>
-									</FileUploadContainer>
-								) : (
-									<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
-										<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }}></span>
-										Upload Prompt File
-									</VSCodeButton>
-								)}
+								<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
+									<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }}></span>
+									Upload Prompt File
+								</VSCodeButton>
 							</FormGroup>
 						)}
 

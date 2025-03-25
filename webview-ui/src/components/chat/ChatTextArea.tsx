@@ -1314,8 +1314,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										{experts.length > 0 && <ExpertCategory>Default Experts</ExpertCategory>}
 										{experts.map((expert) => (
 											<ExpertItem
-												key={expert.id}
-												isSelected={selectedExpert?.id === expert.id}
+												key={expert.name}
+												isSelected={selectedExpert?.name === expert.name}
 												onClick={() => handleExpertSelect(expert)}>
 												{expert.name}
 											</ExpertItem>
@@ -1325,8 +1325,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										{customExperts.length > 0 && <ExpertCategory>Custom Experts</ExpertCategory>}
 										{customExperts.map((expert) => (
 											<ExpertItem
-												key={expert.id}
-												isSelected={selectedExpert?.id === expert.id}
+												key={expert.name}
+												isSelected={selectedExpert?.name === expert.name}
 												onClick={() => handleExpertSelect(expert)}>
 												{expert.name}
 											</ExpertItem>

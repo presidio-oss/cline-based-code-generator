@@ -5,7 +5,7 @@ import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 
 export class ExpertManager {
 	/**
-	 * Save an expert to the .vscode/experts directory
+	 * Save an expert to the .hai-experts directory
 	 * @param workspacePath The workspace path
 	 * @param expert The expert data to save
 	 */
@@ -14,15 +14,29 @@ export class ExpertManager {
 			throw new Error("No workspace path provided")
 		}
 
-		const expertsDir = path.join(workspacePath, ".vscode", "experts")
-		await createDirectoriesForFile(path.join(expertsDir, "placeholder.txt"))
+		// Create a sanitized folder name from the expert name
+		const sanitizedName = expert.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
 
-		const expertFilePath = path.join(expertsDir, `expert-${expert.id}.json`)
-		await fs.writeFile(expertFilePath, JSON.stringify(expert, null, 2))
+		// Create the expert directory
+		const expertDir = path.join(workspacePath, ".hai-experts", sanitizedName)
+		await createDirectoriesForFile(path.join(expertDir, "placeholder.txt"))
+
+		// Create metadata file
+		const metadataFilePath = path.join(expertDir, "metadata.json")
+		const metadata = {
+			name: expert.name,
+			isDefault: expert.isDefault,
+			createdAt: expert.createdAt || Date.now(),
+		}
+		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+
+		// Create prompt file
+		const promptFilePath = path.join(expertDir, "prompt.md")
+		await fs.writeFile(promptFilePath, expert.prompt)
 	}
 
 	/**
-	 * Read all experts from the .vscode/experts directory
+	 * Read all experts from the .hai-experts directory
 	 * @param workspacePath The workspace path
 	 * @returns Array of expert data
 	 */
@@ -31,24 +45,43 @@ export class ExpertManager {
 			return []
 		}
 
-		const expertsDir = path.join(workspacePath, ".vscode", "experts")
+		const expertsDir = path.join(workspacePath, ".hai-experts")
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return []
 		}
 
 		try {
-			const files = await fs.readdir(expertsDir)
-			const expertFiles = files.filter((file) => file.startsWith("expert-") && file.endsWith(".json"))
+			const expertFolders = await fs.readdir(expertsDir)
 
 			const experts: ExpertData[] = []
-			for (const file of expertFiles) {
-				const filePath = path.join(expertsDir, file)
-				const content = await fs.readFile(filePath, "utf-8")
-				try {
-					const expert = JSON.parse(content) as ExpertData
-					experts.push(expert)
-				} catch (error) {
-					console.error(`Failed to parse expert file ${file}:`, error)
+			for (const folder of expertFolders) {
+				const expertDir = path.join(expertsDir, folder)
+				const stats = await fs.stat(expertDir)
+
+				if (stats.isDirectory()) {
+					try {
+						// Read metadata
+						const metadataPath = path.join(expertDir, "metadata.json")
+						if (await fileExistsAtPath(metadataPath)) {
+							const metadataContent = await fs.readFile(metadataPath, "utf-8")
+							const metadata = JSON.parse(metadataContent)
+
+							// Read prompt
+							const promptPath = path.join(expertDir, "prompt.md")
+							const promptContent = (await fileExistsAtPath(promptPath))
+								? await fs.readFile(promptPath, "utf-8")
+								: ""
+
+							experts.push({
+								name: metadata.name,
+								isDefault: metadata.isDefault,
+								prompt: promptContent,
+								createdAt: metadata.createdAt,
+							})
+						}
+					} catch (error) {
+						console.error(`Failed to read expert from ${folder}:`, error)
+					}
 				}
 			}
 
@@ -60,20 +93,44 @@ export class ExpertManager {
 	}
 
 	/**
-	 * Delete an expert from the .vscode/experts directory
+	 * Delete an expert from the .hai-experts directory
 	 * @param workspacePath The workspace path
-	 * @param expertId The ID of the expert to delete
+	 * @param expertName The name of the expert to delete
 	 */
-	async deleteExpert(workspacePath: string, expertId: string): Promise<void> {
+	async deleteExpert(workspacePath: string, expertName: string): Promise<void> {
 		if (!workspacePath) {
 			throw new Error("No workspace path provided")
 		}
 
-		const expertsDir = path.join(workspacePath, ".vscode", "experts")
-		const expertFilePath = path.join(expertsDir, `expert-${expertId}.json`)
+		const expertsDir = path.join(workspacePath, ".hai-experts")
+		if (!(await fileExistsAtPath(expertsDir))) {
+			return
+		}
 
-		if (await fileExistsAtPath(expertFilePath)) {
-			await fs.unlink(expertFilePath)
+		// Find the expert folder by reading metadata files
+		const expertFolders = await fs.readdir(expertsDir)
+
+		for (const folder of expertFolders) {
+			const expertDir = path.join(expertsDir, folder)
+			const stats = await fs.stat(expertDir)
+
+			if (stats.isDirectory()) {
+				const metadataPath = path.join(expertDir, "metadata.json")
+				if (await fileExistsAtPath(metadataPath)) {
+					try {
+						const metadataContent = await fs.readFile(metadataPath, "utf-8")
+						const metadata = JSON.parse(metadataContent)
+
+						if (metadata.name === expertName) {
+							// Delete the entire expert directory
+							await fs.rm(expertDir, { recursive: true, force: true })
+							return
+						}
+					} catch (error) {
+						console.error(`Failed to read metadata from ${folder}:`, error)
+					}
+				}
+			}
 		}
 	}
 }

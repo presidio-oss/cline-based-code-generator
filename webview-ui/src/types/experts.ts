@@ -1,8 +1,8 @@
 export interface ExpertData {
-	id: string
-	name: string
+	name: string // Primary identifier
 	prompt: string
 	isDefault: boolean
+	createdAt?: string // UTC timestamp
 	fileUpload?: boolean
 	filePath?: string
 }

@@ -1067,8 +1067,8 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "saveExpert":
 						if (message.text) {
 							if (message.text.startsWith("delete:")) {
-								const expertId = message.text.substring(7)
-								await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertId)
+								const expertName = message.text.substring(7)
+								await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
 							} else {
 								const expert = JSON.parse(message.text) as ExpertData
 								await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
