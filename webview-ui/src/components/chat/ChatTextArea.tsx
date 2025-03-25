@@ -6,6 +6,8 @@ import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "../../../../src/shared/context-mentions"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
+import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
+import { ExpertData } from "../../types/experts"
 import {
 	ContextMenuOptionType,
 	getContextMenuOptions,
@@ -198,6 +200,131 @@ const ModelButtonContent = styled.div`
 	white-space: nowrap;
 `
 
+// Experts dropdown styled components
+const ExpertsContainer = styled.div`
+	position: relative;
+	display: flex;
+	margin-right: 8px;
+`
+
+const ExpertsButtonWrapper = styled.div`
+	display: inline-flex;
+	min-width: 0;
+	max-width: 100%;
+`
+
+const ExpertsDisplayButton = styled.a<{ isActive?: boolean; disabled?: boolean }>`
+	padding: 0px 0px;
+	height: 20px;
+	width: 100%;
+	min-width: 0;
+	cursor: ${(props) => (props.disabled ? "not-allowed" : "pointer")};
+	text-decoration: ${(props) => (props.isActive ? "underline" : "none")};
+	color: ${(props) => (props.isActive ? "var(--vscode-foreground)" : "var(--vscode-descriptionForeground)")};
+	display: flex;
+	align-items: center;
+	font-size: 10px;
+	outline: none;
+	user-select: none;
+	opacity: ${(props) => (props.disabled ? 0.5 : 1)};
+	pointer-events: ${(props) => (props.disabled ? "none" : "auto")};
+
+	&:hover,
+	&:focus {
+		color: ${(props) => (props.disabled ? "var(--vscode-descriptionForeground)" : "var(--vscode-foreground)")};
+		text-decoration: ${(props) => (props.disabled ? "none" : "underline")};
+		outline: none;
+	}
+
+	&:active {
+		color: ${(props) => (props.disabled ? "var(--vscode-descriptionForeground)" : "var(--vscode-foreground)")};
+		text-decoration: ${(props) => (props.disabled ? "none" : "underline")};
+		outline: none;
+	}
+
+	&:focus-visible {
+		outline: none;
+	}
+`
+
+const ExpertsButtonContent = styled.div`
+	width: 100%;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	gap: 4px;
+`
+
+const ExpertsSelectorTooltip = styled.div<ModelSelectorTooltipProps>`
+	position: fixed;
+	bottom: calc(100% + 9px);
+	left: 15px;
+	right: 15px;
+	background: ${CODE_BLOCK_BG_COLOR};
+	border: 1px solid var(--vscode-editorGroup-border);
+	padding: 12px;
+	border-radius: 3px;
+	z-index: 1000;
+	max-height: calc(100vh - 100px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+
+	// Add invisible padding for hover zone
+	&::before {
+		content: "";
+		position: fixed;
+		bottom: ${(props) => `calc(100vh - ${props.menuPosition}px - 2px)`};
+		left: 0;
+		right: 0;
+		height: 8px;
+	}
+
+	// Arrow pointing down
+	&::after {
+		content: "";
+		position: fixed;
+		bottom: ${(props) => `calc(100vh - ${props.menuPosition}px)`};
+		right: ${(props) => props.arrowPosition}px;
+		width: 10px;
+		height: 10px;
+		background: ${CODE_BLOCK_BG_COLOR};
+		border-right: 1px solid var(--vscode-editorGroup-border);
+		border-bottom: 1px solid var(--vscode-editorGroup-border);
+		transform: rotate(45deg);
+		z-index: -1;
+	}
+`
+
+const ExpertsList = styled.div`
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+`
+
+const ExpertCategory = styled.div`
+	font-size: 12px;
+	font-weight: 600;
+	margin-top: 8px;
+	margin-bottom: 4px;
+	color: var(--vscode-foreground);
+`
+
+const ExpertItem = styled.div<{ isSelected?: boolean }>`
+	padding: 6px 8px;
+	font-size: 12px;
+	cursor: pointer;
+	border-radius: 3px;
+	background-color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusBackground)" : "transparent")};
+	color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusForeground)" : "var(--vscode-foreground)")};
+
+	&:hover {
+		background-color: var(--vscode-list-hoverBackground);
+	}
+`
+
 const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 	(
 		{
@@ -239,6 +366,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [menuPosition, setMenuPosition] = useState(0)
 		const [shownTooltipMode, setShownTooltipMode] = useState<ChatSettings["mode"] | null>(null)
 
+		// Experts dropdown state
+		const [experts] = useState<ExpertData[]>(DEFAULT_EXPERTS)
+		const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
+		const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
+		const [showExpertsSelector, setShowExpertsSelector] = useState(false)
+		const expertsSelectorRef = useRef<HTMLDivElement>(null)
+		const expertsButtonRef = useRef<HTMLDivElement>(null)
+		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
+		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
+
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
 
 		// Add a ref to track previous menu state
@@ -266,6 +403,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							description: `${commit.shortHash} by ${commit.author} on ${commit.date}`,
 						})) || []
 					setGitCommits(commits)
+					break
+				}
+				case "expertsUpdated": {
+					if (message.experts) {
+						setCustomExperts(message.experts)
+					}
 					break
 				}
 			}
@@ -736,6 +879,48 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setShowModelSelector(false)
 		})
 
+		// Experts dropdown handlers
+		const handleExpertSelect = useCallback((expert: ExpertData | null) => {
+			setSelectedExpert(expert)
+			setShowExpertsSelector(false)
+
+			// Send the selected expert's prompt to the extension
+			vscode.postMessage({
+				type: "expertPrompt",
+				text: expert?.prompt || "",
+			})
+		}, [])
+
+		const handleExpertsButtonClick = useCallback(() => {
+			// Request custom experts from the extension
+			vscode.postMessage({ type: "loadExperts" })
+			setShowExpertsSelector(!showExpertsSelector)
+		}, [showExpertsSelector])
+
+		// Click away handler for experts dropdown
+		useClickAway(expertsSelectorRef, () => {
+			setShowExpertsSelector(false)
+		})
+
+		// Calculate arrow position for experts dropdown
+		useEffect(() => {
+			if (showExpertsSelector && expertsButtonRef.current) {
+				const buttonRect = expertsButtonRef.current.getBoundingClientRect()
+				const buttonCenter = buttonRect.left + buttonRect.width / 2
+
+				// Calculate distance from right edge of viewport using viewport coordinates
+				const rightPosition = document.documentElement.clientWidth - buttonCenter - 5
+
+				setExpertsArrowPosition(rightPosition)
+				setExpertsMenuPosition(buttonRect.top + 1)
+			}
+		}, [showExpertsSelector, viewportWidth, viewportHeight])
+
+		// Combined experts list
+		useMemo(() => {
+			return [...experts, ...customExperts]
+		}, [experts, customExperts])
+
 		// Get model display name
 		const modelDisplayName = useMemo(() => {
 			const { selectedProvider, selectedModelId } = normalizeApiConfiguration(apiConfiguration)
@@ -1096,6 +1281,60 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								{/* {showButtonText && <span style={{ fontSize: "10px" }}>Images</span>} */}
 							</ButtonContainer>
 						</VSCodeButton>
+
+						{/* Experts dropdown */}
+						<ExpertsContainer ref={expertsSelectorRef}>
+							<ExpertsButtonWrapper ref={expertsButtonRef}>
+								<ExpertsDisplayButton
+									role="button"
+									isActive={showExpertsSelector}
+									disabled={false}
+									onClick={handleExpertsButtonClick}
+									tabIndex={0}>
+									<ExpertsButtonContent>
+										<span className="codicon codicon-person" style={{ fontSize: "14px", marginBottom: -1 }} />
+										{selectedExpert ? selectedExpert.name : "Default"}
+									</ExpertsButtonContent>
+								</ExpertsDisplayButton>
+							</ExpertsButtonWrapper>
+							{showExpertsSelector && (
+								<ExpertsSelectorTooltip
+									arrowPosition={expertsArrowPosition}
+									menuPosition={expertsMenuPosition}
+									style={{
+										bottom: `calc(100vh - ${expertsMenuPosition}px + 6px)`,
+									}}>
+									<ExpertsList>
+										{/* Default option to clear expert */}
+										<ExpertItem isSelected={selectedExpert === null} onClick={() => handleExpertSelect(null)}>
+											Default
+										</ExpertItem>
+
+										{/* Default experts */}
+										{experts.length > 0 && <ExpertCategory>Default Experts</ExpertCategory>}
+										{experts.map((expert) => (
+											<ExpertItem
+												key={expert.id}
+												isSelected={selectedExpert?.id === expert.id}
+												onClick={() => handleExpertSelect(expert)}>
+												{expert.name}
+											</ExpertItem>
+										))}
+
+										{/* Custom experts */}
+										{customExperts.length > 0 && <ExpertCategory>Custom Experts</ExpertCategory>}
+										{customExperts.map((expert) => (
+											<ExpertItem
+												key={expert.id}
+												isSelected={selectedExpert?.id === expert.id}
+												onClick={() => handleExpertSelect(expert)}>
+												{expert.name}
+											</ExpertItem>
+										))}
+									</ExpertsList>
+								</ExpertsSelectorTooltip>
+							)}
+						</ExpertsContainer>
 
 						<ModelContainer ref={modelSelectorRef}>
 							<ModelButtonWrapper ref={buttonRef}>

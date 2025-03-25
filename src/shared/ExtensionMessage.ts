@@ -39,6 +39,7 @@ export interface ExtensionMessage {
 		| "mcpDownloadDetails"
 		| "commitSearchResults"
 		| "expertsUpdated"
+		| "expertPrompt"
 	text?: string
 	bool?: boolean
 	action?:
@@ -81,6 +82,7 @@ export interface ExtensionState {
 	version: string
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
+	expertPrompt?: string
 	isHaiRulesPresent?: boolean
 	uriScheme?: string
 	currentTaskItem?: HistoryItem

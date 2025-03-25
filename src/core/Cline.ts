@@ -82,6 +82,7 @@ export class Cline {
 	browserSession: BrowserSession
 	private didEditFile: boolean = false
 	customInstructions?: string
+	expertPrompt?: string
 	autoApprovalSettings: AutoApprovalSettings
 	private browserSettings: BrowserSettings
 	private chatSettings: ChatSettings
@@ -134,6 +135,7 @@ export class Cline {
 		chatSettings: ChatSettings,
 		embeddingConfiguration: EmbeddingConfiguration,
 		customInstructions?: string,
+		expertPrompt?: string,
 		task?: string,
 		images?: string[],
 		historyItem?: HistoryItem,
@@ -149,6 +151,7 @@ export class Cline {
 		this.browserSession = new BrowserSession(provider.context, browserSettings)
 		this.diffViewProvider = new DiffViewProvider(cwd)
 		this.customInstructions = customInstructions
+		this.expertPrompt = expertPrompt
 		this.autoApprovalSettings = autoApprovalSettings
 		this.browserSettings = browserSettings
 		this.chatSettings = chatSettings
@@ -1281,7 +1284,14 @@ export class Cline {
 		const supportsComputerUse = modelSupportsComputerUse && !disableBrowserTool // only enable computer use if the model supports it and the user hasn't disabled it
 
 		const supportsCodeIndex = this.buildContextOptions?.useIndex ?? false
-		let systemPrompt = await SYSTEM_PROMPT(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, this.browserSettings)
+		let systemPrompt = await SYSTEM_PROMPT(
+			cwd,
+			supportsComputerUse,
+			supportsCodeIndex,
+			mcpHub,
+			this.browserSettings,
+			this.expertPrompt,
+		)
 		let settingsCustomInstructions = this.customInstructions?.trim()
 
 		const clineRulesFilePath = path.resolve(cwd, GlobalFileNames.clineRules)

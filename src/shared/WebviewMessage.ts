@@ -10,6 +10,7 @@ export interface WebviewMessage {
 	type:
 		| "apiConfiguration"
 		| "customInstructions"
+		| "expertPrompt"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"

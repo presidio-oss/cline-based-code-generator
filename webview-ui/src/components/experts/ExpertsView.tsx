@@ -147,8 +147,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				...selectedExpert,
 				name: newExpertName,
 				prompt: newExpertPrompt,
-				fileUpload: isFileUploaded,
-				filePath: uploadedFilePath,
 			}
 
 			// Save to the file system
@@ -165,8 +163,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				name: newExpertName,
 				prompt: newExpertPrompt,
 				isDefault: false,
-				fileUpload: isFileUploaded,
-				filePath: uploadedFilePath,
 			}
 
 			// Save to the file system
