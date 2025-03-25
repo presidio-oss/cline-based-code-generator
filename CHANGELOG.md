@@ -1,18 +1,28 @@
 # Changelog
 
+## [3.2.0]
+
+### Added
+
+-  Added system prompt optimization
+
+### Fixed
+
+-  Removed random gif in notify for dev release
+
 ## [3.1.1]
 
 ### Added
 
-- Merged changes from Cline 3.4.0 (see [changelog](https://github.com/cline/cline/blob/main/CHANGELOG.md#340)).
-- Added feature to prevent reading sensitive files
-- Added autosave settings
-- Added an option to enable or disable the inline editing feature from settings
+-   Merged changes from Cline 3.4.0 (see [changelog](https://github.com/cline/cline/blob/main/CHANGELOG.md#340)).
+-   Added feature to prevent reading sensitive files
+-   Added autosave settings
+-   Added an option to enable or disable the inline editing feature from settings
 
 ### Enhancements
 
-- Updated code indexing notification with user controls and a privacy warning
-- Removed custom instructions upload and added quick start for .hairules
+-   Updated code indexing notification with user controls and a privacy warning
+-   Removed custom instructions upload and added quick start for .hairules
 
 ## [3.1.0]
 
