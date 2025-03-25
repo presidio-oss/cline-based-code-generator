@@ -9,22 +9,22 @@ import { HaiBuildIndexProgress } from "../../../../src/shared/customApi"
 const haiSystemPromptVersions = [
 	{
 		version: "v1",
-		label: "Precision",
-		description: "Reducing API cost by ~40%.",
+		label: "Optimized v1",
+		description: "Optimised tool definitions, reducing cost by ~35%.",
 	},
 	{
 		version: "v2",
-		label: "Clarity",
-		description: "Reducing API cost by ~30%.",
+		label: "Optimized v2",
+		description: "Optimised guidelines/instructions, reducing cost by ~25%.",
 	},
 	{
 		version: "v3",
-		label: "Harmony\n",
-		description: "Reducing API cost by ~60%.",
+		label: "Optimized v3",
+		description: "Optimised tool definitions and guidelines/instructions, reducing cost by ~50%.",
 	},
 	{
 		version: "default",
-		label: "Standard\n",
+		label: "Standard",
 		description: "Default with no optimizations, highest API cost.",
 	},
 ]
@@ -146,7 +146,7 @@ const SettingsViewExtra = ({
 	return (
 		<>
 			<div style={{ marginBottom: 5 }}>
-				<div className="dropdown-container">
+				<div className="dropdown-container" style={{ marginBottom: 5 }}>
 					<label htmlFor="system-prompt-version">
 						<span style={{ fontWeight: 500 }}>Prompt Optimization (Experimental)</span>
 					</label>
