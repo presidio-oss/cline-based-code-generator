@@ -20,6 +20,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [formMode, setFormMode] = useState<"view" | "edit" | "create">("create")
 	const [nameError, setNameError] = useState<string | null>(null)
+	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
 
 	// Create a reference to the file input element
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -179,8 +180,16 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
-	// Handle expert deletion
-	const handleDeleteExpert = (expertName: string) => {
+	// Initiate delete confirmation
+	const handleDeleteConfirmation = (expertName: string, e: React.MouseEvent) => {
+		e.stopPropagation()
+		setExpertInDeleteConfirmation(expertName)
+	}
+
+	// Handle expert deletion when confirmed
+	const confirmDelete = (expertName: string, e: React.MouseEvent) => {
+		e.stopPropagation()
+
 		const expertToDelete = experts.find((expert) => expert.name === expertName)
 
 		if (expertToDelete && !expertToDelete.isDefault) {
@@ -196,6 +205,15 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				resetForm()
 			}
 		}
+
+		// Reset confirmation state
+		setExpertInDeleteConfirmation(null)
+	}
+
+	// Cancel deletion
+	const cancelDelete = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		setExpertInDeleteConfirmation(null)
 	}
 
 	// Handle opening expert prompt file
@@ -276,23 +294,55 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 											}}>
 											{expert.name}
 										</VSCodeButton>
-										<VSCodeButton
-											appearance="icon"
-											onClick={(e: React.MouseEvent) => {
-												e.stopPropagation()
-												handleDeleteExpert(expert.name)
-											}}
-											style={{
-												position: "absolute",
-												right: "38px",
-												top: "50%",
-												transform: "translateY(-50%)",
-												minWidth: "20px",
-												height: "20px",
-												padding: 0,
-											}}>
-											<span className="codicon codicon-trash"></span>
-										</VSCodeButton>
+										{expert.name === expertInDeleteConfirmation ? (
+											// Show confirmation buttons
+											<>
+												<VSCodeButton
+													appearance="icon"
+													onClick={(e) => cancelDelete(e)}
+													style={{
+														position: "absolute",
+														right: "38px",
+														top: "50%",
+														transform: "translateY(-50%)",
+														minWidth: "20px",
+														height: "20px",
+														padding: 0,
+													}}>
+													<span className="codicon codicon-close"></span>
+												</VSCodeButton>
+												<VSCodeButton
+													appearance="icon"
+													onClick={(e) => confirmDelete(expert.name, e)}
+													style={{
+														position: "absolute",
+														right: "68px",
+														top: "50%",
+														transform: "translateY(-50%)",
+														minWidth: "20px",
+														height: "20px",
+														padding: 0,
+													}}>
+													<span className="codicon codicon-check"></span>
+												</VSCodeButton>
+											</>
+										) : (
+											// Show regular delete button
+											<VSCodeButton
+												appearance="icon"
+												onClick={(e) => handleDeleteConfirmation(expert.name, e)}
+												style={{
+													position: "absolute",
+													right: "38px",
+													top: "50%",
+													transform: "translateY(-50%)",
+													minWidth: "20px",
+													height: "20px",
+													padding: 0,
+												}}>
+												<span className="codicon codicon-trash"></span>
+											</VSCodeButton>
+										)}
 										<VSCodeButton
 											appearance="icon"
 											onClick={(e: React.MouseEvent) => {
@@ -342,19 +392,19 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						</FormGroup>
 
 						<FormGroup>
-							<label htmlFor="expert-prompt">Prompt</label>
+							<label htmlFor="expert-prompt">GuideLines</label>
 							<VSCodeTextArea
 								id="expert-prompt"
 								value={newExpertPrompt}
 								onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
-								placeholder="Enter Expert Prompt"
+								placeholder="Enter Expert Guidelines"
 								resize="vertical"
 								rows={6}
 								disabled={isFormReadOnly}
 								style={{ width: "100%" }}
 							/>
 							<p className="description-text">
-								This prompt will replace the default HAI prompt when this expert is selected.
+								This guidelines will replace the default HAI guidelines when this expert is selected.
 							</p>
 						</FormGroup>
 
@@ -362,7 +412,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 							<FormGroup>
 								<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
 									<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }}></span>
-									Upload Prompt File
+									Upload Guidelines File (.md only)
 								</VSCodeButton>
 							</FormGroup>
 						)}

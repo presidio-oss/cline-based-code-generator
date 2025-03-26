@@ -1,5 +1,6 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { ReactIcon, DotNetIcon, TerraformIcon, GenAIIcon, DefaultIcon } from "../../assets/experts-icon/expertIcons"
 import DynamicTextArea from "react-textarea-autosize"
 import { useClickAway, useEvent, useWindowSize } from "react-use"
 import styled from "styled-components"
@@ -319,10 +320,21 @@ const ExpertItem = styled.div<{ isSelected?: boolean }>`
 	border-radius: 3px;
 	background-color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusBackground)" : "transparent")};
 	color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusForeground)" : "var(--vscode-foreground)")};
+	display: flex;
+	align-items: center;
+	justify-content: space-between; // Add this to push items to edges
 
 	&:hover {
 		background-color: var(--vscode-list-hoverBackground);
 	}
+`
+
+const ExpertTag = styled.span`
+	font-size: 9px;
+	padding: 1px 4px;
+	background-color: var(--vscode-badge-background);
+	color: var(--vscode-badge-foreground);
+	border-radius: 3px;
 `
 
 const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
@@ -375,6 +387,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const expertsButtonRef = useRef<HTMLDivElement>(null)
 		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
 		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
+
+		// Helper function to get expert icon based on name
+		const getExpertIcon = (expertName: string) => {
+			switch (expertName.toLowerCase()) {
+				case "react":
+					return <ReactIcon />
+				case ".net":
+					return <DotNetIcon />
+				case "terraform":
+					return <TerraformIcon />
+				case "genai":
+					return <GenAIIcon />
+				default:
+					return <DefaultIcon />
+			}
+		}
 
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
 
@@ -1292,7 +1320,11 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									onClick={handleExpertsButtonClick}
 									tabIndex={0}>
 									<ExpertsButtonContent>
-										<span className="codicon codicon-person" style={{ fontSize: "14px", marginBottom: -1 }} />
+										{selectedExpert && experts.some((e) => e.name === selectedExpert.name) && (
+											<div style={{ width: "12px", height: "12px", display: "flex", alignItems: "center" }}>
+												{getExpertIcon(selectedExpert.name)}
+											</div>
+										)}
 										{selectedExpert ? selectedExpert.name : "Default"}
 									</ExpertsButtonContent>
 								</ExpertsDisplayButton>
@@ -1310,19 +1342,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											Default
 										</ExpertItem>
 
-										{/* Default experts */}
-										{experts.length > 0 && <ExpertCategory>Default Experts</ExpertCategory>}
+										{/* Default experts with Inbuilt tag */}
 										{experts.map((expert) => (
 											<ExpertItem
 												key={expert.name}
 												isSelected={selectedExpert?.name === expert.name}
 												onClick={() => handleExpertSelect(expert)}>
 												{expert.name}
+												<ExpertTag>Inbuilt</ExpertTag>
 											</ExpertItem>
 										))}
 
-										{/* Custom experts */}
-										{customExperts.length > 0 && <ExpertCategory>Custom Experts</ExpertCategory>}
+										{/* Custom experts without icons */}
 										{customExperts.map((expert) => (
 											<ExpertItem
 												key={expert.name}
