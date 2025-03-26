@@ -199,6 +199,19 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
+	// Handle opening expert prompt file
+	const handleOpenExpertPrompt = (expertName: string) => {
+		const expertToOpen = experts.find((expert) => expert.name === expertName)
+
+		if (expertToOpen && !expertToOpen.isDefault) {
+			// Send message to extension to open the prompt file
+			vscode.postMessage({
+				type: "expertPrompt",
+				text: `openFile:${expertName}`,
+			})
+		}
+	}
+
 	return (
 		<Container>
 			{/* Hidden file input for markdown files */}
@@ -249,6 +262,23 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												overflow: "hidden",
 											}}>
 											{expert.name}
+										</VSCodeButton>
+										<VSCodeButton
+											appearance="icon"
+											onClick={(e: React.MouseEvent) => {
+												e.stopPropagation()
+												handleOpenExpertPrompt(expert.name)
+											}}
+											style={{
+												position: "absolute",
+												right: "38px",
+												top: "50%",
+												transform: "translateY(-50%)",
+												minWidth: "20px",
+												height: "20px",
+												padding: 0,
+											}}>
+											<span className="codicon codicon-link-external"></span>
 										</VSCodeButton>
 										<VSCodeButton
 											appearance="icon"
@@ -306,7 +336,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								id="expert-prompt"
 								value={newExpertPrompt}
 								onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
-								placeholder="Enter expert prompt"
+								placeholder="Enter Expert Prompt"
 								resize="vertical"
 								rows={6}
 								disabled={isFormReadOnly}

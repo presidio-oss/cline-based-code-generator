@@ -133,4 +133,52 @@ export class ExpertManager {
 			}
 		}
 	}
+
+	/**
+	 * Get the path to the prompt.md file for a given expert
+	 * @param workspacePath The workspace path
+	 * @param expertName The name of the expert
+	 * @returns The path to the prompt.md file, or null if not found
+	 */
+	async getExpertPromptPath(workspacePath: string, expertName: string): Promise<string | null> {
+		if (!workspacePath) {
+			throw new Error("No workspace path provided")
+		}
+
+		const expertsDir = path.join(workspacePath, ".hai-experts")
+		if (!(await fileExistsAtPath(expertsDir))) {
+			return null
+		}
+
+		// Find the expert folder by reading metadata files
+		const expertFolders = await fs.readdir(expertsDir)
+
+		for (const folder of expertFolders) {
+			const expertDir = path.join(expertsDir, folder)
+			const stats = await fs.stat(expertDir)
+
+			if (stats.isDirectory()) {
+				const metadataPath = path.join(expertDir, "metadata.json")
+				if (await fileExistsAtPath(metadataPath)) {
+					try {
+						const metadataContent = await fs.readFile(metadataPath, "utf-8")
+						const metadata = JSON.parse(metadataContent)
+
+						if (metadata.name === expertName) {
+							// Return the path to the prompt.md file
+							const promptPath = path.join(expertDir, "prompt.md")
+							if (await fileExistsAtPath(promptPath)) {
+								return promptPath
+							}
+							return null
+						}
+					} catch (error) {
+						console.error(`Failed to read metadata from ${folder}:`, error)
+					}
+				}
+			}
+		}
+
+		return null
+	}
 }

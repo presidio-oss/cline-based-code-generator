@@ -1015,7 +1015,20 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
 					case "expertPrompt":
-						await this.updateExpertPrompt(message.text)
+						if (message.text && message.text.startsWith("openFile:")) {
+							const expertName = message.text.substring(9)
+							const promptPath = await this.expertManager.getExpertPromptPath(
+								this.vsCodeWorkSpaceFolderFsPath,
+								expertName,
+							)
+							if (promptPath) {
+								openFile(promptPath)
+							} else {
+								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+							}
+						} else {
+							await this.updateExpertPrompt(message.text)
+						}
 						break
 					case "autoApprovalSettings":
 						if (message.autoApprovalSettings) {
