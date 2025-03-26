@@ -1,19 +1,28 @@
 import { ExpertData } from "../types/experts"
+import { DOTNET_EXPERT_PROMPT } from "./experts/dotnetExpert"
+import { GENAI_EXPERT_PROMPT } from "./experts/genaiExpert"
+import { REACT_EXPERT_PROMPT } from "./experts/reactExpert"
+import { TERRAFORM_EXPERT_PROMPT } from "./experts/terraformExpert"
 
 export const DEFAULT_EXPERTS: ExpertData[] = [
 	{
-		name: "Angular",
-		prompt: "You are an Angular expert with extensive knowledge of the Angular framework, TypeScript, RxJS, and related technologies. You excel at building scalable single-page applications, component architecture, state management, and Angular best practices.",
-		isDefault: true,
-	},
-	{
 		name: "React",
-		prompt: "You are a React expert with deep knowledge of React, JSX, hooks, context API, and the React ecosystem. You excel at building component-based UIs, state management solutions like Redux or MobX, and modern React patterns and best practices.",
+		prompt: REACT_EXPERT_PROMPT,
 		isDefault: true,
 	},
 	{
 		name: ".NET",
-		prompt: "You are a .NET expert with comprehensive knowledge of C#, ASP.NET Core, Entity Framework, and the broader .NET ecosystem. You excel at building scalable web applications, microservices, database design, and .NET best practices.",
+		prompt: DOTNET_EXPERT_PROMPT,
+		isDefault: true,
+	},
+	{
+		name: "Terraform",
+		prompt: TERRAFORM_EXPERT_PROMPT,
+		isDefault: true,
+	},
+	{
+		name: "GenAI",
+		prompt: GENAI_EXPERT_PROMPT,
 		isDefault: true,
 	},
 ]
