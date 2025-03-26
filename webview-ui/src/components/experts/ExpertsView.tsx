@@ -203,11 +203,13 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const handleOpenExpertPrompt = (expertName: string) => {
 		const expertToOpen = experts.find((expert) => expert.name === expertName)
 
-		if (expertToOpen && !expertToOpen.isDefault) {
+		if (expertToOpen) {
 			// Send message to extension to open the prompt file
 			vscode.postMessage({
 				type: "expertPrompt",
 				text: `openFile:${expertName}`,
+				isDefault: expertToOpen.isDefault,
+				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
 			})
 		}
 	}
@@ -228,18 +230,36 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						{experts
 							.filter((expert) => expert.isDefault)
 							.map((expert) => (
-								<VSCodeButton
-									key={expert.name}
-									appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
-									onClick={() => handleSelectExpert(expert)}
-									style={{
-										width: "100%",
-										marginBottom: "2px",
-										textOverflow: "ellipsis",
-										overflow: "hidden",
-									}}>
-									{expert.name}
-								</VSCodeButton>
+								<div key={expert.name} style={{ position: "relative", width: "100%" }}>
+									<VSCodeButton
+										appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
+										onClick={() => handleSelectExpert(expert)}
+										style={{
+											width: "100%",
+											marginBottom: "2px",
+											textOverflow: "ellipsis",
+											overflow: "hidden",
+										}}>
+										{expert.name}
+									</VSCodeButton>
+									<VSCodeButton
+										appearance="icon"
+										onClick={(e: React.MouseEvent) => {
+											e.stopPropagation()
+											handleOpenExpertPrompt(expert.name)
+										}}
+										style={{
+											position: "absolute",
+											right: "8px",
+											top: "50%",
+											transform: "translateY(-50%)",
+											minWidth: "20px",
+											height: "20px",
+											padding: 0,
+										}}>
+										<span className="codicon codicon-link-external"></span>
+									</VSCodeButton>
+								</div>
 							))}
 					</ExpertsList>
 				</Section>

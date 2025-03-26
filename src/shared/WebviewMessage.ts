@@ -80,6 +80,8 @@ export interface WebviewMessage {
 	chatSettings?: ChatSettings
 	chatContent?: ChatContent
 	mcpId?: string
+	isDefault?: boolean
+	prompt?: string
 
 	// For toggleToolAutoApprove
 	serverName?: string

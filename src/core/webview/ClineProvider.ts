@@ -3,6 +3,8 @@ import axios from "axios"
 import fs from "fs/promises"
 import os from "os"
 import crypto from "crypto"
+// URI scheme for expert prompts virtual documents
+export const EXPERT_PROMPT_URI_SCHEME = "hai-expert-prompt"
 import { execa } from "execa"
 import pWaitFor from "p-wait-for"
 import * as path from "path"
@@ -166,6 +168,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
 
+	// Content provider for expert prompts
+	private expertPromptProvider = new (class implements vscode.TextDocumentContentProvider {
+		provideTextDocumentContent(uri: vscode.Uri): string {
+			return Buffer.from(uri.query, "base64").toString("utf-8")
+		}
+	})()
+
 	constructor(
 		readonly context: vscode.ExtensionContext,
 		private readonly outputChannel: vscode.OutputChannel,
@@ -184,6 +193,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
 			this.codeIndexBackground()
 		}
+
+		// Register the expert prompt provider
+		const registration = vscode.workspace.registerTextDocumentContentProvider(
+			EXPERT_PROMPT_URI_SCHEME,
+			this.expertPromptProvider,
+		)
+		this.disposables.push(registration)
 	}
 
 	private getWorkspacePath() {
@@ -1017,14 +1033,36 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "expertPrompt":
 						if (message.text && message.text.startsWith("openFile:")) {
 							const expertName = message.text.substring(9)
-							const promptPath = await this.expertManager.getExpertPromptPath(
-								this.vsCodeWorkSpaceFolderFsPath,
-								expertName,
-							)
-							if (promptPath) {
-								openFile(promptPath)
+
+							if (message.isDefault && message.prompt) {
+								try {
+									// Create a unique URI for this expert prompt
+									const encodedContent = Buffer.from(message.prompt).toString("base64")
+									const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+
+									// Open the document
+									const document = await vscode.workspace.openTextDocument(uri)
+									await vscode.window.showTextDocument(document, { preview: false })
+
+									// Make it read-only
+									await vscode.commands.executeCommand("workbench.action.toggleEditorReadonly")
+
+									// Inform the user
+									vscode.window.setStatusBarMessage("Viewing default expert prompt in read-only mode", 3000)
+								} catch (error) {
+									console.error("Error creating or opening the virtual document:", error)
+								}
 							} else {
-								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+								// For custom experts, use the existing path
+								const promptPath = await this.expertManager.getExpertPromptPath(
+									this.vsCodeWorkSpaceFolderFsPath,
+									expertName,
+								)
+								if (promptPath) {
+									openFile(promptPath)
+								} else {
+									vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+								}
 							}
 						} else {
 							await this.updateExpertPrompt(message.text)
