@@ -4,7 +4,6 @@ import { VSCodeButton, VSCodeTextField, VSCodeTextArea } from "@vscode/webview-u
 import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { ExpertData } from "../../types/experts"
-import { ReactIcon, DotNetIcon, TerraformIcon, GenAIIcon, DefaultIcon } from "../../assets/experts-icon/expertIcons"
 
 interface ExpertsViewProps {
 	onDone: () => void
@@ -16,9 +15,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [newExpertName, setNewExpertName] = useState("")
 	const [newExpertPrompt, setNewExpertPrompt] = useState("")
 	const [isFileUploaded, setIsFileUploaded] = useState(false)
-	const [uploadedFilePath, setUploadedFilePath] = useState<string>("")
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
-	const [formMode, setFormMode] = useState<"view" | "edit" | "create">("create")
 	const [nameError, setNameError] = useState<string | null>(null)
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
 
@@ -31,7 +28,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		if (!file) return
 
 		// Store the file path
-		setUploadedFilePath(file.name)
 		setIsFileUploaded(true)
 
 		// Read the file content
@@ -75,10 +71,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setNewExpertName("")
 		setNewExpertPrompt("")
 		setIsFileUploaded(false)
-		setUploadedFilePath("")
 		setSelectedExpert(null)
 		setIsFormReadOnly(false)
-		setFormMode("create")
 		setNameError(null)
 	}
 
@@ -95,7 +89,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 		// Always keep form in create mode
 		setIsFormReadOnly(false)
-		setFormMode("create")
 	}
 
 	// Handle saving a new expert
@@ -231,23 +224,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
-	// Get icon for expert based on name
-	const getExpertIcon = (expertName: string) => {
-		switch (expertName.toLowerCase()) {
-			case "react":
-				return <ReactIcon />
-			case ".net":
-				return <DotNetIcon />
-			case "terraform":
-				return <TerraformIcon />
-			case "genai":
-				return <GenAIIcon />
-			default:
-				// Generic icon for any other expert
-				return <DefaultIcon />
-		}
-	}
-
 	return (
 		<Container>
 			{/* Hidden file input for markdown files */}
@@ -259,47 +235,87 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 			<Content>
 				<Section>
-					<SectionHeader>Default Experts</SectionHeader>
-					<ExpertGrid>
-						{experts
-							.filter((expert) => expert.isDefault)
-							.map((expert) => (
-								<ExpertCard
-									key={expert.name}
-									className={selectedExpert?.name === expert.name ? "selected" : ""}
-									onClick={() => handleOpenExpertPrompt(expert.name)}>
-									<IconContainer>{getExpertIcon(expert.name)}</IconContainer>
-									<ExpertName>{expert.name}</ExpertName>
-								</ExpertCard>
-							))}
-					</ExpertGrid>
+					<SectionHeader>HAI Experts</SectionHeader>
+					<DefaultExpertsContainer>
+						<ExpertGrid>
+							{experts
+								.filter((expert) => expert.isDefault)
+								.map((expert) => (
+									<ExpertCard
+										key={expert.name}
+										className={selectedExpert?.name === expert.name ? "selected" : ""}
+										onClick={() => handleOpenExpertPrompt(expert.name)}>
+										<IconContainer>
+											{expert.iconComponent ? (
+												<expert.iconComponent width="24" height="24" />
+											) : (
+												<span className="codicon codicon-person" />
+											)}
+										</IconContainer>
+										<ExpertName>{expert.name}</ExpertName>
+									</ExpertCard>
+								))}
+						</ExpertGrid>
+					</DefaultExpertsContainer>
 				</Section>
 
 				<Section>
 					<SectionHeader>Custom Experts</SectionHeader>
-					<ExpertsList>
-						{experts.filter((expert) => !expert.isDefault).length > 0 ? (
-							experts
-								.filter((expert) => !expert.isDefault)
-								.map((expert) => (
-									<div key={expert.name} style={{ position: "relative", width: "100%" }}>
-										<VSCodeButton
-											appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
-											onClick={() => handleSelectExpert(expert)}
-											style={{
-												width: "100%",
-												marginBottom: "2px",
-												textOverflow: "ellipsis",
-												overflow: "hidden",
-											}}>
-											{expert.name}
-										</VSCodeButton>
-										{expert.name === expertInDeleteConfirmation ? (
-											// Show confirmation buttons
-											<>
+					<CustomExpertsContainer>
+						<ExpertsList>
+							{experts.filter((expert) => !expert.isDefault).length > 0 ? (
+								experts
+									.filter((expert) => !expert.isDefault)
+									.map((expert) => (
+										<div key={expert.name} style={{ position: "relative", width: "100%" }}>
+											<VSCodeButton
+												appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
+												onClick={() => handleSelectExpert(expert)}
+												style={{
+													width: "100%",
+													marginBottom: "2px",
+													textOverflow: "ellipsis",
+													overflow: "hidden",
+												}}>
+												{expert.name}
+											</VSCodeButton>
+											{expert.name === expertInDeleteConfirmation ? (
+												// Show confirmation buttons
+												<>
+													<VSCodeButton
+														appearance="icon"
+														onClick={(e) => cancelDelete(e)}
+														style={{
+															position: "absolute",
+															right: "38px",
+															top: "50%",
+															transform: "translateY(-50%)",
+															minWidth: "20px",
+															height: "20px",
+															padding: 0,
+														}}>
+														<span className="codicon codicon-close"></span>
+													</VSCodeButton>
+													<VSCodeButton
+														appearance="icon"
+														onClick={(e) => confirmDelete(expert.name, e)}
+														style={{
+															position: "absolute",
+															right: "68px",
+															top: "50%",
+															transform: "translateY(-50%)",
+															minWidth: "20px",
+															height: "20px",
+															padding: 0,
+														}}>
+														<span className="codicon codicon-check"></span>
+													</VSCodeButton>
+												</>
+											) : (
+												// Show regular delete button
 												<VSCodeButton
 													appearance="icon"
-													onClick={(e) => cancelDelete(e)}
+													onClick={(e) => handleDeleteConfirmation(expert.name, e)}
 													style={{
 														position: "absolute",
 														right: "38px",
@@ -309,65 +325,35 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 														height: "20px",
 														padding: 0,
 													}}>
-													<span className="codicon codicon-close"></span>
+													<span className="codicon codicon-trash"></span>
 												</VSCodeButton>
-												<VSCodeButton
-													appearance="icon"
-													onClick={(e) => confirmDelete(expert.name, e)}
-													style={{
-														position: "absolute",
-														right: "68px",
-														top: "50%",
-														transform: "translateY(-50%)",
-														minWidth: "20px",
-														height: "20px",
-														padding: 0,
-													}}>
-													<span className="codicon codicon-check"></span>
-												</VSCodeButton>
-											</>
-										) : (
-											// Show regular delete button
+											)}
 											<VSCodeButton
 												appearance="icon"
-												onClick={(e) => handleDeleteConfirmation(expert.name, e)}
+												onClick={(e: React.MouseEvent) => {
+													e.stopPropagation()
+													handleOpenExpertPrompt(expert.name)
+												}}
 												style={{
 													position: "absolute",
-													right: "38px",
+													right: "8px",
 													top: "50%",
 													transform: "translateY(-50%)",
 													minWidth: "20px",
 													height: "20px",
 													padding: 0,
 												}}>
-												<span className="codicon codicon-trash"></span>
+												<span className="codicon codicon-link-external"></span>
 											</VSCodeButton>
-										)}
-										<VSCodeButton
-											appearance="icon"
-											onClick={(e: React.MouseEvent) => {
-												e.stopPropagation()
-												handleOpenExpertPrompt(expert.name)
-											}}
-											style={{
-												position: "absolute",
-												right: "8px",
-												top: "50%",
-												transform: "translateY(-50%)",
-												minWidth: "20px",
-												height: "20px",
-												padding: 0,
-											}}>
-											<span className="codicon codicon-link-external"></span>
-										</VSCodeButton>
-									</div>
-								))
-						) : (
-							<EmptyState>
-								<p>No custom experts yet.</p>
-							</EmptyState>
-						)}
-					</ExpertsList>
+										</div>
+									))
+							) : (
+								<EmptyState>
+									<p>No custom experts yet.</p>
+								</EmptyState>
+							)}
+						</ExpertsList>
+					</CustomExpertsContainer>
 				</Section>
 
 				{/* Add/Edit Form Section */}
@@ -445,6 +431,7 @@ const Container = styled.div`
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
+	box-sizing: border-box;
 `
 
 const Header = styled.div`
@@ -462,18 +449,41 @@ const Header = styled.div`
 
 const Content = styled.div`
 	flex-grow: 1;
-	overflow-y: scroll;
 	padding-right: 8px;
 	display: flex;
 	flex-direction: column;
+	overflow-y: auto;
 `
 
 const Section = styled.section`
 	margin-bottom: 20px;
+	width: 100%;
 `
 
 const SectionHeader = styled.h3`
-	margin-bottom: 5px;
+	margin-bottom: 10px;
+`
+
+const ScrollableContainer = styled.div`
+	height: 120px;
+	overflow-y: auto;
+	padding: 8px;
+
+	/* Hide scrollbar */
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
+`
+
+const DefaultExpertsContainer = styled(ScrollableContainer)`
+	height: 160px;
+`
+
+const CustomExpertsContainer = styled(ScrollableContainer)`
+	height: 135px;
 `
 
 const ExpertsList = styled.div`
@@ -481,32 +491,14 @@ const ExpertsList = styled.div`
 	flex-direction: column;
 	gap: 8px;
 	width: 100%;
-	max-height: 200px;
-	overflow-y: auto;
-	padding-right: 8px;
-
-	/* Improve scrollbar appearance */
-	&::-webkit-scrollbar {
-		width: 6px;
-	}
-
-	&::-webkit-scrollbar-thumb {
-		background-color: var(--vscode-scrollbarSlider-background);
-		border-radius: 3px;
-	}
-
-	&::-webkit-scrollbar-thumb:hover {
-		background-color: var(--vscode-scrollbarSlider-hoverBackground);
-	}
 `
 
-// New styled components for expert cards
+// Expert grid with exactly 2 rows and 2 columns initially visible
 const ExpertGrid = styled.div`
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
 	gap: 16px;
 	width: 100%;
-	margin-bottom: 16px;
 `
 
 const ExpertCard = styled.div`
@@ -514,14 +506,13 @@ const ExpertCard = styled.div`
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	width: 113px;
-	height: 54.06512451171875px;
 	padding: 8px 12px;
 	background-color: var(--vscode-editor-background);
 	border: 1px solid var(--vscode-panel-border);
 	border-radius: 4px;
 	cursor: pointer;
 	transition: background-color 0.2s;
+	min-height: 54px;
 
 	&:hover {
 		background-color: var(--vscode-list-hoverBackground);
@@ -551,13 +542,13 @@ const ExpertName = styled.div`
 	width: 100%;
 `
 
-// Removed unused styled components
-
 const FormContainer = styled.div`
 	border: 1px solid var(--vscode-panel-border);
 	border-radius: 4px;
 	padding: 16px;
 	background-color: var(--vscode-editor-background);
+	width: 100%;
+	box-sizing: border-box;
 `
 
 const FormGroup = styled.div`

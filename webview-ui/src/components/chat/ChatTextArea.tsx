@@ -1,6 +1,5 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import { ReactIcon, DotNetIcon, TerraformIcon, GenAIIcon, DefaultIcon } from "../../assets/experts-icon/expertIcons"
 import DynamicTextArea from "react-textarea-autosize"
 import { useClickAway, useEvent, useWindowSize } from "react-use"
 import styled from "styled-components"
@@ -387,22 +386,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const expertsButtonRef = useRef<HTMLDivElement>(null)
 		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
 		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
-
-		// Helper function to get expert icon based on name
-		const getExpertIcon = (expertName: string) => {
-			switch (expertName.toLowerCase()) {
-				case "react":
-					return <ReactIcon />
-				case ".net":
-					return <DotNetIcon />
-				case "terraform":
-					return <TerraformIcon />
-				case "genai":
-					return <GenAIIcon />
-				default:
-					return <DefaultIcon />
-			}
-		}
 
 		const [, metaKeyChar] = useMetaKeyDetection(platform)
 
@@ -1320,9 +1303,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									onClick={handleExpertsButtonClick}
 									tabIndex={0}>
 									<ExpertsButtonContent>
-										{selectedExpert && experts.some((e) => e.name === selectedExpert.name) && (
+										{selectedExpert && selectedExpert.iconComponent && (
 											<div style={{ width: "12px", height: "12px", display: "flex", alignItems: "center" }}>
-												{getExpertIcon(selectedExpert.name)}
+												<selectedExpert.iconComponent />
 											</div>
 										)}
 										{selectedExpert ? selectedExpert.name : "Default"}
