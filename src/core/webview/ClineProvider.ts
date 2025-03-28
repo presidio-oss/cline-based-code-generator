@@ -16,6 +16,8 @@ import WorkspaceTracker from "../../integrations/workspace/WorkspaceTracker"
 import { McpHub } from "../../services/mcp/McpHub"
 import { McpDownloadResponse, McpMarketplaceCatalog, McpServer } from "../../shared/mcp"
 import { FirebaseAuthManager, UserInfo } from "../../services/auth/FirebaseAuthManager"
+import { ExpertManager } from "../experts/ExpertManager"
+import { ExpertData } from "../../../webview-ui/src/types/experts"
 import { ApiConfiguration, ApiProvider, ModelInfo } from "../../shared/api"
 import { findLast } from "../../shared/array"
 import { ExtensionMessage, ExtensionState, Platform } from "../../shared/ExtensionMessage"
@@ -90,6 +92,7 @@ type GlobalStateKey =
 	| "vertexRegion"
 	| "lastShownAnnouncementId"
 	| "customInstructions"
+	| "expertPrompt"
 	| "taskHistory"
 	| "openAiBaseUrl"
 	| "openAiModelId"
@@ -140,6 +143,9 @@ export function getWorkspaceId(): string | undefined {
 	return workspaceFolders[0].uri.toString()
 }
 
+// URI scheme for expert prompts virtual documents
+export const EXPERT_PROMPT_URI_SCHEME = "hai-expert-prompt"
+
 export class ClineProvider implements vscode.WebviewViewProvider {
 	public static readonly sideBarId = "hai.SidebarProvider" // used in package.json as the view's id. This value cannot be changed due to how vscode caches views based on their id, and updating the id would break existing instances of the extension.
 	public static readonly tabPanelId = "hai.TabPanelProvider"
@@ -160,7 +166,15 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 	private isSideBar: boolean
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
 	private authManager: FirebaseAuthManager
+	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
+
+	// Content provider for expert prompts
+	private expertPromptProvider = new (class implements vscode.TextDocumentContentProvider {
+		provideTextDocumentContent(uri: vscode.Uri): string {
+			return Buffer.from(uri.query, "base64").toString("utf-8")
+		}
+	})()
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -172,6 +186,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
 		this.authManager = new FirebaseAuthManager(this)
+		this.expertManager = new ExpertManager()
 		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (this.getWorkspacePath() || "").trim()
@@ -179,6 +194,13 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
 			this.codeIndexBackground()
 		}
+
+		// Register the expert prompt provider
+		const registration = vscode.workspace.registerTextDocumentContentProvider(
+			EXPERT_PROMPT_URI_SCHEME,
+			this.expertPromptProvider,
+		)
+		this.disposables.push(registration)
 	}
 
 	private getWorkspacePath() {
@@ -643,6 +665,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			expertPrompt,
 			buildContextOptions,
 			autoApprovalSettings,
 			browserSettings,
@@ -656,6 +679,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			chatSettings,
 			embeddingConfiguration,
 			customInstructions,
+			expertPrompt,
 			task,
 			images,
 			undefined,
@@ -669,6 +693,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			apiConfiguration,
 			embeddingConfiguration,
 			customInstructions,
+			expertPrompt,
 			autoApprovalSettings,
 			buildContextOptions,
 			browserSettings,
@@ -682,6 +707,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			chatSettings,
 			embeddingConfiguration,
 			customInstructions,
+			expertPrompt,
 			undefined,
 			undefined,
 			historyItem,
@@ -1005,6 +1031,38 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 					case "customInstructions":
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
+					case "expertPrompt":
+						if (message.category === "viewExpert") {
+							const expertName = message.text || ""
+							if (message.isDefault && message.prompt) {
+								try {
+									// Create a unique URI for this expert prompt
+									const encodedContent = Buffer.from(message.prompt).toString("base64")
+									const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+
+									// Open the document
+									const document = await vscode.workspace.openTextDocument(uri)
+									await vscode.window.showTextDocument(document, { preview: false })
+								} catch (error) {
+									console.error("Error creating or opening the virtual document:", error)
+								}
+							} else {
+								// For custom experts, use the existing path
+								const promptPath = await this.expertManager.getExpertPromptPath(
+									this.vsCodeWorkSpaceFolderFsPath,
+									expertName,
+								)
+								if (promptPath) {
+									openFile(promptPath)
+								} else {
+									vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+								}
+							}
+						} else {
+							await this.updateExpertPrompt(message.prompt)
+						}
+
+						break
 					case "autoApprovalSettings":
 						if (message.autoApprovalSettings) {
 							await this.customUpdateState("autoApprovalSettings", message.autoApprovalSettings)
@@ -1050,6 +1108,39 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.postMessageToWebview({
 							type: "selectedImages",
 							images,
+						})
+						break
+					case "saveExpert":
+						if (message.text) {
+							const expert = JSON.parse(message.text) as ExpertData
+							await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
+
+							// Send updated experts list back to webview
+							const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+							await this.postMessageToWebview({
+								type: "expertsUpdated",
+								experts,
+							})
+						}
+						break
+					case "deleteExpert":
+						if (message.text) {
+							const expertName = message.text
+							await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
+
+							// Send updated experts list back to webview
+							const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+							await this.postMessageToWebview({
+								type: "expertsUpdated",
+								experts,
+							})
+						}
+						break
+					case "loadExperts":
+						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+						await this.postMessageToWebview({
+							type: "expertsUpdated",
+							experts,
 						})
 						break
 					case "exportCurrentTask":
@@ -1595,6 +1686,15 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.customUpdateState("customInstructions", instructions || undefined)
 		if (this.cline) {
 			this.cline.customInstructions = instructions || undefined
+		}
+		await this.postStateToWebview()
+	}
+
+	async updateExpertPrompt(prompt?: string) {
+		// User may be clearing the field
+		await this.customUpdateState("expertPrompt", prompt || undefined)
+		if (this.cline) {
+			this.cline.expertPrompt = prompt || undefined
 		}
 		await this.postStateToWebview()
 	}
@@ -2208,6 +2308,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			apiConfiguration,
 			lastShownAnnouncementId,
 			customInstructions,
+			expertPrompt,
 			isHaiRulesPresent,
 			taskHistory,
 			autoApprovalSettings,
@@ -2224,6 +2325,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
 			customInstructions,
+			expertPrompt,
 			isHaiRulesPresent,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskItem: this.cline?.taskId ? (taskHistory || []).find((item) => item.id === this.cline?.taskId) : undefined,
@@ -2333,6 +2435,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			openRouterModelInfo,
 			lastShownAnnouncementId,
 			customInstructions,
+			expertPrompt,
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
@@ -2406,6 +2509,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.customGetState("openRouterModelInfo") as Promise<ModelInfo | undefined>,
 			this.customGetState("lastShownAnnouncementId") as Promise<string | undefined>,
 			this.customGetState("customInstructions") as Promise<string | undefined>,
+			this.customGetState("expertPrompt") as Promise<string | undefined>,
 			this.customGetState("taskHistory") as Promise<HistoryItem[] | undefined>,
 			this.customGetState("autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
 			this.customGetState("browserSettings") as Promise<BrowserSettings | undefined>,
@@ -2534,6 +2638,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			},
 			lastShownAnnouncementId,
 			customInstructions,
+			expertPrompt,
 			isHaiRulesPresent,
 			taskHistory,
 			buildContextOptions: buildContextOptions ?? {

@@ -83,6 +83,7 @@ export class Cline {
 	browserSession: BrowserSession
 	private didEditFile: boolean = false
 	customInstructions?: string
+	expertPrompt?: string
 	autoApprovalSettings: AutoApprovalSettings
 	private browserSettings: BrowserSettings
 	private chatSettings: ChatSettings
@@ -135,6 +136,7 @@ export class Cline {
 		chatSettings: ChatSettings,
 		embeddingConfiguration: EmbeddingConfiguration,
 		customInstructions?: string,
+		expertPrompt?: string,
 		task?: string,
 		images?: string[],
 		historyItem?: HistoryItem,
@@ -150,6 +152,7 @@ export class Cline {
 		this.browserSession = new BrowserSession(provider.context, browserSettings)
 		this.diffViewProvider = new DiffViewProvider(cwd)
 		this.customInstructions = customInstructions
+		this.expertPrompt = expertPrompt
 		this.autoApprovalSettings = autoApprovalSettings
 		this.browserSettings = browserSettings
 		this.chatSettings = chatSettings
@@ -1289,6 +1292,7 @@ export class Cline {
 			mcpHub,
 			this.browserSettings,
 			this.buildContextOptions?.systemPromptVersion,
+			this.expertPrompt,
 		)
 		let settingsCustomInstructions = this.customInstructions?.trim()
 

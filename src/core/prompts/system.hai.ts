@@ -12,15 +12,16 @@ export const haiSystemPrompt = (
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
 	version?: string,
+	expertPrompt?: string,
 ) => {
 	switch (version) {
 		case "v1":
-			return haiSystemPromptV1(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings)
+			return haiSystemPromptV1(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		case "v2":
-			return haiSystemPromptV2(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings)
+			return haiSystemPromptV2(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		case "v3":
-			return haiSystemPromptV3(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings)
+			return haiSystemPromptV3(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		default:
-			return haiDefaultSystemPrompt(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings)
+			return haiDefaultSystemPrompt(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 	}
 }

@@ -38,6 +38,8 @@ export interface ExtensionMessage {
 		| "mcpMarketplaceCatalog"
 		| "mcpDownloadDetails"
 		| "commitSearchResults"
+		| "expertsUpdated"
+		| "expertPrompt"
 	text?: string
 	bool?: boolean
 	action?:
@@ -49,6 +51,7 @@ export interface ExtensionMessage {
 		| "accountLoginClicked"
 		| "accountLogoutClicked"
 		| "haiBuildTaskListClicked"
+		| "expertsButtonClicked"
 		| "onHaiConfigure"
 	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
 	state?: ExtensionState
@@ -68,6 +71,7 @@ export interface ExtensionMessage {
 	commits?: GitCommit[]
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
+	experts?: any[] // Expert data array
 }
 
 export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sunos" | "win32" | "unknown"
@@ -78,6 +82,7 @@ export interface ExtensionState {
 	version: string
 	apiConfiguration?: ApiConfiguration
 	customInstructions?: string
+	expertPrompt?: string
 	isHaiRulesPresent?: boolean
 	uriScheme?: string
 	currentTaskItem?: HistoryItem

@@ -25,7 +25,8 @@ export const SYSTEM_PROMPT = async (
 	supportsCodeIndex: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
-) => `You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.
+	expertPrompt?: string,
+) => `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
 
 ====
 
