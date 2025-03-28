@@ -18,6 +18,7 @@ export interface WebviewMessage {
 		| "didShowAnnouncement"
 		| "selectImages"
 		| "saveExpert"
+		| "deleteExpert"
 		| "loadExperts"
 		| "exportCurrentTask"
 		| "showTaskWithId"

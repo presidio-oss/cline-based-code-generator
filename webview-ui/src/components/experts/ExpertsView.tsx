@@ -137,8 +137,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 		// Create new expert
 		const newExpert: ExpertData = {
-			name: newExpertName,
-			prompt: newExpertPrompt,
+			name: newExpertName.trim(),
+			prompt: newExpertPrompt.trim(),
 			isDefault: false,
 			createdAt: new Date().toISOString(),
 		}
@@ -188,8 +188,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		if (expertToDelete && !expertToDelete.isDefault) {
 			// Delete from the file system
 			vscode.postMessage({
-				type: "saveExpert",
-				text: `delete:${expertName}`,
+				type: "deleteExpert",
+				text: expertName.trim(),
 			})
 
 			setExperts(experts.filter((expert) => expert.name !== expertName))
@@ -217,7 +217,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			// Send message to extension to open the prompt file
 			vscode.postMessage({
 				type: "expertPrompt",
-				text: `openFile:${expertName}`,
+				text: expertName.trim(),
 				isDefault: expertToOpen.isDefault,
 				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
 			})

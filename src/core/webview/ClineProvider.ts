@@ -3,8 +3,6 @@ import axios from "axios"
 import fs from "fs/promises"
 import os from "os"
 import crypto from "crypto"
-// URI scheme for expert prompts virtual documents
-export const EXPERT_PROMPT_URI_SCHEME = "hai-expert-prompt"
 import { execa } from "execa"
 import pWaitFor from "p-wait-for"
 import * as path from "path"
@@ -144,6 +142,9 @@ export function getWorkspaceId(): string | undefined {
 	// Use the URI of the first workspace folder as a stable identifier
 	return workspaceFolders[0].uri.toString()
 }
+
+// URI scheme for expert prompts virtual documents
+export const EXPERT_PROMPT_URI_SCHEME = "hai-expert-prompt"
 
 export class ClineProvider implements vscode.WebviewViewProvider {
 	public static readonly sideBarId = "hai.SidebarProvider" // used in package.json as the view's id. This value cannot be changed due to how vscode caches views based on their id, and updating the id would break existing instances of the extension.
@@ -1031,42 +1032,32 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
 					case "expertPrompt":
-						if (message.text && message.text.startsWith("openFile:")) {
-							const expertName = message.text.substring(9)
+						const expertName = message.text || ""
+						if (message.isDefault && message.prompt) {
+							try {
+								// Create a unique URI for this expert prompt
+								const encodedContent = Buffer.from(message.prompt).toString("base64")
+								const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
 
-							if (message.isDefault && message.prompt) {
-								try {
-									// Create a unique URI for this expert prompt
-									const encodedContent = Buffer.from(message.prompt).toString("base64")
-									const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
-
-									// Open the document
-									const document = await vscode.workspace.openTextDocument(uri)
-									await vscode.window.showTextDocument(document, { preview: false })
-
-									// Make it read-only
-									await vscode.commands.executeCommand("workbench.action.toggleEditorReadonly")
-
-									// Inform the user
-									vscode.window.setStatusBarMessage("Viewing default expert prompt in read-only mode", 3000)
-								} catch (error) {
-									console.error("Error creating or opening the virtual document:", error)
-								}
-							} else {
-								// For custom experts, use the existing path
-								const promptPath = await this.expertManager.getExpertPromptPath(
-									this.vsCodeWorkSpaceFolderFsPath,
-									expertName,
-								)
-								if (promptPath) {
-									openFile(promptPath)
-								} else {
-									vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-								}
+								// Open the document
+								const document = await vscode.workspace.openTextDocument(uri)
+								await vscode.window.showTextDocument(document, { preview: false })
+							} catch (error) {
+								console.error("Error creating or opening the virtual document:", error)
 							}
 						} else {
-							await this.updateExpertPrompt(message.text)
+							// For custom experts, use the existing path
+							const promptPath = await this.expertManager.getExpertPromptPath(
+								this.vsCodeWorkSpaceFolderFsPath,
+								expertName,
+							)
+							if (promptPath) {
+								openFile(promptPath)
+							} else {
+								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+							}
 						}
+
 						break
 					case "autoApprovalSettings":
 						if (message.autoApprovalSettings) {
@@ -1117,13 +1108,21 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						break
 					case "saveExpert":
 						if (message.text) {
-							if (message.text.startsWith("delete:")) {
-								const expertName = message.text.substring(7)
-								await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
-							} else {
-								const expert = JSON.parse(message.text) as ExpertData
-								await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
-							}
+							const expert = JSON.parse(message.text) as ExpertData
+							await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
+
+							// Send updated experts list back to webview
+							const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+							await this.postMessageToWebview({
+								type: "expertsUpdated",
+								experts,
+							})
+						}
+						break
+					case "deleteExpert":
+						if (message.text) {
+							const expertName = message.text
+							await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
 
 							// Send updated experts list back to webview
 							const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
