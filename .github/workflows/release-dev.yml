@@ -92,10 +92,16 @@ jobs:
                     exit 1
                   fi
 
-                  # Fetch random celebration GIF
-                  RANDOM_GIF=$(curl -s "https://api.giphy.com/v1/gifs/random?api_key=0UTRbFtkMxAplrohufYco5IY74U8hOes&tag=celebration+sports&rating=g" | jq -r '.data.images.original.webp')
-
                   echo "Notifying release ${{ needs.initialize.outputs.package_name }}:${{ needs.initialize.outputs.build_version }}"
+
+                  # Get commit details
+                  COMMIT_SHA=${{ github.sha }}
+                  COMMIT_SHORT_SHA=${COMMIT_SHA:0:7}
+
+                  # Get commit message, author and timestamp (IST - UTC+5:30)
+                  COMMIT_MSG=$(git log -1 --pretty=format:"%s" $COMMIT_SHA)
+                  COMMIT_AUTHOR=$(git log -1 --pretty=format:"%an" $COMMIT_SHA)
+                  TIMESTAMP=$(TZ=":Asia/Kolkata" date "+%d-%b-%Y %I:%M %p IST")
 
                   # Prepare the notification with UI components
                   curl -X POST -H 'Content-type: application/json' --data "{
@@ -108,50 +114,31 @@ jobs:
                           \"version\": \"1.5\",
                           \"body\": [
                             {
-                              \"type\": \"ColumnSet\",
-                              \"columns\": [
-                                {
-                                  \"type\": \"Column\",
-                                  \"width\": \"auto\",
-                                  \"items\": [
-                                    {
-                                      \"type\": \"Icon\",
-                                      \"name\": \"Megaphone\",
-                                      \"size\": \"xxSmall\",
-                                      \"color\": \"Accent\",
-                                      \"style\": \"Filled\"
-                                    }
-                                  ]
-                                },
-                                {
-                                  \"type\": \"Column\",
-                                  \"width\": \"stretch\",
-                                  \"items\": [
-                                    {
-                                      \"type\": \"TextBlock\",
-                                      \"text\": \"Release Announcement\",
-                                      \"size\": \"Small\",
-                                      \"isSubtle\": true
-                                    }
-                                  ]
-                                }
-                              ]
-                            },
-                            {
                               \"type\": \"TextBlock\",
-                              \"text\": \"Release - v${{ env.BUILD_VERSION }}\",
+                              \"text\": \"✅ Development Build Successfull\",
                               \"weight\": \"Bolder\",
                               \"size\": \"Medium\"
                             },
                             {
-                              \"type\": \"TextBlock\",
-                              \"text\": \"🎉 The latest release is now available!\",
-                              \"wrap\": true
-                            },
-                            {
-                              \"type\": \"Image\",
-                              \"url\": \"$RANDOM_GIF\",
-                              \"size\": \"Stretch\"
+                              \"type\": \"FactSet\",
+                              \"facts\": [
+                                {
+                                  \"title\": \"Version\",
+                                  \"value\": \"v${{ env.BUILD_VERSION }}\"
+                                },
+                                {
+                                  \"title\": \"Built at\",
+                                  \"value\": \"$TIMESTAMP\"
+                                },
+                                {
+                                  \"title\": \"Commit\",
+                                  \"value\": \"${COMMIT_SHORT_SHA} - ${COMMIT_MSG}\"
+                                },
+                                {
+                                  \"title\": \"Author\",
+                                  \"value\": \"$COMMIT_AUTHOR\"
+                                }
+                              ]
                             },
                             {
                               \"type\": \"ActionSet\",

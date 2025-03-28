@@ -1,10 +1,33 @@
-import { VSCodeButton, VSCodeCheckbox, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
 import { HaiBuildContextOptions } from "../../interfaces/hai-context.interface"
 import { HaiBuildDefaults } from "../../../../src/shared/haiDefaults"
 import { memo } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { HaiBuildIndexProgress } from "../../../../src/shared/customApi"
+
+const haiSystemPromptVersions = [
+	{
+		version: "v1",
+		label: "Optimized v1",
+		description: "Optimised tool definitions, reducing cost by ~35%.",
+	},
+	{
+		version: "v2",
+		label: "Optimized v2",
+		description: "Optimised guidelines/instructions, reducing cost by ~25%.",
+	},
+	{
+		version: "v3",
+		label: "Optimized v3",
+		description: "Optimised tool definitions and guidelines/instructions, reducing cost by ~50%.",
+	},
+	{
+		version: "default",
+		label: "Standard",
+		description: "Default with no optimizations, highest API cost.",
+	},
+]
 
 type IndexingProgressProps = {
 	buildContextOptions?: HaiBuildContextOptions
@@ -123,6 +146,37 @@ const SettingsViewExtra = ({
 	return (
 		<>
 			<div style={{ marginBottom: 5 }}>
+				<div className="dropdown-container" style={{ marginBottom: 5 }}>
+					<label htmlFor="system-prompt-version">
+						<span style={{ fontWeight: 500 }}>Prompt Optimization (Experimental)</span>
+					</label>
+					<VSCodeDropdown
+						id="system-prompt-version"
+						value={buildContextOptions?.systemPromptVersion || "default"}
+						onChange={(event: any) => {
+							setBuildContextOptions({
+								...buildContextOptions!,
+								systemPromptVersion: event.target?.value,
+							})
+						}}
+						style={{ minWidth: 130, position: "relative", width: "100%", marginBottom: "8px", marginTop: "8px" }}>
+						{haiSystemPromptVersions.map((version) => {
+							return (
+								<VSCodeOption key={version.version} value={version.version}>
+									<div>{version.label} </div>
+									<div
+										style={{
+											fontSize: "10px",
+											marginTop: "2px",
+											color: "var(--vscode-descriptionForeground)",
+										}}>
+										{version.description}
+									</div>
+								</VSCodeOption>
+							)
+						})}
+					</VSCodeDropdown>
+				</div>
 				<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
 					<VSCodeCheckbox
 						checked={buildContextOptions?.useIndex}
