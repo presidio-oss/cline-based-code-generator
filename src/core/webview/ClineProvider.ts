@@ -1032,30 +1032,34 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						await this.updateCustomInstructions(message.text, message.bool)
 						break
 					case "expertPrompt":
-						const expertName = message.text || ""
-						if (message.isDefault && message.prompt) {
-							try {
-								// Create a unique URI for this expert prompt
-								const encodedContent = Buffer.from(message.prompt).toString("base64")
-								const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+						if (message.category === "viewExpert") {
+							const expertName = message.text || ""
+							if (message.isDefault && message.prompt) {
+								try {
+									// Create a unique URI for this expert prompt
+									const encodedContent = Buffer.from(message.prompt).toString("base64")
+									const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
 
-								// Open the document
-								const document = await vscode.workspace.openTextDocument(uri)
-								await vscode.window.showTextDocument(document, { preview: false })
-							} catch (error) {
-								console.error("Error creating or opening the virtual document:", error)
+									// Open the document
+									const document = await vscode.workspace.openTextDocument(uri)
+									await vscode.window.showTextDocument(document, { preview: false })
+								} catch (error) {
+									console.error("Error creating or opening the virtual document:", error)
+								}
+							} else {
+								// For custom experts, use the existing path
+								const promptPath = await this.expertManager.getExpertPromptPath(
+									this.vsCodeWorkSpaceFolderFsPath,
+									expertName,
+								)
+								if (promptPath) {
+									openFile(promptPath)
+								} else {
+									vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+								}
 							}
 						} else {
-							// For custom experts, use the existing path
-							const promptPath = await this.expertManager.getExpertPromptPath(
-								this.vsCodeWorkSpaceFolderFsPath,
-								expertName,
-							)
-							if (promptPath) {
-								openFile(promptPath)
-							} else {
-								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-							}
+							await this.updateExpertPrompt(message.prompt)
 						}
 
 						break

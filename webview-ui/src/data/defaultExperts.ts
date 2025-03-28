@@ -1,24 +1,17 @@
 import { ExpertData } from "../types/experts"
 import { DOTNET_EXPERT_PROMPT } from "./experts/dotnetExpert"
-import { DOCUMENTATION_EXPERT_PROMPT } from "./experts/documentationExpert"
-import { GENAI_EXPERT_PROMPT } from "./experts/genaiExpert"
-import { REACT_EXPERT_PROMPT } from "./experts/reactExpert"
 import { TERRAFORM_EXPERT_PROMPT } from "./experts/terraformExpert"
+import { NODEJS_EXPERT_PROMPT } from "./experts/nodejsExpert"
+import { GOLANG_EXPERT_PROMPT } from "./experts/golangExpert"
 
 // Import SVG icons
-import { ReactComponent as ReactIconComponent } from "../assets/experts-icon/react.svg"
+
 import { ReactComponent as DotNetIconComponent } from "../assets/experts-icon/dotnet.svg"
 import { ReactComponent as TerraformIconComponent } from "../assets/experts-icon/terraform.svg"
-import { ReactComponent as GenAIIconComponent } from "../assets/experts-icon/ai.svg"
-import { ReactComponent as DocumentationIconComponent } from "../assets/experts-icon/docs.svg"
+import { ReactComponent as NodeJsIconComponent } from "../assets/experts-icon/nodejs.svg"
+import { ReactComponent as GoIconComponent } from "../assets/experts-icon/golang.svg"
 
 export const DEFAULT_EXPERTS: ExpertData[] = [
-	{
-		name: "React",
-		prompt: REACT_EXPERT_PROMPT,
-		isDefault: true,
-		iconComponent: ReactIconComponent,
-	},
 	{
 		name: ".NET",
 		prompt: DOTNET_EXPERT_PROMPT,
@@ -32,15 +25,15 @@ export const DEFAULT_EXPERTS: ExpertData[] = [
 		iconComponent: TerraformIconComponent,
 	},
 	{
-		name: "GenAI",
-		prompt: GENAI_EXPERT_PROMPT,
+		name: "Node.js",
+		prompt: NODEJS_EXPERT_PROMPT,
 		isDefault: true,
-		iconComponent: GenAIIconComponent,
+		iconComponent: NodeJsIconComponent,
 	},
 	{
-		name: "Documentation",
-		prompt: DOCUMENTATION_EXPERT_PROMPT,
+		name: "Go",
+		prompt: GOLANG_EXPERT_PROMPT,
 		isDefault: true,
-		iconComponent: DocumentationIconComponent,
+		iconComponent: GoIconComponent,
 	},
 ]

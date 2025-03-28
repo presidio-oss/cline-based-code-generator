@@ -218,6 +218,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			vscode.postMessage({
 				type: "expertPrompt",
 				text: expertName.trim(),
+				category: "viewExpert",
 				isDefault: expertToOpen.isDefault,
 				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
 			})
@@ -230,7 +231,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			<input type="file" ref={fileInputRef} accept=".md" onChange={handleFileSelect} style={{ display: "none" }} />
 
 			<Header>
-				<h3>Experts</h3>
+				<h3>EXPERTS</h3>
 			</Header>
 
 			<Content>
@@ -269,7 +270,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									.map((expert) => (
 										<div key={expert.name} style={{ position: "relative", width: "100%" }}>
 											<VSCodeButton
-												appearance={selectedExpert?.name === expert.name ? "primary" : "secondary"}
+												appearance="secondary"
 												onClick={() => handleSelectExpert(expert)}
 												style={{
 													width: "100%",
@@ -390,7 +391,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								style={{ width: "100%" }}
 							/>
 							<p className="description-text">
-								This guidelines will replace the default HAI guidelines when this expert is selected.
+								These guidelines will override the default HAI guidelines when this expert is selected.
 							</p>
 						</FormGroup>
 
@@ -450,14 +451,18 @@ const Header = styled.div`
 const Content = styled.div`
 	flex-grow: 1;
 	padding-right: 8px;
+	padding-bottom: 24px;
 	display: flex;
 	flex-direction: column;
 	overflow-y: auto;
+	gap: 12px; /* Add consistent gap between sections */
+	justify-content: flex-start; /* Align sections at the top */
 `
 
 const Section = styled.section`
-	margin-bottom: 20px;
 	width: 100%;
+	display: flex;
+	flex-direction: column;
 `
 
 const SectionHeader = styled.h3`
@@ -465,9 +470,11 @@ const SectionHeader = styled.h3`
 `
 
 const ScrollableContainer = styled.div`
-	height: 120px;
+	min-height: 50px;
+	max-height: 200px;
 	overflow-y: auto;
 	padding: 8px;
+	height: auto;
 
 	/* Hide scrollbar */
 	&::-webkit-scrollbar {
@@ -479,11 +486,15 @@ const ScrollableContainer = styled.div`
 `
 
 const DefaultExpertsContainer = styled(ScrollableContainer)`
-	height: 160px;
+	/* Dynamic height based on content with max height for scrolling */
+	max-height: 160px;
+	height: auto;
 `
 
 const CustomExpertsContainer = styled(ScrollableContainer)`
-	height: 135px;
+	/* Dynamic height based on content with max height for scrolling */
+	max-height: 135px;
+	height: auto;
 `
 
 const ExpertsList = styled.div`
@@ -493,12 +504,13 @@ const ExpertsList = styled.div`
 	width: 100%;
 `
 
-// Expert grid with exactly 2 rows and 2 columns initially visible
+// Expert grid with 2 columns and dynamic rows based on content
 const ExpertGrid = styled.div`
 	display: grid;
 	grid-template-columns: repeat(2, 1fr);
 	gap: 16px;
 	width: 100%;
+	/* Grid will expand naturally based on content */
 `
 
 const ExpertCard = styled.div`

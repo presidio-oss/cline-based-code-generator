@@ -83,6 +83,7 @@ export interface WebviewMessage {
 	mcpId?: string
 	isDefault?: boolean
 	prompt?: string
+	category?: string
 
 	// For toggleToolAutoApprove
 	serverName?: string

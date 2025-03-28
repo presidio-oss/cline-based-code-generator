@@ -898,7 +898,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			// Send the selected expert's prompt to the extension
 			vscode.postMessage({
 				type: "expertPrompt",
-				text: expert?.prompt || "",
+				text: expert?.name || "",
+				prompt: expert?.prompt || "",
+				category: "selectExpert",
 			})
 		}, [])
 
