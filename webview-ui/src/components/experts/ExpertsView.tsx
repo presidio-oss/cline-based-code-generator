@@ -236,7 +236,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 			<Content>
 				<Section>
-					<SectionHeader>HAI Experts</SectionHeader>
+					<SectionHeader>
+						HAI Experts <CountBadge>({experts.filter((expert) => expert.isDefault).length})</CountBadge>
+					</SectionHeader>
 					<DefaultExpertsContainer>
 						<ExpertGrid>
 							{experts
@@ -261,7 +263,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				</Section>
 
 				<Section>
-					<SectionHeader>Custom Experts</SectionHeader>
+					<SectionHeader>
+						Custom Experts <CountBadge>({experts.filter((expert) => !expert.isDefault).length})</CountBadge>
+					</SectionHeader>
 					<CustomExpertsContainer>
 						<ExpertsList>
 							{experts.filter((expert) => !expert.isDefault).length > 0 ? (
@@ -277,6 +281,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													marginBottom: "2px",
 													textOverflow: "ellipsis",
 													overflow: "hidden",
+													cursor: "default",
 												}}>
 												{expert.name}
 											</VSCodeButton>
@@ -473,7 +478,7 @@ const ScrollableContainer = styled.div`
 	min-height: 50px;
 	max-height: 200px;
 	overflow-y: auto;
-	padding: 8px;
+	padding: 5px;
 	height: auto;
 
 	/* Hide scrollbar */
@@ -592,6 +597,14 @@ const EmptyState = styled.div`
 	color: var(--vscode-descriptionForeground);
 	border: 1px dashed var(--vscode-panel-border);
 	border-radius: 4px;
+`
+
+const CountBadge = styled.span`
+	font-size: 0.85em;
+	opacity: 0.7;
+	font-weight: normal;
+	margin-left: 6px;
+	color: var(--vscode-descriptionForeground);
 `
 
 export default memo(ExpertsView)
