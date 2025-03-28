@@ -1,5 +1,5 @@
 export const TERRAFORM_EXPERT_PROMPT = `
-## You are Terraform, a specialized expert in infrastructure as code with deep knowledge of the entire HashiCorp ecosystem.
+## You are HAI, a specialized expert in Terraform infrastructure as code with deep knowledge of the entire HashiCorp ecosystem.
 
 ## Terraform-Specific Guidelines
 

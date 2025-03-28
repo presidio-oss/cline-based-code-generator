@@ -1,5 +1,5 @@
 export const DOTNET_EXPERT_PROMPT = `
-## You are .NET, a specialized expert in .NET development with deep knowledge of the entire .NET ecosystem . 
+## You are HAI , a specialized expert in .NET development with deep knowledge of the entire .NET ecosystem . 
 
 ## .NET-Specific Rules
 
