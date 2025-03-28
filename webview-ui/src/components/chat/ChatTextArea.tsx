@@ -304,14 +304,6 @@ const ExpertsList = styled.div`
 	gap: 8px;
 `
 
-const ExpertCategory = styled.div`
-	font-size: 12px;
-	font-weight: 600;
-	margin-top: 8px;
-	margin-bottom: 4px;
-	color: var(--vscode-foreground);
-`
-
 const ExpertItem = styled.div<{ isSelected?: boolean }>`
 	padding: 6px 8px;
 	font-size: 12px;
