@@ -84,7 +84,7 @@
 			{
 				"command": "hai.plusButtonClicked",
 				"title": "New Task",
-				"icon": "$(home)"
+				"icon": "$(add)"
 			},
 			{
 				"command": "hai.mcpButtonClicked",
@@ -126,17 +126,17 @@
 		"menus": {
 			"view/title": [
 				{
+					"command": "hai.plusButtonClicked",
+					"group": "navigation@1",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
 					"command": "hai.haiBuildTaskListClicked",
 					"group": "navigation@1",
 					"when": "view == hai.SidebarProvider"
 				},
 				{
 					"command": "hai.expertsButtonClicked",
-					"group": "navigation@2",
-					"when": "view == hai.SidebarProvider"
-				},
-				{
-					"command": "hai.plusButtonClicked",
 					"group": "navigation@2",
 					"when": "view == hai.SidebarProvider"
 				},

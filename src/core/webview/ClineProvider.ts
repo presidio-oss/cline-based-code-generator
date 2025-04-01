@@ -1137,11 +1137,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 						}
 						break
 					case "loadExperts":
-						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-						await this.postMessageToWebview({
-							type: "expertsUpdated",
-							experts,
-						})
+						await this.loadExperts()
 						break
 					case "exportCurrentTask":
 						const currentTaskId = this.cline?.taskId
@@ -1697,6 +1693,14 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 			this.cline.expertPrompt = prompt || undefined
 		}
 		await this.postStateToWebview()
+	}
+
+	async loadExperts(){
+		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+		await this.postMessageToWebview({
+			type: "expertsUpdated",
+			experts,
+		})
 	}
 
 	// MCP

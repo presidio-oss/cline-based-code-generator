@@ -4,6 +4,7 @@ import { VSCodeButton, VSCodeTextField, VSCodeTextArea } from "@vscode/webview-u
 import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { ExpertData } from "../../types/experts"
+import { useExtensionState } from "../../context/ExtensionStateContext"
 
 interface ExpertsViewProps {
 	onDone: () => void
@@ -18,6 +19,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [nameError, setNameError] = useState<string | null>(null)
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
+	const { vscodeWorkspacePath } = useExtensionState()
+
 
 	// Create a reference to the file input element
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -363,64 +366,87 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				</Section>
 
 				{/* Add/Edit Form Section */}
-				<Section>
-					<SectionHeader>Add New Expert</SectionHeader>
-					<FormContainer>
-						<FormGroup>
-							<label htmlFor="expert-name">Name</label>
-							<VSCodeTextField
-								id="expert-name"
-								value={newExpertName}
-								onChange={(e) => setNewExpertName((e.target as HTMLInputElement).value)}
-								placeholder="Expert Name"
-								style={{ width: "100%" }}
-								disabled={isFormReadOnly}
-							/>
-							{nameError && (
-								<p style={{ color: "var(--vscode-errorForeground)", fontSize: "12px", marginTop: "4px" }}>
-									{nameError}
-								</p>
-							)}
-						</FormGroup>
 
-						<FormGroup>
-							<label htmlFor="expert-prompt">GuideLines</label>
-							<VSCodeTextArea
-								id="expert-prompt"
-								value={newExpertPrompt}
-								onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
-								placeholder="Enter Expert Guidelines"
-								resize="vertical"
-								rows={6}
-								disabled={isFormReadOnly}
-								style={{ width: "100%" }}
-							/>
-							<p className="description-text">
-								These guidelines will override the default HAI guidelines when this expert is selected.
-							</p>
-						</FormGroup>
-
-						{!isFormReadOnly && (
+				{vscodeWorkspacePath ? (
+					<Section>
+						<SectionHeader>Add New Expert</SectionHeader>
+						<FormContainer>
 							<FormGroup>
-								<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
-									<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }}></span>
-									Upload Guidelines File (.md only)
-								</VSCodeButton>
+								<label htmlFor="expert-name">Name</label>
+								<VSCodeTextField
+									id="expert-name"
+									value={newExpertName}
+									onChange={(e) => setNewExpertName((e.target as HTMLInputElement).value)}
+									placeholder="Expert Name"
+									style={{ width: "100%" }}
+									disabled={isFormReadOnly}
+								/>
+								{nameError && (
+									<p style={{ color: "var(--vscode-errorForeground)", fontSize: "12px", marginTop: "4px" }}>
+										{nameError}
+									</p>
+								)}
 							</FormGroup>
-						)}
 
-						{!isFormReadOnly && (
-							<ActionButtons>
-								<VSCodeButton appearance="secondary" onClick={resetForm}>
-									Cancel
-								</VSCodeButton>
-								<VSCodeButton appearance="primary" onClick={handleSaveExpert}>
-									Save
-								</VSCodeButton>
-							</ActionButtons>
-						)}
-					</FormContainer>
-				</Section>
+							<FormGroup>
+								<label htmlFor="expert-prompt">Guidelines</label>
+								<VSCodeTextArea
+									id="expert-prompt"
+									value={newExpertPrompt}
+									onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
+									placeholder="Enter Expert Guidelines"
+									resize="vertical"
+									rows={6}
+									disabled={isFormReadOnly}
+									style={{ width: "100%" }}
+								/>
+								<p className="description-text">
+									These guidelines will override the default HAI guidelines when this expert is selected.
+								</p>
+							</FormGroup>
+
+							{!isFormReadOnly && (
+								<FormGroup>
+									<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
+										<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }}></span>
+										Upload Guidelines File (.md only)
+									</VSCodeButton>
+								</FormGroup>
+							)}
+
+							{!isFormReadOnly && (
+								<ActionButtons>
+									<VSCodeButton appearance="secondary" onClick={resetForm}>
+										Cancel
+									</VSCodeButton>
+									<VSCodeButton appearance="primary" onClick={handleSaveExpert}>
+										Save
+									</VSCodeButton>
+								</ActionButtons>
+							)}
+						</FormContainer>
+					</Section>
+				) : (
+					<Section>
+						<SectionHeader>Add New Expert</SectionHeader>
+						<EmptyState>
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: "8px",
+									color: "var(--vscode-editorWarning-foreground)",
+									fontSize: "11px",
+								}}>
+								<i className="codicon codicon-warning" />
+								<span>
+									Workspace is not available. Please open a workspace to add new experts.
+								</span>
+							</div>
+						</EmptyState>
+					</Section>
+				)}
+
 			</Content>
 		</Container>
 	)
