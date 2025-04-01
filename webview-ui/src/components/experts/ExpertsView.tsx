@@ -21,7 +21,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
 	const { vscodeWorkspacePath } = useExtensionState()
 
-
 	// Create a reference to the file input element
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -439,14 +438,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									fontSize: "11px",
 								}}>
 								<i className="codicon codicon-warning" />
-								<span>
-									Workspace is not available. Please open a workspace to add new experts.
-								</span>
+								<span>Workspace is not available. Please open a workspace to add new experts.</span>
 							</div>
 						</EmptyState>
 					</Section>
 				)}
-
 			</Content>
 		</Container>
 	)

@@ -64,13 +64,13 @@ export class ExpertManager {
 						const metadataPath = path.join(expertDir, "metadata.json")
 						const promptPath = path.join(expertDir, "prompt.md")
 
-						if (await fileExistsAtPath(metadataPath) && await fileExistsAtPath(promptPath)) {
+						if ((await fileExistsAtPath(metadataPath)) && (await fileExistsAtPath(promptPath))) {
 							const metadataContent = await fs.readFile(metadataPath, "utf-8")
 							const metadata = JSON.parse(metadataContent)
 
 							// Read prompt
 							const promptContent = await fs.readFile(promptPath, "utf-8")
-							
+
 							experts.push({
 								name: metadata.name,
 								isDefault: metadata.isDefault,

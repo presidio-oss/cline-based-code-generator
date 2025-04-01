@@ -1695,7 +1695,7 @@ export class ClineProvider implements vscode.WebviewViewProvider {
 		await this.postStateToWebview()
 	}
 
-	async loadExperts(){
+	async loadExperts() {
 		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
 		await this.postMessageToWebview({
 			type: "expertsUpdated",

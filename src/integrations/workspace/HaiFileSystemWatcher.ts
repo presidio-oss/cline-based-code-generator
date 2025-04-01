@@ -71,7 +71,7 @@ class HaiFileSystemWatcher {
 				this.providerRef.deref()?.updateHaiRulesState(true)
 			}
 
-			// Check for the experts 
+			// Check for the experts
 			if (filePath.includes(".hai-experts")) {
 				this.providerRef.deref()?.loadExperts()
 			}
@@ -87,7 +87,7 @@ class HaiFileSystemWatcher {
 				this.providerRef.deref()?.updateHaiRulesState(true)
 			}
 
-			// Check for the experts 
+			// Check for the experts
 			if (filePath.includes(".hai-experts")) {
 				this.providerRef.deref()?.loadExperts()
 			}
@@ -97,7 +97,7 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("change", (filePath) => {
 			console.log("HaiFileSystemWatcher File changes", filePath)
-			// Check for the experts 
+			// Check for the experts
 			if (filePath.includes(".hai-experts")) {
 				this.providerRef.deref()?.loadExperts()
 			}
