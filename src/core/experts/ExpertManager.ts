@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import * as path from "path"
-import { ExpertData } from "../../../webview-ui/src/types/experts"
+import * as vscode from "vscode"
+import { ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 
 export class ExpertManager {
@@ -12,6 +13,12 @@ export class ExpertManager {
 	async saveExpert(workspacePath: string, expert: ExpertData): Promise<void> {
 		if (!workspacePath) {
 			throw new Error("No workspace path provided")
+		}
+
+		// Validate expert data with Zod schema
+		const validationResult = ExpertDataSchema.safeParse(expert)
+		if (!validationResult.success) {
+			throw new Error(`Invalid expert data: ${validationResult.error.message}`)
 		}
 
 		// Create a sanitized folder name from the expert name
@@ -71,12 +78,22 @@ export class ExpertManager {
 							// Read prompt
 							const promptContent = await fs.readFile(promptPath, "utf-8")
 
-							experts.push({
+							const expertData = {
 								name: metadata.name,
 								isDefault: metadata.isDefault,
 								prompt: promptContent,
 								createdAt: metadata.createdAt,
-							})
+							}
+
+							// Validate expert data with Zod schema
+							const validationResult = ExpertDataSchema.safeParse(expertData)
+							if (validationResult.success) {
+								experts.push(expertData)
+							} else {
+								vscode.window.showWarningMessage(
+									`Invalid expert data for ${folder}: ${validationResult.error.issues.map((issue) => issue.message).join(", ")}`,
+								)
+							}
 						}
 					} catch (error) {
 						console.error(`Failed to read expert from ${folder}:`, error)
@@ -99,6 +116,11 @@ export class ExpertManager {
 	async deleteExpert(workspacePath: string, expertName: string): Promise<void> {
 		if (!workspacePath) {
 			throw new Error("No workspace path provided")
+		}
+
+		// Validate expert name
+		if (!expertName || typeof expertName !== "string") {
+			throw new Error("Expert name must be a non-empty string")
 		}
 
 		const expertsDir = path.join(workspacePath, ".hai-experts")
@@ -142,6 +164,11 @@ export class ExpertManager {
 	async getExpertPromptPath(workspacePath: string, expertName: string): Promise<string | null> {
 		if (!workspacePath) {
 			throw new Error("No workspace path provided")
+		}
+
+		// Validate expert name
+		if (!expertName || typeof expertName !== "string") {
+			throw new Error("Expert name must be a non-empty string")
 		}
 
 		const expertsDir = path.join(workspacePath, ".hai-experts")
