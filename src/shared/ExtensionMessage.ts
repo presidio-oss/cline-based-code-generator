@@ -49,6 +49,8 @@ export interface ExtensionMessage {
 		| "userCreditsPayments"
 		| "totalTasksSize"
 		| "addToInput"
+		| "expertsUpdated"
+		| "expertPrompt"
 	text?: string
 	bool?: boolean
 	action?:
@@ -60,6 +62,7 @@ export interface ExtensionMessage {
 		| "accountLoginClicked"
 		| "accountLogoutClicked"
 		| "haiBuildTaskListClicked"
+		| "expertsButtonClicked"
 		| "onHaiConfigure"
 		| "accountButtonClicked"
 	invoke?: Invoke
@@ -95,6 +98,7 @@ export interface ExtensionMessage {
 	userCreditsUsage?: UsageTransaction[]
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
+	experts?: any[] // Expert data array
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
@@ -128,6 +132,7 @@ export interface ExtensionState {
 	buildContextOptions?: HaiBuildContextOptions
 	buildIndexProgress?: HaiBuildIndexProgress
 	embeddingConfiguration?: EmbeddingConfiguration
+	expertPrompt?: string
 	vscodeWorkspacePath?: string
 	version: string
 	vscMachineId: string

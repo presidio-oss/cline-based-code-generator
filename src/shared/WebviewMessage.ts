@@ -12,12 +12,16 @@ export interface WebviewMessage {
 	type:
 		| "apiConfiguration"
 		| "customInstructions"
+		| "expertPrompt"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "askResponse"
 		| "clearTask"
 		| "didShowAnnouncement"
 		| "selectImages"
+		| "saveExpert"
+		| "deleteExpert"
+		| "loadExperts"
 		| "exportCurrentTask"
 		| "showTaskWithId"
 		| "deleteTaskWithId"
@@ -96,6 +100,10 @@ export interface WebviewMessage {
 	chatContent?: ChatContent
 	mcpId?: string
 	timeout?: number
+	isDefault?: boolean
+	prompt?: string
+	category?: string
+
 	// For toggleToolAutoApprove
 	serverName?: string
 	toolName?: string

@@ -6,6 +6,7 @@ import HistoryView from "./components/history/HistoryView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import AccountView from "./components/account/AccountView"
+import ExpertsView from "./components/experts/ExpertsView"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
 import { FirebaseAuthProvider } from "./context/FirebaseAuthContext"
 import { vscode } from "./utils/vscode"
@@ -21,6 +22,7 @@ const AppContent = () => {
 	const [showHistory, setShowHistory] = useState(false)
 	const [showMcp, setShowMcp] = useState(false)
 	const [showAccount, setShowAccount] = useState(false)
+	const [showExperts, setShowExperts] = useState(false)
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
 	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
 	const [taskList, setTaskList] = useState<IHaiStory[]>([])
@@ -42,6 +44,7 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(false)
 						setShowAccount(false)
+						setShowExperts(false)
 						break
 					case "historyButtonClicked":
 						setShowSettings(false)
@@ -51,6 +54,7 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(false)
 						setShowAccount(false)
+						setShowExperts(false)
 						break
 					case "mcpButtonClicked":
 						setShowSettings(false)
@@ -60,6 +64,7 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(true)
 						setShowAccount(false)
+						setShowExperts(false)
 						break
 					case "accountButtonClicked":
 						setShowSettings(false)
@@ -69,6 +74,7 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(false)
 						setShowAccount(true)
+						setShowExperts(false)
 						break
 					case "chatButtonClicked":
 						setShowSettings(false)
@@ -78,6 +84,7 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(false)
 						setShowAccount(false)
+						setShowExperts(false)
 						break
 					case "haiBuildTaskListClicked":
 						setShowSettings(false)
@@ -87,6 +94,17 @@ const AppContent = () => {
 						setDetailedTask(null)
 						setShowMcp(false)
 						setShowAccount(false)
+						setShowExperts(false)
+						break
+					case "expertsButtonClicked":
+						setShowSettings(false)
+						setShowHistory(false)
+						setShowHaiTaskList(false)
+						setDetailedStory(null)
+						setDetailedTask(null)
+						setShowMcp(false)
+						setShowAccount(false)
+						setShowExperts(true)
 						break
 				}
 				break
@@ -204,6 +222,7 @@ const AppContent = () => {
 							{showHistory && <HistoryView onDone={() => setShowHistory(false)} />}
 							{showMcp && <McpView onDone={() => setShowMcp(false)} />}
 							{showAccount && <AccountView onDone={() => setShowAccount(false)} />}
+							{showExperts && <ExpertsView onDone={() => setShowExperts(false)} />}
 							{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 							<ChatView
 								onTaskSelect={(selectedTask) => {
@@ -217,7 +236,7 @@ const AppContent = () => {
 									setShowAccount(false)
 								}}
 								selectedHaiTask={selectedTask}
-								isHidden={showSettings || showHistory || showMcp || showAccount}
+								isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
 								showAnnouncement={showAnnouncement}
 								hideAnnouncement={() => {
 									setShowAnnouncement(false)
