@@ -7,6 +7,7 @@ import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import AccountView from "./components/account/AccountView"
 import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
+import { FirebaseAuthProvider } from "./context/FirebaseAuthContext"
 import { vscode } from "./utils/vscode"
 import { HaiTasksList } from "./components/hai/hai-tasks-list"
 import { IHaiClineTask, IHaiStory, IHaiTask } from "./interfaces/hai-task.interface"
@@ -14,7 +15,8 @@ import DetailedView from "./components/hai/DetailedView"
 import McpView from "./components/mcp/McpView"
 
 const AppContent = () => {
-	const { didHydrateState, showWelcome, shouldShowAnnouncement, setHaiConfig, haiConfig } = useExtensionState()
+	const { didHydrateState, showWelcome, shouldShowAnnouncement, telemetrySetting, vscMachineId, setHaiConfig, haiConfig } =
+		useExtensionState()
 	const [showSettings, setShowSettings] = useState(false)
 	const [showHistory, setShowHistory] = useState(false)
 	const [showMcp, setShowMcp] = useState(false)
@@ -59,7 +61,7 @@ const AppContent = () => {
 						setShowMcp(true)
 						setShowAccount(false)
 						break
-					case "accountLoginClicked":
+					case "accountButtonClicked":
 						setShowSettings(false)
 						setShowHistory(false)
 						setShowHaiTaskList(false)
@@ -98,6 +100,15 @@ const AppContent = () => {
 	}, [])
 
 	useEvent("message", handleMessage)
+
+	// useEffect(() => {
+	// 	if (telemetrySetting === "enabled") {
+	// 		posthog.identify(vscMachineId)
+	// 		posthog.opt_in_capturing()
+	// 	} else {
+	// 		posthog.opt_out_capturing()
+	// 	}
+	// }, [telemetrySetting, vscMachineId])
 
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
@@ -203,6 +214,7 @@ const AppContent = () => {
 									setShowMcp(false)
 									setShowHistory(true)
 									setShowHaiTaskList(false)
+									setShowAccount(false)
 								}}
 								selectedHaiTask={selectedTask}
 								isHidden={showSettings || showHistory || showMcp || showAccount}
@@ -222,7 +234,9 @@ const AppContent = () => {
 const App = () => {
 	return (
 		<ExtensionStateContextProvider>
-			<AppContent />
+			<FirebaseAuthProvider>
+				<AppContent />
+			</FirebaseAuthProvider>
 		</ExtensionStateContextProvider>
 	)
 }

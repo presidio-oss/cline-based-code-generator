@@ -112,6 +112,32 @@
 				"category": "HAI Build"
 			},
 			{
+				"command": "hai.dev.createTestTasks",
+				"title": "Create Test Tasks",
+				"category": "HAI Build",
+				"when": "hai.isDevMode"
+			},
+			{
+				"command": "hai.openDocumentation",
+				"title": "Documentation",
+				"icon": "$(book)"
+			},
+			{
+				"command": "hai.addToChat",
+				"title": "Add to HAI",
+				"category": "HAI Build"
+			},
+			{
+				"command": "hai.addTerminalOutputToChat",
+				"title": "Add to HAI",
+				"category": "HAI Build"
+			},
+			{
+				"command": "hai.fixWithHAI",
+				"title": "Fix with HAI",
+				"category": "HAI Build"
+			},
+			{
 				"command": "hai.haiBuildTaskListClicked",
 				"title": "Hai Tasks",
 				"category": "HAI Build"
@@ -145,9 +171,27 @@
 					"when": "view == hai.SidebarProvider"
 				},
 				{
+					"command": "hai.openDocumentation",
+					"group": "navigation@5",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
 					"command": "hai.settingsButtonClicked",
 					"group": "navigation@5",
 					"when": "view == hai.SidebarProvider"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "hai.addToChat",
+					"group": "navigation",
+					"when": "editorHasSelection"
+				}
+			],
+			"terminal/context": [
+				{
+					"command": "hai.addTerminalOutputToChat",
+					"group": "navigation"
 				}
 			]
 		},
@@ -208,6 +252,36 @@
 					"default": null,
 					"description": "Path to Chrome executable for browser use functionality. If not set, the extension will attempt to find or download it automatically."
 				},
+				"hai.preferredLanguage": {
+					"type": "string",
+					"enum": [
+						"English",
+						"Arabic - العربية",
+						"Portuguese - Português (Brasil)",
+						"Czech - Čeština",
+						"French - Français",
+						"German - Deutsch",
+						"Hindi - हिन्दी",
+						"Hungarian - Magyar",
+						"Italian - Italiano",
+						"Japanese - 日本語",
+						"Korean - 한국어",
+						"Polish - Polski",
+						"Portuguese - Português (Portugal)",
+						"Russian - Русский",
+						"Simplified Chinese - 简体中文",
+						"Spanish - Español",
+						"Traditional Chinese - 繁體中文",
+						"Turkish - Türkçe"
+					],
+					"default": "English",
+					"description": "The language that HAI should use for communication."
+				},
+				"hai.mcpMarketplace.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Controls whether the MCP Marketplace is enabled."
+				},
 				"hai.inlineEditing": {
 					"type": "boolean",
 					"default": true,
@@ -227,15 +301,17 @@
 		"watch-tests": "tsc -p . -w --outDir out",
 		"pretest": "npm run compile-tests && npm run compile && npm run lint",
 		"check-types": "tsc --noEmit",
-		"lint": "eslint src --ext ts",
+		"lint": "eslint src --ext ts && eslint webview-ui/src --ext ts",
 		"format": "prettier . --check",
 		"format:fix": "prettier . --write",
 		"test": "vscode-test",
+		"test:ci": "node scripts/test-ci.js",
 		"install:all": "npm install && cd webview-ui && npm install",
-		"start:webview": "cd webview-ui && npm run start",
+		"dev:webview": "cd webview-ui && npm run dev",
 		"build:webview": "cd webview-ui && npm run build",
 		"test:webview": "cd webview-ui && npm run test",
 		"publish:marketplace": "vsce publish",
+		"publish:marketplace:prerelease": "vsce publish --pre-release && ovsx publish --pre-release",
 		"prepare": "husky",
 		"changeset": "changeset",
 		"version-packages": "changeset version"
@@ -250,6 +326,7 @@
 		"@types/mocha": "^10.0.7",
 		"@types/node": "20.x",
 		"@types/should": "^11.2.0",
+		"@types/sinon": "^17.0.4",
 		"@types/vscode": "^1.84.0",
 		"@typescript-eslint/eslint-plugin": "^7.14.1",
 		"@typescript-eslint/parser": "^7.11.0",
@@ -267,29 +344,36 @@
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
-		"@anthropic-ai/bedrock-sdk": "^0.10.2",
-		"@anthropic-ai/sdk": "^0.26.0",
-		"@anthropic-ai/vertex-sdk": "^0.4.1",
+		"@anthropic-ai/bedrock-sdk": "^0.12.4",
+		"@anthropic-ai/sdk": "^0.37.0",
+		"@anthropic-ai/vertex-sdk": "^0.6.4",
+		"@aws-sdk/client-bedrock-runtime": "^3.758.0",
+		"@google-cloud/vertexai": "^1.9.3",
 		"@google/generative-ai": "^0.18.0",
+		"@mistralai/mistralai": "^1.5.0",
+		"@modelcontextprotocol/sdk": "^1.7.0",
+		"@opentelemetry/api": "^1.4.1",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.39.1",
+		"@opentelemetry/resources": "^1.30.1",
+		"@opentelemetry/sdk-node": "^0.39.1",
+		"@opentelemetry/sdk-trace-node": "^1.30.1",
+		"@opentelemetry/semantic-conventions": "^1.30.0",
 		"@langchain/aws": "^0.1.1",
 		"@langchain/community": "^0.3.11",
 		"@langchain/core": "^0.3.17",
 		"@langchain/ollama": "^0.1.5",
 		"@langchain/openai": "^0.3.12",
 		"@langchain/textsplitters": "^0.1.0",
-		"@mistralai/mistralai": "^1.5.0",
-		"@modelcontextprotocol/sdk": "^1.0.1",
 		"@types/clone-deep": "^4.0.4",
 		"@types/get-folder-size": "^3.0.4",
 		"@types/pdf-parse": "^1.1.4",
 		"@types/turndown": "^5.0.5",
 		"@vscode/codicons": "^0.0.36",
-		"axios": "^1.7.4",
+		"axios": "^1.8.2",
 		"cheerio": "^1.0.0",
 		"chokidar": "^4.0.1",
 		"clone-deep": "^4.0.1",
 		"default-shell": "^2.2.0",
-		"delay": "^6.0.0",
 		"diff": "^5.2.0",
 		"execa": "^9.5.2",
 		"faiss-node": "^0.5.1",
@@ -302,10 +386,14 @@
 		"isbinaryfile": "^5.0.2",
 		"mammoth": "^1.8.0",
 		"monaco-vscode-textmate-theme-converter": "^0.1.7",
+		"ollama": "^0.5.13",
+		"open-graph-scraper": "^6.9.0",
 		"openai": "^4.83.0",
 		"os-name": "^6.0.0",
+		"p-timeout": "^6.1.4",
 		"p-wait-for": "^5.0.2",
 		"pdf-parse": "^1.1.1",
+		"posthog-node": "^4.8.1",
 		"puppeteer-chromium-resolver": "^23.0.0",
 		"puppeteer-core": "^23.4.0",
 		"serialize-error": "^11.0.3",

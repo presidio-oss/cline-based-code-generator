@@ -4,7 +4,9 @@ import { ApiConfiguration } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
+import { UserInfo } from "./UserInfo"
 import { ChatContent } from "./ChatContent"
+import { TelemetrySetting } from "./TelemetrySetting"
 
 export interface WebviewMessage {
 	type:
@@ -24,6 +26,7 @@ export interface WebviewMessage {
 		| "requestOllamaModels"
 		| "requestLmStudioModels"
 		| "openImage"
+		| "openInBrowser"
 		| "openFile"
 		| "openMention"
 		| "cancelTask"
@@ -31,6 +34,7 @@ export interface WebviewMessage {
 		| "refreshOpenAiModels"
 		| "openMcpSettings"
 		| "restartMcpServer"
+		| "deleteMcpServer"
 		| "autoApprovalSettings"
 		| "browserSettings"
 		| "togglePlanActMode"
@@ -57,6 +61,9 @@ export interface WebviewMessage {
 		| "startIndex"
 		| "resetIndex"
 		| "subscribeEmail"
+		| "showAccountViewClicked"
+		| "authStateChanged"
+		| "authCallback"
 		| "fetchMcpMarketplace"
 		| "downloadMcp"
 		| "silentlyRefreshMcpMarketplace"
@@ -64,6 +71,17 @@ export interface WebviewMessage {
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
 		| "checkHaiRules"
+		| "telemetrySetting"
+		| "openSettings"
+		| "updateMcpTimeout"
+		| "fetchOpenGraphData"
+		| "checkIsImageUrl"
+		| "invoke"
+		| "updateSettings"
+		| "clearAllTaskHistory"
+		| "fetchUserCreditsData"
+		| "optionsResponse"
+		| "requestTotalTasksSize"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean
@@ -77,7 +95,7 @@ export interface WebviewMessage {
 	chatSettings?: ChatSettings
 	chatContent?: ChatContent
 	mcpId?: string
-
+	timeout?: number
 	// For toggleToolAutoApprove
 	serverName?: string
 	toolName?: string
@@ -86,6 +104,15 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
+
+	// For auth
+	user?: UserInfo | null
+	customToken?: string
+	// For openInBrowser
+	url?: string
+	planActSeparateModelsSetting?: boolean
+	telemetrySetting?: TelemetrySetting
+	customInstructionsSetting?: string
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

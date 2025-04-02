@@ -2,7 +2,7 @@ import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
-import { ReactComponent as Logo } from "../../assets/hai-dark.svg"
+import logo from "../../assets/hai-dark.svg"
 import ApiOptions from "../settings/ApiOptions"
 import EmbeddingOptions from "../settings/EmbeddingOptions"
 
@@ -33,7 +33,7 @@ const WelcomeView = () => {
 				overflow: "auto",
 			}}>
 			<div style={{ height: "auto", maxWidth: "200px", marginTop: "20px", marginBottom: "20px" }}>
-				<Logo style={{ height: "100%", width: "100%" }} className="hai-logo" />
+				<img src={logo} alt="Logo" style={{ height: "100%", width: "100%" }} className="hai-logo" />
 			</div>
 			<div>
 				{IS_DEV && (

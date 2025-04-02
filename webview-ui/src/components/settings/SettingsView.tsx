@@ -1,5 +1,6 @@
-import { VSCodeButton, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
-import { memo, useState } from "react"
+import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { memo, useCallback, useEffect, useState } from "react"
+import { validateApiConfiguration, validateModelId } from "../../utils/validate"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
@@ -8,6 +9,9 @@ import EmbeddingOptions from "./EmbeddingOptions"
 import SettingsButton from "../common/SettingsButton"
 import { useDebounce, useDeepCompareEffect } from "react-use"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
+import { TabButton } from "../mcp/McpView"
+import { useEvent } from "react-use"
+import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -27,8 +31,15 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		buildIndexProgress,
 		embeddingConfiguration,
 		vscodeWorkspacePath,
+		openRouterModels,
+		telemetrySetting,
+		setTelemetrySetting,
+		chatSettings,
+		planActSeparateModelsSetting,
+		setPlanActSeparateModelsSetting,
 	} = useExtensionState()
 	const [showCopied, setShowCopied] = useState(false)
+	const [pendingTabChange, setPendingTabChange] = useState<"plan" | "act" | null>(null)
 
 	const handleResetState = () => {
 		vscode.postMessage({ type: "resetState" })
@@ -62,9 +73,29 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		[customInstructions],
 	)
 
+	useEffect(() => {
+		vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
+	}, [telemetrySetting])
+
 	useDeepCompareEffect(() => {
 		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 	}, [buildContextOptions])
+
+	const handleTabChange = (tab: "plan" | "act") => {
+		if (tab === chatSettings.mode) {
+			return
+		}
+		setPendingTabChange(tab)
+
+		if (pendingTabChange) {
+			vscode.postMessage({
+				type: "togglePlanActMode",
+				chatSettings: {
+					mode: pendingTabChange,
+				},
+			})
+		}
+	}
 
 	return (
 		<div
@@ -84,7 +115,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					display: "flex",
 					justifyContent: "space-between",
 					alignItems: "center",
-					marginBottom: "17px",
+					marginBottom: "13px",
 					paddingRight: 17,
 				}}>
 				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
@@ -97,15 +128,58 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					display: "flex",
 					flexDirection: "column",
 				}}>
-				<div style={{ marginBottom: 10 }}>
-					<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-					<ApiOptions showModelOptions={true} />
-				</div>
+				{/* Tabs container */}
+				{planActSeparateModelsSetting ? (
+					<div
+						style={{
+							border: "1px solid var(--vscode-panel-border)",
+							borderRadius: "4px",
+							padding: "10px",
+							marginBottom: "20px",
+							background: "var(--vscode-panel-background)",
+						}}>
+						<div
+							style={{
+								display: "flex",
+								gap: "1px",
+								marginBottom: "10px",
+								marginTop: -8,
+								borderBottom: "1px solid var(--vscode-panel-border)",
+							}}>
+							<TabButton isActive={chatSettings.mode === "plan"} onClick={() => handleTabChange("plan")}>
+								Plan Mode
+							</TabButton>
+							<TabButton isActive={chatSettings.mode === "act"} onClick={() => handleTabChange("act")}>
+								Act Mode
+							</TabButton>
+						</div>
 
-				<div style={{ marginBottom: 10 }}>
-					<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-					<EmbeddingOptions showModelOptions={true} />
-				</div>
+						{/* Content container */}
+						<div style={{ marginBottom: -12 }}>
+							<div style={{ marginBottom: 10 }}>
+								<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
+								<ApiOptions key={chatSettings.mode} showModelOptions={true} />
+							</div>
+
+							<div style={{ marginBottom: 10 }}>
+								<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
+								<EmbeddingOptions key={chatSettings.mode} showModelOptions={true} />
+							</div>
+						</div>
+					</div>
+				) : (
+					<>
+						<div style={{ marginBottom: 10 }}>
+							<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
+							<ApiOptions key={"single"} showModelOptions={true} />
+						</div>
+
+						<div style={{ marginBottom: 10 }}>
+							<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
+							<EmbeddingOptions key={"single"} showModelOptions={true} />
+						</div>
+					</>
+				)}
 
 				<div style={{ marginBottom: 5 }}>
 					<VSCodeTextArea
@@ -151,6 +225,48 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					vscodeWorkspacePath={vscodeWorkspacePath}
 					buildIndexProgress={buildIndexProgress}
 				/>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeCheckbox
+						style={{ marginBottom: "5px" }}
+						checked={planActSeparateModelsSetting}
+						onChange={(e: any) => {
+							const checked = e.target.checked === true
+							setPlanActSeparateModelsSetting(checked)
+						}}>
+						Use different models for Plan and Act modes
+					</VSCodeCheckbox>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						Switching between Plan and Act mode will persist the API and model used in the previous mode. This may be
+						helpful e.g. when using a strong reasoning model to architect a plan for a cheaper coding model to act on.
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeCheckbox
+						style={{ marginBottom: "5px" }}
+						checked={telemetrySetting === "enabled"}
+						onChange={(e: any) => {
+							const checked = e.target.checked === true
+							setTelemetrySetting(checked ? "enabled" : "disabled")
+						}}>
+						Allow anonymous error and usage reporting
+					</VSCodeCheckbox>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						Help improve HAI by sending anonymous usage data and error reports. No code, prompts, or personal
+						information are ever sent.
+					</p>
+				</div>
 
 				{IS_DEV && (
 					<>

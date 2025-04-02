@@ -1,13 +1,16 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import delay from "delay"
+import { createHaiAPI } from "./exports"
+import "./utils/path" // necessary to have access to String.prototype.toPosix
+import { InlineEditingProvider } from "./integrations/inline-editing"
+import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import * as vscode from "vscode"
 import { ClineProvider } from "./core/webview/ClineProvider"
 import { Logger } from "./services/logging/Logger"
-import { createHaiAPI } from "./exports"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
-import { InlineEditingProvider } from "./integrations/inline-editing"
+import assert from "node:assert"
+import { telemetryService } from "./services/telemetry/TelemetryService"
 
 /*
 Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -32,6 +35,8 @@ export function activate(context: vscode.ExtensionContext) {
 	Logger.log("HAI extension activated")
 
 	const sidebarProvider = new ClineProvider(context, outputChannel)
+
+	vscode.commands.executeCommand("setContext", "hai.isDevMode", IS_DEV && IS_DEV === "true")
 
 	context.subscriptions.push(
 		vscode.window.registerWebviewViewProvider(ClineProvider.sideBarId, sidebarProvider, {
@@ -89,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
 		tabProvider.resolveWebviewView(panel)
 
 		// Lock the editor group so clicking on files doesn't open them over the panel
-		await delay(100)
+		await setTimeoutPromise(100)
 		await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
 	}
 
@@ -116,11 +121,17 @@ export function activate(context: vscode.ExtensionContext) {
 	)
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand("hai.accountLoginClicked", () => {
+		vscode.commands.registerCommand("hai.accountButtonClicked", () => {
 			sidebarProvider.postMessageToWebview({
 				type: "action",
-				action: "accountLoginClicked",
+				action: "accountButtonClicked",
 			})
+		}),
+	)
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.openDocumentation", () => {
+			vscode.env.openExternal(vscode.Uri.parse("https://docs.cline.bot/"))
 		}),
 	)
 
@@ -163,10 +174,12 @@ export function activate(context: vscode.ExtensionContext) {
 			case "/auth": {
 				const token = query.get("token")
 				const state = query.get("state")
+				const apiKey = query.get("apiKey")
 
 				console.log("Auth callback received:", {
 					token: token,
 					state: state,
+					apiKey: apiKey,
 				})
 
 				// Validate state parameter
@@ -175,8 +188,8 @@ export function activate(context: vscode.ExtensionContext) {
 					return
 				}
 
-				if (token) {
-					await visibleProvider.handleAuthCallback(token)
+				if (token && apiKey) {
+					await visibleProvider.handleAuthCallback(token, apiKey)
 				}
 				break
 			}
@@ -201,10 +214,189 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	// Register size testing commands in development mode
+	if (IS_DEV && IS_DEV === "true") {
+		// Use dynamic import to avoid loading the module in production
+		import("./dev/commands/tasks")
+			.then((module) => {
+				const devTaskCommands = module.registerTaskCommands(context, sidebarProvider)
+				context.subscriptions.push(...devTaskCommands)
+				Logger.log("Cline dev task commands registered")
+			})
+			.catch((error) => {
+				Logger.log("Failed to register dev task commands: " + error)
+			})
+	}
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.addToChat", async (range?: vscode.Range, diagnostics?: vscode.Diagnostic[]) => {
+			const editor = vscode.window.activeTextEditor
+			if (!editor) {
+				return
+			}
+
+			// Use provided range if available, otherwise use current selection
+			// (vscode command passes an argument in the first param by default, so we need to ensure it's a Range object)
+			const textRange = range instanceof vscode.Range ? range : editor.selection
+			const selectedText = editor.document.getText(textRange)
+
+			if (!selectedText) {
+				return
+			}
+
+			// Get the file path and language ID
+			const filePath = editor.document.uri.fsPath
+			const languageId = editor.document.languageId
+
+			// Send to sidebar provider
+			await sidebarProvider.addSelectedCodeToChat(
+				selectedText,
+				filePath,
+				languageId,
+				Array.isArray(diagnostics) ? diagnostics : undefined,
+			)
+		}),
+	)
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.addTerminalOutputToChat", async () => {
+			const terminal = vscode.window.activeTerminal
+			if (!terminal) {
+				return
+			}
+
+			// Save current clipboard content
+			const tempCopyBuffer = await vscode.env.clipboard.readText()
+
+			try {
+				// Copy the *existing* terminal selection (without selecting all)
+				await vscode.commands.executeCommand("workbench.action.terminal.copySelection")
+
+				// Get copied content
+				let terminalContents = (await vscode.env.clipboard.readText()).trim()
+
+				// Restore original clipboard content
+				await vscode.env.clipboard.writeText(tempCopyBuffer)
+
+				if (!terminalContents) {
+					// No terminal content was copied (either nothing selected or some error)
+					return
+				}
+
+				// [Optional] Any additional logic to process multi-line content can remain here
+				// For example:
+				/*
+				const lines = terminalContents.split("\n")
+				const lastLine = lines.pop()?.trim()
+				if (lastLine) {
+					let i = lines.length - 1
+					while (i >= 0 && !lines[i].trim().startsWith(lastLine)) {
+						i--
+					}
+					terminalContents = lines.slice(Math.max(i, 0)).join("\n")
+				}
+				*/
+
+				// Send to sidebar provider
+				await sidebarProvider.addSelectedTerminalOutputToChat(terminalContents, terminal.name)
+			} catch (error) {
+				// Ensure clipboard is restored even if an error occurs
+				await vscode.env.clipboard.writeText(tempCopyBuffer)
+				console.error("Error getting terminal contents:", error)
+				vscode.window.showErrorMessage("Failed to get terminal contents")
+			}
+		}),
+	)
+
+	// Register code action provider
+	context.subscriptions.push(
+		vscode.languages.registerCodeActionsProvider(
+			"*",
+			new (class implements vscode.CodeActionProvider {
+				public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix]
+
+				provideCodeActions(
+					document: vscode.TextDocument,
+					range: vscode.Range,
+					context: vscode.CodeActionContext,
+				): vscode.CodeAction[] {
+					// Expand range to include surrounding 3 lines
+					const expandedRange = new vscode.Range(
+						Math.max(0, range.start.line - 3),
+						0,
+						Math.min(document.lineCount - 1, range.end.line + 3),
+						document.lineAt(Math.min(document.lineCount - 1, range.end.line + 3)).text.length,
+					)
+
+					const addAction = new vscode.CodeAction("Add to HAI", vscode.CodeActionKind.QuickFix)
+					addAction.command = {
+						command: "hai.addToChat",
+						title: "Add to HAI",
+						arguments: [expandedRange, context.diagnostics],
+					}
+
+					const fixAction = new vscode.CodeAction("Fix with HAI", vscode.CodeActionKind.QuickFix)
+					fixAction.command = {
+						command: "hai.fixWithHAI",
+						title: "Fix with HAI",
+						arguments: [expandedRange, context.diagnostics],
+					}
+
+					// Only show actions when there are errors
+					if (context.diagnostics.length > 0) {
+						return [addAction, fixAction]
+					} else {
+						return []
+					}
+				}
+			})(),
+			{
+				providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+			},
+		),
+	)
+
+	// Register the command handler
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.fixWithHAI", async (range: vscode.Range, diagnostics: any[]) => {
+			const editor = vscode.window.activeTextEditor
+			if (!editor) {
+				return
+			}
+
+			const selectedText = editor.document.getText(range)
+			const filePath = editor.document.uri.fsPath
+			const languageId = editor.document.languageId
+
+			// Send to sidebar provider with diagnostics
+			await sidebarProvider.fixWithCline(selectedText, filePath, languageId, diagnostics)
+		}),
+	)
+
 	return createHaiAPI(outputChannel, sidebarProvider)
 }
 
 // This method is called when your extension is deactivated
 export function deactivate() {
+	telemetryService.shutdown()
 	Logger.log("HAI extension deactivated")
+}
+
+// TODO: Find a solution for automatically removing DEV related content from production builds.
+//  This type of code is fine in production to keep. We just will want to remove it from production builds
+//  to bring down built asset sizes.
+//
+// This is a workaround to reload the extension when the source code changes
+// since vscode doesn't support hot reload for extensions
+const { IS_DEV, DEV_WORKSPACE_FOLDER } = process.env
+
+if (IS_DEV && IS_DEV !== "false") {
+	assert(DEV_WORKSPACE_FOLDER, "DEV_WORKSPACE_FOLDER must be set in development")
+	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(DEV_WORKSPACE_FOLDER, "src/**/*"))
+
+	watcher.onDidChange(({ scheme, path }) => {
+		console.info(`${scheme} ${path} changed. Reloading VSCode...`)
+
+		vscode.commands.executeCommand("workbench.action.reloadWindow")
+	})
 }

@@ -9,6 +9,8 @@ import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
 import { HistoryItem } from "./HistoryItem"
 import { McpServer, McpMarketplaceCatalog, McpMarketplaceItem, McpDownloadResponse } from "./mcp"
+import { TelemetrySetting } from "./TelemetrySetting"
+import type { BalanceResponse, UsageTransaction, PaymentTransaction } from "../shared/ClineAccount"
 
 // webview will hold state
 export interface ExtensionMessage {
@@ -35,9 +37,18 @@ export interface ExtensionMessage {
 		| "embeddingConfigValidation"
 		| "ollamaEmbeddingModels"
 		| "emailSubscribed"
+		| "authCallback"
 		| "mcpMarketplaceCatalog"
 		| "mcpDownloadDetails"
 		| "commitSearchResults"
+		| "openGraphData"
+		| "isImageUrlResult"
+		| "didUpdateSettings"
+		| "userCreditsBalance"
+		| "userCreditsUsage"
+		| "userCreditsPayments"
+		| "totalTasksSize"
+		| "addToInput"
 	text?: string
 	bool?: boolean
 	action?:
@@ -50,7 +61,8 @@ export interface ExtensionMessage {
 		| "accountLogoutClicked"
 		| "haiBuildTaskListClicked"
 		| "onHaiConfigure"
-	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
+		| "accountButtonClicked"
+	invoke?: Invoke
 	state?: ExtensionState
 	images?: string[]
 	ollamaModels?: string[]
@@ -62,34 +74,52 @@ export interface ExtensionMessage {
 	openRouterModels?: Record<string, ModelInfo>
 	openAiModels?: string[]
 	mcpServers?: McpServer[]
+	customToken?: string
 	mcpMarketplaceCatalog?: McpMarketplaceCatalog
 	error?: string
 	mcpDownloadDetails?: McpDownloadResponse
 	commits?: GitCommit[]
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
+	openGraphData?: {
+		title?: string
+		description?: string
+		image?: string
+		url?: string
+		siteName?: string
+		type?: string
+	}
+	url?: string
+	isImage?: boolean
+	userCreditsBalance?: BalanceResponse
+	userCreditsUsage?: UsageTransaction[]
+	userCreditsPayments?: PaymentTransaction[]
+	totalTasksSize?: number | null
 }
+
+export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
 
 export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sunos" | "win32" | "unknown"
 
 export const DEFAULT_PLATFORM = "unknown"
 
 export interface ExtensionState {
-	version: string
 	apiConfiguration?: ApiConfiguration
-	customInstructions?: string
-	isHaiRulesPresent?: boolean
-	uriScheme?: string
-	currentTaskItem?: HistoryItem
-	checkpointTrackerErrorMessage?: string
-	clineMessages: ClineMessage[]
-	taskHistory: HistoryItem[]
-	shouldShowAnnouncement: boolean
 	autoApprovalSettings: AutoApprovalSettings
 	browserSettings: BrowserSettings
 	chatSettings: ChatSettings
-	isLoggedIn: boolean
+	checkpointTrackerErrorMessage?: string
+	clineMessages: ClineMessage[]
+	currentTaskItem?: HistoryItem
+	customInstructions?: string
+	mcpMarketplaceEnabled?: boolean
+	planActSeparateModelsSetting: boolean
 	platform: Platform
+	shouldShowAnnouncement: boolean
+	taskHistory: HistoryItem[]
+	telemetrySetting: TelemetrySetting
+	uriScheme?: string
+	isHaiRulesPresent?: boolean
 	userInfo?: {
 		displayName: string | null
 		email: string | null
@@ -99,6 +129,8 @@ export interface ExtensionState {
 	buildIndexProgress?: HaiBuildIndexProgress
 	embeddingConfiguration?: EmbeddingConfiguration
 	vscodeWorkspacePath?: string
+	version: string
+	vscMachineId: string
 }
 
 export interface ClineMessage {
@@ -198,6 +230,18 @@ export interface ClineAskUseMcpServer {
 	toolName?: string
 	arguments?: string
 	uri?: string
+}
+
+export interface ClinePlanModeResponse {
+	response: string
+	options?: string[]
+	selected?: string
+}
+
+export interface ClineAskQuestion {
+	question: string
+	options?: string[]
+	selected?: string
 }
 
 export interface ClineApiReqInfo {

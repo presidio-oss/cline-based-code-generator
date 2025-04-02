@@ -48,6 +48,7 @@ export const toolParamNames = [
 	"arguments",
 	"uri",
 	"question",
+	"options",
 	"response",
 	"result",
 	...customToolParamNames,

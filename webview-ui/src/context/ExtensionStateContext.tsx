@@ -11,6 +11,7 @@ import { convertTextMateToHljs } from "../utils/textMateToHljs"
 import { vscode } from "../utils/vscode"
 import { DEFAULT_BROWSER_SETTINGS } from "../../../src/shared/BrowserSettings"
 import { DEFAULT_CHAT_SETTINGS } from "../../../src/shared/ChatSettings"
+import { TelemetrySetting } from "../../../src/shared/TelemetrySetting"
 
 interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -22,12 +23,15 @@ interface ExtensionStateContextType extends ExtensionState {
 	mcpMarketplaceCatalog: McpMarketplaceCatalog
 	filePaths: string[]
 	haiConfig: { [key in string]: any }
+	totalTasksSize: number | null
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
+	setTelemetrySetting: (value: TelemetrySetting) => void
+	setShowAnnouncement: (value: boolean) => void
+	setPlanActSeparateModelsSetting: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
 	setHaiConfig: (value: { [key in string]: any }) => void
 	setEmbeddingConfiguration: (config: EmbeddingConfiguration) => void
-	setShowAnnouncement: (value: boolean) => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -44,8 +48,10 @@ export const ExtensionStateContextProvider: React.FC<{
 		autoApprovalSettings: DEFAULT_AUTO_APPROVAL_SETTINGS,
 		browserSettings: DEFAULT_BROWSER_SETTINGS,
 		chatSettings: DEFAULT_CHAT_SETTINGS,
-		isLoggedIn: false,
 		platform: DEFAULT_PLATFORM,
+		telemetrySetting: "unset",
+		vscMachineId: "",
+		planActSeparateModelsSetting: true,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -55,11 +61,11 @@ export const ExtensionStateContextProvider: React.FC<{
 		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
 	const [haiConfig, setHaiConfig] = useState({})
+	const [totalTasksSize, setTotalTasksSize] = useState<number | null>(null)
 
 	const [openAiModels, setOpenAiModels] = useState<string[]>([])
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 	const [mcpMarketplaceCatalog, setMcpMarketplaceCatalog] = useState<McpMarketplaceCatalog>({ items: [] })
-
 	const handleMessage = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
 		switch (message.type) {
@@ -84,6 +90,10 @@ export const ExtensionStateContextProvider: React.FC<{
 							config.qwenApiKey,
 							config.mistralApiKey,
 							config.vsCodeLmModelSelector,
+							config.clineApiKey,
+							config.asksageApiKey,
+							config.xaiApiKey,
+							config.sambanovaApiKey,
 						].some((key) => key !== undefined)
 					: false
 				const embedding = message.state?.embeddingConfiguration
@@ -150,6 +160,10 @@ export const ExtensionStateContextProvider: React.FC<{
 				}
 				break
 			}
+			case "totalTasksSize": {
+				setTotalTasksSize(message.totalTasksSize ?? null)
+				break
+			}
 		}
 	}, [])
 
@@ -170,6 +184,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		mcpMarketplaceCatalog,
 		filePaths,
 		haiConfig,
+		totalTasksSize,
 		setApiConfiguration: (value) =>
 			setState((prevState) => ({
 				...prevState,
@@ -179,6 +194,16 @@ export const ExtensionStateContextProvider: React.FC<{
 			setState((prevState) => ({
 				...prevState,
 				customInstructions: value,
+			})),
+		setTelemetrySetting: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				telemetrySetting: value,
+			})),
+		setPlanActSeparateModelsSetting: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				planActSeparateModelsSetting: value,
 			})),
 		setShowAnnouncement: (value) =>
 			setState((prevState) => ({
