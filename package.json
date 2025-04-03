@@ -252,10 +252,10 @@
 		"version-packages": "changeset version"
 	},
 	"devDependencies": {
+		"@changesets/cli": "^2.27.12",
 		"@commitlint/cli": "^19.6.0",
 		"@commitlint/config-conventional": "^19.6.0",
 		"@gitbeaker/rest": "^41.3.0",
-		"@changesets/cli": "^2.27.12",
 		"@types/chai": "^5.0.1",
 		"@types/diff": "^5.2.1",
 		"@types/mocha": "^10.0.7",
@@ -278,9 +278,9 @@
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
-		"@anthropic-ai/bedrock-sdk": "^0.10.2",
-		"@anthropic-ai/sdk": "^0.26.0",
-		"@anthropic-ai/vertex-sdk": "^0.4.1",
+		"@anthropic-ai/bedrock-sdk": "^0.12.4",
+		"@anthropic-ai/sdk": "^0.39.0",
+		"@anthropic-ai/vertex-sdk": "^0.7.0",
 		"@google/generative-ai": "^0.18.0",
 		"@langchain/aws": "^0.1.1",
 		"@langchain/community": "^0.3.11",

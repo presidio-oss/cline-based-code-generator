@@ -22,7 +22,18 @@ export async function downloadTask(dateTs: number, conversationHistory: Anthropi
 		.map((message) => {
 			const role = message.role === "user" ? "**User:**" : "**Assistant:**"
 			const content = Array.isArray(message.content)
-				? message.content.map((block) => formatContentBlockToMarkdown(block)).join("\n")
+				? message.content
+						.filter(
+							(
+								block,
+							): block is
+								| Anthropic.Messages.TextBlockParam
+								| Anthropic.Messages.ImageBlockParam
+								| Anthropic.Messages.ToolUseBlockParam
+								| Anthropic.Messages.ToolResultBlockParam => block.type !== "document",
+						)
+						.map((block) => formatContentBlockToMarkdown(block))
+						.join("\n")
 				: message.content
 			return `${role}\n\n${content}\n\n`
 		})
@@ -36,14 +47,18 @@ export async function downloadTask(dateTs: number, conversationHistory: Anthropi
 
 	if (saveUri) {
 		// Write content to the selected location
-		await vscode.workspace.fs.writeFile(saveUri, Buffer.from(markdownContent))
+		const encoder = new TextEncoder()
+		await vscode.workspace.fs.writeFile(saveUri, encoder.encode(markdownContent))
 		vscode.window.showTextDocument(saveUri, { preview: true })
 	}
 }
 
 export function formatContentBlockToMarkdown(
-	block: Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam,
-	// messages: Anthropic.MessageParam[]
+	block:
+		| Anthropic.Messages.TextBlockParam
+		| Anthropic.Messages.ImageBlockParam
+		| Anthropic.Messages.ToolUseBlockParam
+		| Anthropic.Messages.ToolResultBlockParam,
 ): string {
 	switch (block.type) {
 		case "text":
@@ -68,6 +83,10 @@ export function formatContentBlockToMarkdown(
 				return `[${toolName}${block.is_error ? " (Error)" : ""}]\n${block.content}`
 			} else if (Array.isArray(block.content)) {
 				return `[${toolName}${block.is_error ? " (Error)" : ""}]\n${block.content
+					.filter(
+						(contentBlock): contentBlock is Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam =>
+							contentBlock.type === "text" || contentBlock.type === "image",
+					)
 					.map((contentBlock) => formatContentBlockToMarkdown(contentBlock))
 					.join("\n")}`
 			} else {

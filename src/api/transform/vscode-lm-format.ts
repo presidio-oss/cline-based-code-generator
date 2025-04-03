@@ -28,6 +28,14 @@ function asObjectSafe(value: any): object {
 	}
 }
 
+function getImageDescription(source: Anthropic.Messages.Base64ImageSource | Anthropic.Messages.URLImageSource): string {
+	if (source.type === "base64") {
+		return `[Image (${source.type}): ${source.media_type} not supported by VSCode LM API]`
+	} else {
+		return `[Image (${source.type}): URL image not supported by VSCode LM API]`
+	}
+}
+
 export function convertToVsCodeLmMessages(
 	anthropicMessages: Anthropic.Messages.MessageParam[],
 ): vscode.LanguageModelChatMessage[] {
@@ -48,8 +56,8 @@ export function convertToVsCodeLmMessages(
 		switch (anthropicMessage.role) {
 			case "user": {
 				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
+					nonToolMessages: (Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam)[]
+					toolMessages: Anthropic.Messages.ToolResultBlockParam[]
 				}>(
 					(acc, part) => {
 						if (part.type === "tool_result") {
@@ -72,9 +80,7 @@ export function convertToVsCodeLmMessages(
 								? [new vscode.LanguageModelTextPart(toolMessage.content)]
 								: (toolMessage.content?.map((part) => {
 										if (part.type === "image") {
-											return new vscode.LanguageModelTextPart(
-												`[Image (${part.source?.type || "Unknown source-type"}): ${part.source?.media_type || "unknown media-type"} not supported by VSCode LM API]`,
-											)
+											return new vscode.LanguageModelTextPart(getImageDescription(part.source))
 										}
 										return new vscode.LanguageModelTextPart(part.text)
 									}) ?? [new vscode.LanguageModelTextPart("")])
@@ -85,9 +91,7 @@ export function convertToVsCodeLmMessages(
 					// Convert non-tool messages to TextParts after tool messages
 					...nonToolMessages.map((part) => {
 						if (part.type === "image") {
-							return new vscode.LanguageModelTextPart(
-								`[Image (${part.source?.type || "Unknown source-type"}): ${part.source?.media_type || "unknown media-type"} not supported by VSCode LM API]`,
-							)
+							return new vscode.LanguageModelTextPart(getImageDescription(part.source))
 						}
 						return new vscode.LanguageModelTextPart(part.text)
 					}),
@@ -100,8 +104,8 @@ export function convertToVsCodeLmMessages(
 
 			case "assistant": {
 				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
+					nonToolMessages: (Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam)[]
+					toolMessages: Anthropic.Messages.ToolUseBlockParam[]
 				}>(
 					(acc, part) => {
 						if (part.type === "tool_use") {
@@ -175,6 +179,7 @@ export async function convertToAnthropicMessage(
 					return {
 						type: "text",
 						text: part.value,
+						citations: null,
 					}
 				}
 
@@ -195,6 +200,8 @@ export async function convertToAnthropicMessage(
 		usage: {
 			input_tokens: 0,
 			output_tokens: 0,
+			cache_creation_input_tokens: 0,
+			cache_read_input_tokens: 0,
 		},
 	}
 }

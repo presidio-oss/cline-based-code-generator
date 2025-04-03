@@ -72,7 +72,10 @@ const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath
 
 type ToolResponse = string | Array<Anthropic.TextBlockParam | Anthropic.ImageBlockParam>
 type UserContent = Array<
-	Anthropic.TextBlockParam | Anthropic.ImageBlockParam | Anthropic.ToolUseBlockParam | Anthropic.ToolResultBlockParam
+	| Anthropic.Messages.TextBlockParam
+	| Anthropic.Messages.ImageBlockParam
+	| Anthropic.Messages.ToolUseBlockParam
+	| Anthropic.Messages.ToolResultBlockParam
 >
 
 export class Cline {
@@ -952,7 +955,19 @@ export class Cline {
 					existingApiConversationHistory[existingApiConversationHistory.length - 2]
 
 				const existingUserContent: UserContent = Array.isArray(lastMessage.content)
-					? lastMessage.content
+					? lastMessage.content.filter(
+							(
+								block,
+							): block is
+								| Anthropic.Messages.TextBlockParam
+								| Anthropic.Messages.ImageBlockParam
+								| Anthropic.Messages.ToolUseBlockParam
+								| Anthropic.Messages.ToolResultBlockParam =>
+								block.type === "text" ||
+								block.type === "image" ||
+								block.type === "tool_use" ||
+								block.type === "tool_result",
+						)
 					: [{ type: "text", text: lastMessage.content }]
 				if (previousAssistantMessage && previousAssistantMessage.role === "assistant") {
 					const assistantContent = Array.isArray(previousAssistantMessage.content)

@@ -11,20 +11,25 @@ import {
 	TextPart,
 } from "@google/generative-ai"
 
-export function convertAnthropicContentToGemini(
-	content:
-		| string
-		| Array<
-				| Anthropic.Messages.TextBlockParam
-				| Anthropic.Messages.ImageBlockParam
-				| Anthropic.Messages.ToolUseBlockParam
-				| Anthropic.Messages.ToolResultBlockParam
-		  >,
-): Part[] {
+function isGeminiSupportedBlock(
+	block: Anthropic.Messages.ContentBlockParam,
+): block is
+	| Anthropic.Messages.TextBlockParam
+	| Anthropic.Messages.ImageBlockParam
+	| Anthropic.Messages.ToolUseBlockParam
+	| Anthropic.Messages.ToolResultBlockParam {
+	return block.type !== "document"
+}
+
+export function convertAnthropicContentToGemini(content: string | Array<Anthropic.Messages.ContentBlockParam>): Part[] {
 	if (typeof content === "string") {
 		return [{ text: content } as TextPart]
 	}
-	return content.flatMap((block) => {
+
+	// Filter out document blocks which aren't supported by Gemini
+	const supportedContent = content.filter(isGeminiSupportedBlock)
+
+	return supportedContent.flatMap((block) => {
 		switch (block.type) {
 			case "text":
 				return { text: block.text } as TextPart
@@ -61,9 +66,10 @@ export function convertAnthropicContentToGemini(
 						},
 					} as FunctionResponsePart
 				} else {
-					// The only case when tool_result could be array is when the tool failed and we're providing ie user feedback potentially with images
-					const textParts = block.content.filter((part) => part.type === "text")
-					const imageParts = block.content.filter((part) => part.type === "image")
+					// Filter out document blocks from tool results as well
+					const supportedParts = block.content.filter(isGeminiSupportedBlock)
+					const textParts = supportedParts.filter((part) => part.type === "text")
+					const imageParts = supportedParts.filter((part) => part.type === "image")
 					const text = textParts.length > 0 ? textParts.map((part) => part.text).join("\n\n") : ""
 					const imageText = imageParts.length > 0 ? "\n\n(See next part for image)" : ""
 					return [
@@ -76,15 +82,17 @@ export function convertAnthropicContentToGemini(
 								},
 							},
 						} as FunctionResponsePart,
-						...imageParts.map(
-							(part) =>
-								({
-									inlineData: {
-										data: part.source.data,
-										mimeType: part.source.media_type,
-									},
-								}) as InlineDataPart,
-						),
+						...imageParts.map((part) => {
+							// Handle potential missing properties in URLImageSource
+							const imageData = "data" in part.source ? part.source.data : ""
+							const mimeType = "media_type" in part.source ? part.source.media_type : "image/jpeg"
+							return {
+								inlineData: {
+									data: imageData,
+									mimeType: mimeType,
+								},
+							} as InlineDataPart
+						}),
 					]
 				}
 			default:
@@ -128,12 +136,12 @@ export function unescapeGeminiContent(content: string) {
 }
 
 export function convertGeminiResponseToAnthropic(response: EnhancedGenerateContentResponse): Anthropic.Messages.Message {
-	const content: Anthropic.Messages.ContentBlock[] = []
+	const content: Array<Anthropic.Messages.ContentBlock> = []
 
 	// Add the main text response
 	const text = response.text()
 	if (text) {
-		content.push({ type: "text", text })
+		content.push({ type: "text", text, citations: null })
 	}
 
 	// Add function calls as tool_use blocks
@@ -183,6 +191,8 @@ export function convertGeminiResponseToAnthropic(response: EnhancedGenerateConte
 		usage: {
 			input_tokens: response.usageMetadata?.promptTokenCount ?? 0,
 			output_tokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+			cache_creation_input_tokens: 0,
+			cache_read_input_tokens: 0,
 		},
 	}
 }
