@@ -29,30 +29,42 @@ const McpMarketplaceView = () => {
 	}, [items])
 
 	const filteredItems = useMemo(() => {
-		return items
-			.filter((item) => {
-				const matchesSearch =
-					searchQuery === "" ||
-					item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-					item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-				const matchesCategory = !selectedCategory || item.category === selectedCategory
-				return matchesSearch && matchesCategory
-			})
-			.sort((a, b) => {
-				switch (sortBy) {
-					case "downloadCount":
-						return b.downloadCount - a.downloadCount
-					case "stars":
-						return b.githubStars - a.githubStars
-					case "name":
-						return a.name.localeCompare(b.name)
-					case "newest":
-						return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-					default:
-						return 0
-				}
-			})
+		// First, apply filtering
+		const filtered = items.filter((item) => {
+			const matchesSearch =
+				searchQuery === "" ||
+				item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				item.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+				item.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+			const matchesCategory = !selectedCategory || item.category === selectedCategory
+			return matchesSearch && matchesCategory
+		})
+
+		// Split into local and remote MCPs
+		const localMcps = filtered.filter((item) => item.isLocal)
+		const remoteMcps = filtered.filter((item) => !item.isLocal)
+
+		// Sort each group separately
+		const sortFn = (a: McpMarketplaceItem, b: McpMarketplaceItem) => {
+			switch (sortBy) {
+				case "downloadCount":
+					return b.downloadCount - a.downloadCount
+				case "stars":
+					return b.githubStars - a.githubStars
+				case "name":
+					return a.name.localeCompare(b.name)
+				case "newest":
+					return new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime()
+				default:
+					return 0
+			}
+		}
+
+		const sortedLocalMcps = [...localMcps].sort(sortFn)
+		const sortedRemoteMcps = [...remoteMcps].sort(sortFn)
+
+		// Combine with local MCPs first
+		return [...sortedLocalMcps, ...sortedRemoteMcps]
 	}, [items, searchQuery, selectedCategory, sortBy])
 
 	useEffect(() => {
