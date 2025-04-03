@@ -1,4 +1,5 @@
 import AnthropicBedrock from "@anthropic-ai/bedrock-sdk"
+import { Stream as AnthropicStream } from "@anthropic-ai/bedrock-sdk/streaming"
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ApiHandler } from "../"
 import { ApiHandlerOptions, bedrockDefaultModelId, BedrockModelId, bedrockModels, ModelInfo } from "../../shared/api"

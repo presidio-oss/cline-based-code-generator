@@ -26,10 +26,17 @@ export function convertToR1Format(messages: Anthropic.Messages.MessageParam[]): 
 				}
 				if (part.type === "image") {
 					hasImages = true
-					imageParts.push({
-						type: "image_url",
-						image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` },
-					})
+					if (part.source.type === "base64") {
+						imageParts.push({
+							type: "image_url",
+							image_url: { url: `data:${part.source.media_type};base64,${part.source.data}` },
+						})
+					} else {
+						imageParts.push({
+							type: "image_url",
+							image_url: { url: part.source.url },
+						})
+					}
 				}
 			})
 

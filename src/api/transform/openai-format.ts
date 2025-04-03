@@ -1,6 +1,32 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 
+function isImageBlock(block: Anthropic.Messages.ContentBlockParam): block is Anthropic.Messages.ImageBlockParam {
+	return block.type === "image"
+}
+
+function isTextBlock(block: Anthropic.Messages.ContentBlockParam): block is Anthropic.Messages.TextBlockParam {
+	return block.type === "text"
+}
+
+function getImageUrl(part: Anthropic.Messages.ImageBlockParam): { type: "image_url"; image_url: { url: string } } {
+	if (part.source.type === "base64") {
+		return {
+			type: "image_url",
+			image_url: {
+				url: `data:${part.source.media_type};base64,${part.source.data}`,
+			},
+		}
+	} else {
+		return {
+			type: "image_url",
+			image_url: {
+				url: part.source.url,
+			},
+		}
+	}
+}
+
 export function convertToOpenAiMessages(
 	anthropicMessages: Anthropic.Messages.MessageParam[],
 ): OpenAI.Chat.ChatCompletionMessageParam[] {
@@ -13,23 +39,15 @@ export function convertToOpenAiMessages(
 				content: anthropicMessage.content,
 			})
 		} else {
-			// image_url.url is base64 encoded image data
-			// ensure it contains the content-type of the image: data:image/png;base64,
-			/*
-        { role: "user", content: "" | { type: "text", text: string } | { type: "image_url", image_url: { url: string } } },
-         // content required unless tool_calls is present
-        { role: "assistant", content?: "" | null, tool_calls?: [{ id: "", function: { name: "", arguments: "" }, type: "function" }] },
-        { role: "tool", tool_call_id: "", content: ""}
-         */
 			if (anthropicMessage.role === "user") {
 				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolResultBlockParam[]
+					nonToolMessages: (Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam)[]
+					toolMessages: Anthropic.Messages.ToolResultBlockParam[]
 				}>(
 					(acc, part) => {
 						if (part.type === "tool_result") {
 							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
+						} else if (isTextBlock(part) || isImageBlock(part)) {
 							acc.nonToolMessages.push(part)
 						} // user cannot send tool_use messages
 						return acc
@@ -40,7 +58,6 @@ export function convertToOpenAiMessages(
 				// Process tool result messages FIRST since they must follow the tool use messages
 				let toolResultImages: Anthropic.Messages.ImageBlockParam[] = []
 				toolMessages.forEach((toolMessage) => {
-					// The Anthropic SDK allows tool results to be a string or an array of text and image blocks, enabling rich and structured content. In contrast, the OpenAI SDK only supports tool results as a single string, so we map the Anthropic tool result parts into one concatenated string to maintain compatibility.
 					let content: string
 
 					if (typeof toolMessage.content === "string") {
@@ -49,7 +66,7 @@ export function convertToOpenAiMessages(
 						content =
 							toolMessage.content
 								?.map((part) => {
-									if (part.type === "image") {
+									if (isImageBlock(part)) {
 										toolResultImages.push(part)
 										return "(see following user message for image)"
 									}
@@ -85,13 +102,8 @@ export function convertToOpenAiMessages(
 					openAiMessages.push({
 						role: "user",
 						content: nonToolMessages.map((part) => {
-							if (part.type === "image") {
-								return {
-									type: "image_url",
-									image_url: {
-										url: `data:${part.source.media_type};base64,${part.source.data}`,
-									},
-								}
+							if (isImageBlock(part)) {
+								return getImageUrl(part)
 							}
 							return { type: "text", text: part.text }
 						}),
@@ -99,13 +111,13 @@ export function convertToOpenAiMessages(
 				}
 			} else if (anthropicMessage.role === "assistant") {
 				const { nonToolMessages, toolMessages } = anthropicMessage.content.reduce<{
-					nonToolMessages: (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[]
-					toolMessages: Anthropic.ToolUseBlockParam[]
+					nonToolMessages: (Anthropic.Messages.TextBlockParam | Anthropic.Messages.ImageBlockParam)[]
+					toolMessages: Anthropic.Messages.ToolUseBlockParam[]
 				}>(
 					(acc, part) => {
 						if (part.type === "tool_use") {
 							acc.toolMessages.push(part)
-						} else if (part.type === "text" || part.type === "image") {
+						} else if (isTextBlock(part) || isImageBlock(part)) {
 							acc.nonToolMessages.push(part)
 						} // assistant cannot send tool_result messages
 						return acc
@@ -118,7 +130,7 @@ export function convertToOpenAiMessages(
 				if (nonToolMessages.length > 0) {
 					content = nonToolMessages
 						.map((part) => {
-							if (part.type === "image") {
+							if (isImageBlock(part)) {
 								return "" // impossible as the assistant cannot send images
 							}
 							return part.text
@@ -132,7 +144,6 @@ export function convertToOpenAiMessages(
 					type: "function",
 					function: {
 						name: toolMessage.name,
-						// json string
 						arguments: JSON.stringify(toolMessage.input),
 					},
 				}))
@@ -161,6 +172,7 @@ export function convertToAnthropicMessage(completion: OpenAI.Chat.Completions.Ch
 			{
 				type: "text",
 				text: openAiMessage.content || "",
+				citations: null,
 			},
 		],
 		model: completion.model,
@@ -181,12 +193,14 @@ export function convertToAnthropicMessage(completion: OpenAI.Chat.Completions.Ch
 		usage: {
 			input_tokens: completion.usage?.prompt_tokens || 0,
 			output_tokens: completion.usage?.completion_tokens || 0,
+			cache_creation_input_tokens: 0,
+			cache_read_input_tokens: 0,
 		},
 	}
 
 	if (openAiMessage.tool_calls && openAiMessage.tool_calls.length > 0) {
 		anthropicMessage.content.push(
-			...openAiMessage.tool_calls.map((toolCall): Anthropic.ToolUseBlock => {
+			...openAiMessage.tool_calls.map((toolCall): Anthropic.Messages.ToolUseBlock => {
 				let parsedInput = {}
 				try {
 					parsedInput = JSON.parse(toolCall.function.arguments || "{}")
