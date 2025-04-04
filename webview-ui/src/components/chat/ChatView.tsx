@@ -26,7 +26,7 @@ import BrowserSessionRow from "./BrowserSessionRow"
 import ChatRow from "./ChatRow"
 import ChatTextArea from "./ChatTextArea"
 import TaskHeader from "./TaskHeader"
-import logo from "../../assets/hai-dark.svg"
+import Logo from "../../assets/hai-dark.svg?react"
 import { IHaiClineTask } from "../../interfaces/hai-task.interface"
 import CodeIndexWarning from "./CodeIndexWarning"
 import QuickActions from "../welcome/QuickActions"
@@ -825,7 +825,7 @@ const ChatView = ({
 						paddingBottom: "10px",
 					}}>
 					<div style={{ height: "auto", maxWidth: "200px", margin: "20px" }}>
-						<img src={logo} alt="Logo" style={{ height: "100%", width: "100%" }} className="hai-logo" />
+						<Logo style={{ height: "100%", width: "100%" }} className="hai-logo" />
 					</div>
 
 					{/* {showAnnouncement && <Announcement version={version} hideAnnouncement={hideAnnouncement} />} */}
