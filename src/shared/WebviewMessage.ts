@@ -10,6 +10,7 @@ import { TelemetrySetting } from "./TelemetrySetting"
 
 export interface WebviewMessage {
 	type:
+		| "addRemoteServer"
 		| "apiConfiguration"
 		| "customInstructions"
 		| "expertPrompt"
@@ -86,6 +87,7 @@ export interface WebviewMessage {
 		| "fetchUserCreditsData"
 		| "optionsResponse"
 		| "requestTotalTasksSize"
+		| "taskFeedback"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	disabled?: boolean
@@ -104,14 +106,15 @@ export interface WebviewMessage {
 	prompt?: string
 	category?: string
 
-	// For toggleToolAutoApprove
-	serverName?: string
-	toolName?: string
-	autoApprove?: boolean
-
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
+
+	// For toggleToolAutoApprove
+	serverName?: string
+	serverUrl?: string
+	toolNames?: string[]
+	autoApprove?: boolean
 
 	// For auth
 	user?: UserInfo | null
@@ -121,7 +124,13 @@ export interface WebviewMessage {
 	planActSeparateModelsSetting?: boolean
 	telemetrySetting?: TelemetrySetting
 	customInstructionsSetting?: string
+
+	// For task feedback
+	feedbackType?: TaskFeedbackType
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
+
 export type ClineCheckpointRestore = "task" | "workspace" | "taskAndWorkspace"
+
+export type TaskFeedbackType = "thumbs_up" | "thumbs_down"

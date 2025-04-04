@@ -8,14 +8,15 @@ import {
 	VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react"
 import { Fragment, memo, useCallback, useEffect, useMemo, useState } from "react"
-import { useDebounce, useDeepCompareEffect, useEvent, useInterval } from "react-use"
 import ThinkingBudgetSlider from "./ThinkingBudgetSlider"
+import { useEvent, useInterval, useDebounce, useDeepCompareEffect } from "react-use"
+import styled from "styled-components"
+import * as vscodemodels from "vscode"
 import {
 	anthropicDefaultModelId,
 	anthropicModels,
 	ApiConfiguration,
 	ApiProvider,
-	ModelInfo,
 	azureOpenAiDefaultApiVersion,
 	bedrockDefaultModelId,
 	bedrockModels,
@@ -25,6 +26,7 @@ import {
 	geminiModels,
 	mistralDefaultModelId,
 	mistralModels,
+	ModelInfo,
 	openAiModelInfoSaneDefaults,
 	openAiNativeDefaultModelId,
 	openAiNativeModels,
@@ -47,12 +49,10 @@ import {
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
-import VSCodeButtonLink from "../common/VSCodeButtonLink"
 import Info, { InfoStatus } from "../common/Info"
 import { validateApiConfiguration, validateModelId } from "../../utils/validate"
-import styled from "styled-components"
-import * as vscodemodels from "vscode"
 import { getAsVar, VSC_DESCRIPTION_FOREGROUND } from "../../utils/vscStyles"
+import VSCodeButtonLink from "../common/VSCodeButtonLink"
 import OpenRouterModelPicker, { ModelDescriptionMarkdown, OPENROUTER_MODEL_PICKER_Z_INDEX } from "./OpenRouterModelPicker"
 import { ClineAccountInfoCard } from "./ClineAccountInfoCard"
 
@@ -798,7 +798,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						This key is stored locally and only used to make API requests from this extension.
 						{!apiConfiguration?.geminiApiKey && (
 							<VSCodeLink
-								href="https://ai.google.dev/"
+								href="https://aistudio.google.com/apikey"
 								style={{
 									display: "inline",
 									fontSize: "inherit",
@@ -890,7 +890,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 								checked={!!apiConfiguration?.openAiModelInfo?.supportsImages}
 								onChange={(e: any) => {
 									const isChecked = e.target.checked === true
-									let modelInfo = apiConfiguration?.openAiModelInfo
+									const modelInfo = apiConfiguration?.openAiModelInfo
 										? apiConfiguration.openAiModelInfo
 										: { ...openAiModelInfoSaneDefaults }
 									modelInfo.supportsImages = isChecked
@@ -941,7 +941,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 									}
 									style={{ flex: 1 }}
 									onInput={(input: any) => {
-										let modelInfo = apiConfiguration?.openAiModelInfo
+										const modelInfo = apiConfiguration?.openAiModelInfo
 											? apiConfiguration.openAiModelInfo
 											: { ...openAiModelInfoSaneDefaults }
 										modelInfo.contextWindow = Number(input.target.value)
@@ -960,7 +960,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 									}
 									style={{ flex: 1 }}
 									onInput={(input: any) => {
-										let modelInfo = apiConfiguration?.openAiModelInfo
+										const modelInfo = apiConfiguration?.openAiModelInfo
 											? apiConfiguration.openAiModelInfo
 											: { ...openAiModelInfoSaneDefaults }
 										modelInfo.maxTokens = input.target.value
@@ -981,7 +981,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 									}
 									style={{ flex: 1 }}
 									onInput={(input: any) => {
-										let modelInfo = apiConfiguration?.openAiModelInfo
+										const modelInfo = apiConfiguration?.openAiModelInfo
 											? apiConfiguration.openAiModelInfo
 											: { ...openAiModelInfoSaneDefaults }
 										modelInfo.inputPrice = input.target.value
@@ -1000,7 +1000,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 									}
 									style={{ flex: 1 }}
 									onInput={(input: any) => {
-										let modelInfo = apiConfiguration?.openAiModelInfo
+										const modelInfo = apiConfiguration?.openAiModelInfo
 											? apiConfiguration.openAiModelInfo
 											: { ...openAiModelInfoSaneDefaults }
 										modelInfo.outputPrice = input.target.value
@@ -1020,7 +1020,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 											: openAiModelInfoSaneDefaults.temperature?.toString()
 									}
 									onInput={(input: any) => {
-										let modelInfo = apiConfiguration?.openAiModelInfo
+										const modelInfo = apiConfiguration?.openAiModelInfo
 											? apiConfiguration.openAiModelInfo
 											: { ...openAiModelInfoSaneDefaults }
 
@@ -1451,7 +1451,6 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 					)}
 				</>
 			)}
-			¯¯
 			{selectedProvider !== "openrouter" &&
 				selectedProvider !== "cline" &&
 				selectedProvider !== "openai" &&
@@ -1728,6 +1727,12 @@ export function normalizeApiConfiguration(apiConfiguration?: ApiConfiguration): 
 			return {
 				selectedProvider: provider,
 				selectedModelId: apiConfiguration?.lmStudioModelId || "",
+				selectedModelInfo: openAiModelInfoSaneDefaults,
+			}
+		case "requesty":
+			return {
+				selectedProvider: provider,
+				selectedModelId: apiConfiguration?.requestyModelId || "",
 				selectedModelInfo: openAiModelInfoSaneDefaults,
 			}
 		case "vscode-lm":

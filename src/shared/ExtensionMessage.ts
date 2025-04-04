@@ -44,6 +44,7 @@ export interface ExtensionMessage {
 		| "openGraphData"
 		| "isImageUrlResult"
 		| "didUpdateSettings"
+		| "addRemoteServerResult"
 		| "userCreditsBalance"
 		| "userCreditsUsage"
 		| "userCreditsPayments"
@@ -99,6 +100,11 @@ export interface ExtensionMessage {
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
 	experts?: any[] // Expert data array
+	addRemoteServerResult?: {
+		success: boolean
+		serverName: string
+		error?: string
+	}
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
@@ -155,7 +161,7 @@ export interface ClineMessage {
 
 export type ClineAsk =
 	| "followup"
-	| "plan_mode_response"
+	| "plan_mode_respond"
 	| "command"
 	| "command_output"
 	| "completion_result"

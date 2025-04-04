@@ -3,13 +3,18 @@
 import { defineConfig } from "vite"
 import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
+import svgr from "vite-plugin-svgr"
 
 export default defineConfig({
-	plugins: [react(), tailwindcss()],
+	plugins: [svgr(), react(), tailwindcss()],
 	test: {
 		environment: "jsdom",
 		globals: true,
 		setupFiles: ["./src/setupTests.ts"],
+		coverage: {
+			provider: "v8",
+			reportOnFailure: true,
+		},
 	},
 	build: {
 		outDir: "build",

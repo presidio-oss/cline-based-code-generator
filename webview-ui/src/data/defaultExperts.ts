@@ -6,10 +6,10 @@ import { GOLANG_EXPERT_PROMPT } from "./experts/golangExpert"
 
 // Import SVG icons
 
-import { ReactComponent as DotNetIconComponent } from "../assets/experts-icon/dotnet.svg"
-import { ReactComponent as TerraformIconComponent } from "../assets/experts-icon/terraform.svg"
-import { ReactComponent as NodeJsIconComponent } from "../assets/experts-icon/nodejs.svg"
-import { ReactComponent as GoIconComponent } from "../assets/experts-icon/golang.svg"
+import DotNetIconComponent from "../assets/experts-icon/dotnet.svg?react"
+import TerraformIconComponent from "../assets/experts-icon/terraform.svg?react"
+import NodeJsIconComponent from "../assets/experts-icon/nodejs.svg?react"
+import GoIconComponent from "../assets/experts-icon/golang.svg?react"
 
 export const DEFAULT_EXPERTS: ExpertData[] = [
 	{

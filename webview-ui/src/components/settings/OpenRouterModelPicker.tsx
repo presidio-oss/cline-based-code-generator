@@ -87,7 +87,7 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 	}, [searchableItems])
 
 	const modelSearchResults = useMemo(() => {
-		let results: { id: string; html: string }[] = searchTerm
+		const results: { id: string; html: string }[] = searchTerm
 			? highlight(fuse.search(searchTerm), "model-item-highlight")
 			: searchableItems
 		// results.sort((a, b) => a.id.localeCompare(b.id)) NOTE: sorting like this causes ids in objects to be reordered and mismatched
@@ -252,8 +252,8 @@ const OpenRouterModelPicker: React.FC<OpenRouterModelPickerProps> = ({ isPopup }
 						If you're unsure which model to choose, HAI works best with{" "}
 						<VSCodeLink
 							style={{ display: "inline", fontSize: "inherit" }}
-							onClick={() => handleModelChange("anthropic/claude-3.5-sonnet:beta")}>
-							anthropic/claude-3.5-sonnet:beta.
+							onClick={() => handleModelChange("anthropic/claude-3.7-sonnet")}>
+							anthropic/claude-3.7-sonnet.
 						</VSCodeLink>
 						You can also try searching "free" for no-cost options currently available.
 					</>
