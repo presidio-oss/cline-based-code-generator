@@ -75,11 +75,6 @@ export class AnthropicHandler implements ApiHandler {
 				}
 				return message
 			}),
-			...(supportsCache && {
-				headers: {
-					"anthropic-beta": "prompt-caching-2024-07-31",
-				},
-			}),
 			stream: true,
 		})) as AnthropicStream<Anthropic.Messages.MessageStreamEvent>
 

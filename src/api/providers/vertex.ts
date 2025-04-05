@@ -38,7 +38,9 @@ export class VertexHandler implements ApiHandler {
 				},
 			],
 			messages: messages.map((message, index) => {
-				if (!supportsCache) { return message };
+				if (!supportsCache) {
+					return message
+				}
 
 				const userMsgIndices = messages.reduce(
 					(acc, msg, index) => (msg.role === "user" ? [...acc, index] : acc),
@@ -46,7 +48,7 @@ export class VertexHandler implements ApiHandler {
 				)
 				const lastUserMsgIndex = userMsgIndices[userMsgIndices.length - 1] ?? -1
 				const secondLastMsgUserIndex = userMsgIndices[userMsgIndices.length - 2] ?? -1
-				
+
 				if (index === lastUserMsgIndex || index === secondLastMsgUserIndex) {
 					return {
 						...message,
@@ -133,8 +135,8 @@ export class VertexHandler implements ApiHandler {
 			const id = modelId as VertexModelId
 			return { id, info: vertexModels[id] }
 		}
-			return {
-				id: vertexDefaultModelId,
+		return {
+			id: vertexDefaultModelId,
 			info: vertexModels[vertexDefaultModelId],
 		}
 	}
