@@ -724,7 +724,9 @@ export class Controller {
 				}
 
 				// custom instructions
-				await this.updateCustomInstructions(message.customInstructionsSetting)
+				if (message.customInstructionsSetting) {
+					await this.updateCustomInstructions(message.customInstructionsSetting)
+				}
 
 				// telemetry setting
 				if (message.telemetrySetting) {
@@ -732,7 +734,9 @@ export class Controller {
 				}
 
 				// plan act setting
-				await customUpdateState(this.context, "planActSeparateModelsSetting", message.planActSeparateModelsSetting)
+				if (message.planActSeparateModelsSetting != undefined) {
+					await customUpdateState(this.context, "planActSeparateModelsSetting", message.planActSeparateModelsSetting)
+				}
 
 				// after settings are updated, post state to webview
 				await this.postStateToWebview()

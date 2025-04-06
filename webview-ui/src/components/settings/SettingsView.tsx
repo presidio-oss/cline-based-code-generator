@@ -77,6 +77,10 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
 	}, [telemetrySetting])
 
+	useEffect(() => {
+		vscode.postMessage({ type: "updateSettings", planActSeparateModelsSetting })
+	}, [planActSeparateModelsSetting])
+
 	useDeepCompareEffect(() => {
 		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 	}, [buildContextOptions])
