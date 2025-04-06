@@ -2,7 +2,7 @@ import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
-import { ReactComponent as Logo } from "../../assets/hai-dark.svg"
+import Logo from "../../assets/hai-dark.svg?react"
 import ApiOptions from "../settings/ApiOptions"
 import EmbeddingOptions from "../settings/EmbeddingOptions"
 

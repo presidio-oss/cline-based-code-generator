@@ -2,7 +2,7 @@
 	"name": "hai-build-code-generator",
 	"displayName": "HAI Build Code Generator",
 	"description": "Human AI (HAI) VS Code extension that streamlines development workflows through AI-powered task execution, intelligent file management, and automated code generation. Built on Cline, it integrates with various LLMs to enhance productivity and code quality while simplifying complex development tasks.",
-	"clineVersion": "3.4.0",
+	"clineVersion": "3.8.6",
 	"version": "3.3.0",
 	"icon": "assets/icons/HAI-Rounded-Dark@3x.png",
 	"galleryBanner": {
@@ -112,6 +112,27 @@
 				"category": "HAI Build"
 			},
 			{
+				"command": "hai.dev.createTestTasks",
+				"title": "Create Test Tasks",
+				"category": "HAI Build",
+				"when": "hai.isDevMode"
+			},
+			{
+				"command": "hai.addToChat",
+				"title": "Add to HAI",
+				"category": "HAI Build"
+			},
+			{
+				"command": "hai.addTerminalOutputToChat",
+				"title": "Add to HAI",
+				"category": "HAI Build"
+			},
+			{
+				"command": "hai.fixWithHAI",
+				"title": "Fix with HAI",
+				"category": "HAI Build"
+			},
+			{
 				"command": "hai.haiBuildTaskListClicked",
 				"title": "Hai Tasks",
 				"category": "HAI Build"
@@ -160,6 +181,56 @@
 					"group": "navigation@5",
 					"when": "view == hai.SidebarProvider"
 				}
+			],
+			"editor/title": [
+				{
+					"command": "hai.haiBuildTaskListClicked",
+					"group": "navigation@1",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.expertsButtonClicked",
+					"group": "navigation@2",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.plusButtonClicked",
+					"group": "navigation@2",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.mcpButtonClicked",
+					"group": "navigation@2",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.historyButtonClicked",
+					"group": "navigation@3",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.popoutButtonClicked",
+					"group": "navigation@4",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.settingsButtonClicked",
+					"group": "navigation@5",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "hai.addToChat",
+					"group": "navigation",
+					"when": "editorHasSelection"
+				}
+			],
+			"terminal/context": [
+				{
+					"command": "hai.addTerminalOutputToChat",
+					"group": "navigation"
+				}
 			]
 		},
 		"configuration": {
@@ -197,7 +268,7 @@
 				"hai.enableCheckpoints": {
 					"type": "boolean",
 					"default": true,
-					"description": "Enables extension to save checkpoints of workspace throughout the task."
+					"description": "Enables extension to save checkpoints of workspace throughout the task. Uses git under the hood which may not work well with large workspaces."
 				},
 				"hai.disableBrowserTool": {
 					"type": "boolean",
@@ -219,6 +290,36 @@
 					"default": null,
 					"description": "Path to Chrome executable for browser use functionality. If not set, the extension will attempt to find or download it automatically."
 				},
+				"hai.preferredLanguage": {
+					"type": "string",
+					"enum": [
+						"English",
+						"Arabic - العربية",
+						"Portuguese - Português (Brasil)",
+						"Czech - Čeština",
+						"French - Français",
+						"German - Deutsch",
+						"Hindi - हिन्दी",
+						"Hungarian - Magyar",
+						"Italian - Italiano",
+						"Japanese - 日本語",
+						"Korean - 한국어",
+						"Polish - Polski",
+						"Portuguese - Português (Portugal)",
+						"Russian - Русский",
+						"Simplified Chinese - 简体中文",
+						"Spanish - Español",
+						"Traditional Chinese - 繁體中文",
+						"Turkish - Türkçe"
+					],
+					"default": "English",
+					"description": "The language that HAI should use for communication."
+				},
+				"hai.mcpMarketplace.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "Controls whether the MCP Marketplace is enabled."
+				},
 				"hai.inlineEditing": {
 					"type": "boolean",
 					"default": true,
@@ -238,15 +339,18 @@
 		"watch-tests": "tsc -p . -w --outDir out",
 		"pretest": "npm run compile-tests && npm run compile && npm run lint",
 		"check-types": "tsc --noEmit",
-		"lint": "eslint src --ext ts",
+		"lint": "eslint src --ext ts && eslint webview-ui/src --ext ts",
 		"format": "prettier . --check",
 		"format:fix": "prettier . --write",
 		"test": "vscode-test",
+		"test:ci": "node scripts/test-ci.js",
+		"test:coverage": "vscode-test --coverage",
 		"install:all": "npm install && cd webview-ui && npm install",
-		"start:webview": "cd webview-ui && npm run start",
+		"dev:webview": "cd webview-ui && npm run dev",
 		"build:webview": "cd webview-ui && npm run build",
 		"test:webview": "cd webview-ui && npm run test",
 		"publish:marketplace": "vsce publish",
+		"publish:marketplace:prerelease": "vsce publish --pre-release && ovsx publish --pre-release",
 		"prepare": "husky",
 		"changeset": "changeset",
 		"version-packages": "changeset version"
@@ -257,10 +361,15 @@
 		"@gitbeaker/rest": "^41.3.0",
 		"@changesets/cli": "^2.27.12",
 		"@types/chai": "^5.0.1",
+		"@types/clone-deep": "^4.0.4",
 		"@types/diff": "^5.2.1",
+		"@types/get-folder-size": "^3.0.4",
 		"@types/mocha": "^10.0.7",
 		"@types/node": "20.x",
+		"@types/pdf-parse": "^1.1.4",
 		"@types/should": "^11.2.0",
+		"@types/sinon": "^17.0.4",
+		"@types/turndown": "^5.0.5",
 		"@types/vscode": "^1.84.0",
 		"@typescript-eslint/eslint-plugin": "^7.14.1",
 		"@typescript-eslint/parser": "^7.11.0",
@@ -270,37 +379,45 @@
 		"esbuild": "^0.25.0",
 		"eslint": "^8.57.0",
 		"got": "^14.4.5",
-		"husky": "^9.1.7",
 		"keep-a-changelog": "^2.5.3",
+		"husky": "^9.1.7",
 		"npm-run-all": "^4.1.5",
 		"prettier": "^3.3.3",
 		"should": "^13.2.3",
+		"sinon": "^19.0.2",
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
-		"@anthropic-ai/bedrock-sdk": "^0.10.2",
-		"@anthropic-ai/sdk": "^0.26.0",
-		"@anthropic-ai/vertex-sdk": "^0.4.1",
+		"@anthropic-ai/bedrock-sdk": "^0.12.4",
+		"@anthropic-ai/sdk": "^0.37.0",
+		"@anthropic-ai/vertex-sdk": "^0.6.4",
+		"@aws-sdk/client-bedrock-runtime": "^3.758.0",
+		"@google-cloud/vertexai": "^1.9.3",
 		"@google/generative-ai": "^0.18.0",
+		"@mistralai/mistralai": "^1.5.0",
+		"@modelcontextprotocol/sdk": "^1.7.0",
+		"@opentelemetry/api": "^1.4.1",
+		"@opentelemetry/exporter-trace-otlp-http": "^0.39.1",
+		"@opentelemetry/resources": "^1.30.1",
+		"@opentelemetry/sdk-node": "^0.39.1",
+		"@opentelemetry/sdk-trace-node": "^1.30.1",
+		"@opentelemetry/semantic-conventions": "^1.30.0",
 		"@langchain/aws": "^0.1.1",
 		"@langchain/community": "^0.3.11",
 		"@langchain/core": "^0.3.17",
 		"@langchain/ollama": "^0.1.5",
 		"@langchain/openai": "^0.3.12",
 		"@langchain/textsplitters": "^0.1.0",
-		"@mistralai/mistralai": "^1.5.0",
-		"@modelcontextprotocol/sdk": "^1.0.1",
 		"@types/clone-deep": "^4.0.4",
 		"@types/get-folder-size": "^3.0.4",
 		"@types/pdf-parse": "^1.1.4",
 		"@types/turndown": "^5.0.5",
 		"@vscode/codicons": "^0.0.36",
-		"axios": "^1.7.4",
+		"axios": "^1.8.2",
 		"cheerio": "^1.0.0",
 		"chokidar": "^4.0.1",
 		"clone-deep": "^4.0.1",
 		"default-shell": "^2.2.0",
-		"delay": "^6.0.0",
 		"diff": "^5.2.0",
 		"execa": "^9.5.2",
 		"faiss-node": "^0.5.1",
@@ -313,19 +430,23 @@
 		"isbinaryfile": "^5.0.2",
 		"mammoth": "^1.8.0",
 		"monaco-vscode-textmate-theme-converter": "^0.1.7",
+		"ollama": "^0.5.13",
+		"open-graph-scraper": "^6.9.0",
 		"openai": "^4.83.0",
 		"os-name": "^6.0.0",
+		"p-timeout": "^6.1.4",
 		"p-wait-for": "^5.0.2",
 		"pdf-parse": "^1.1.1",
+		"posthog-node": "^4.8.1",
 		"puppeteer-chromium-resolver": "^23.0.0",
 		"puppeteer-core": "^23.4.0",
 		"serialize-error": "^11.0.3",
 		"simple-git": "^3.27.0",
 		"strip-ansi": "^7.1.0",
 		"tar": "^7.4.3",
+		"watcher": "^2.3.1",
 		"tree-sitter-wasms": "^0.1.11",
 		"turndown": "^7.2.0",
-		"watcher": "^2.3.1",
 		"web-tree-sitter": "^0.22.6",
 		"zod": "^3.24.2"
 	}

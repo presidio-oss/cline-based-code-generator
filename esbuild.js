@@ -52,6 +52,7 @@ const copyWasmFiles = {
 				"java",
 				"php",
 				"swift",
+				"kotlin",
 			]
 
 			languages.forEach((lang) => {
@@ -78,6 +79,14 @@ const extensionConfig = {
 		copyWasmFiles,
 		/* add to the end of plugins array */
 		esbuildProblemMatcherPlugin,
+		{
+			name: "alias-plugin",
+			setup(build) {
+				build.onResolve({ filter: /^pkce-challenge$/ }, (args) => {
+					return { path: require.resolve("pkce-challenge/dist/index.browser.js") }
+				})
+			},
+		},
 	],
 	entryPoints: ["src/extension.ts"],
 	format: "cjs",
