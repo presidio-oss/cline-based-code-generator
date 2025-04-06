@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState, useEffect } from "react"
-import { useEvent } from "react-use"
+import { useClickAway, useEvent } from "react-use"
 import styled from "styled-components"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { vscode } from "../../utils/vscode"
 import { CODE_BLOCK_BG_COLOR } from "./CodeBlock"
+import { ClineCheckpointRestore } from "../../../../src/shared/WebviewMessage"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { createPortal } from "react-dom"
 import { useFloating, offset, flip, shift } from "@floating-ui/react"
@@ -15,11 +16,12 @@ interface CheckmarkControlProps {
 
 export const CheckmarkControl = ({ messageTs, isCheckpointCheckedOut }: CheckmarkControlProps) => {
 	const [compareDisabled, setCompareDisabled] = useState(false)
-	const [, setRestoreTaskDisabled] = useState(false)
+	const [restoreTaskDisabled, setRestoreTaskDisabled] = useState(false)
 	const [restoreWorkspaceDisabled, setRestoreWorkspaceDisabled] = useState(false)
 	const [restoreBothDisabled, setRestoreBothDisabled] = useState(false)
 	const [showRestoreConfirm, setShowRestoreConfirm] = useState(false)
 	const [hasMouseEntered, setHasMouseEntered] = useState(false)
+	const containerRef = useRef<HTMLDivElement>(null)
 	const tooltipRef = useRef<HTMLDivElement>(null)
 
 	const { refs, floatingStyles, update, placement } = useFloating({
@@ -57,6 +59,15 @@ export const CheckmarkControl = ({ messageTs, isCheckpointCheckedOut }: Checkmar
 			setShowRestoreConfirm(false)
 		}
 	}, [])
+
+	const handleRestoreTask = () => {
+		setRestoreTaskDisabled(true)
+		vscode.postMessage({
+			type: "checkpointRestore",
+			number: messageTs,
+			text: "task",
+		})
+	}
 
 	const handleRestoreWorkspace = () => {
 		setRestoreWorkspaceDisabled(true)
@@ -169,7 +180,7 @@ export const CheckmarkControl = ({ messageTs, isCheckpointCheckedOut }: Checkmar
 										what will be reverted)
 									</p>
 								</RestoreOption>
-								{/* <RestoreOption>
+								<RestoreOption>
 									<VSCodeButton
 										onClick={handleRestoreTask}
 										disabled={restoreTaskDisabled}
@@ -181,7 +192,7 @@ export const CheckmarkControl = ({ messageTs, isCheckpointCheckedOut }: Checkmar
 										Restore Task Only
 									</VSCodeButton>
 									<p>Deletes messages after this point (does not affect workspace files)</p>
-								</RestoreOption> */}
+								</RestoreOption>
 								<RestoreOption>
 									<VSCodeButton
 										onClick={handleRestoreBoth}

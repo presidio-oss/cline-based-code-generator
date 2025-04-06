@@ -101,11 +101,29 @@ export function getReadablePath(cwd: string, relPath?: string): string {
 	}
 }
 
-export const getWorkspacePath = () => {
+export const getWorkspaceURI = () => {
 	const workspaceFolders = vscode.workspace.workspaceFolders
 	if (!workspaceFolders || workspaceFolders.length === 0) {
 		return
 	}
 	const workspaceFolder = workspaceFolders[0]
-	return workspaceFolder.uri.fsPath
+	return workspaceFolder.uri
+}
+
+export const getWorkspacePath = () => {
+	const workspaceURI = getWorkspaceURI()
+	if (!workspaceURI) {
+		return
+	}
+
+	return workspaceURI.fsPath
+}
+
+export const getWorkspaceID = () => {
+	const workspaceURI = getWorkspaceURI()
+	if (!workspaceURI) {
+		return
+	}
+
+	return workspaceURI.toString()
 }

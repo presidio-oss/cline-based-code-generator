@@ -3,16 +3,17 @@ import * as path from "path"
 import * as fs from "fs/promises"
 import ignore from "ignore"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
-import { ClineProvider, GlobalFileNames } from "../../core/webview/ClineProvider"
 import { FileOperations } from "../../utils/constants"
+import { Controller } from "../../core/controller"
+import { GlobalFileNames } from "../../global-constants"
 
 class HaiFileSystemWatcher {
 	private sourceFolder: string
 	private ig: ReturnType<typeof ignore>
-	private providerRef: WeakRef<ClineProvider>
+	private providerRef: WeakRef<Controller>
 	private watcher: Watcher | undefined
 
-	constructor(provider: ClineProvider, sourceFolder: string) {
+	constructor(provider: Controller, sourceFolder: string) {
 		this.sourceFolder = sourceFolder
 		this.providerRef = new WeakRef(provider)
 		this.ig = ignore()
