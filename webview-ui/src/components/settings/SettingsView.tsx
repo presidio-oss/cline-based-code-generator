@@ -81,6 +81,17 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		vscode.postMessage({ type: "updateSettings", planActSeparateModelsSetting })
 	}, [planActSeparateModelsSetting])
 
+	useEffect(() => {
+		if (pendingTabChange) {
+			vscode.postMessage({
+				type: "togglePlanActMode",
+				chatSettings: {
+					mode: pendingTabChange,
+				},
+			})
+		}
+	}, [pendingTabChange])
+
 	useDeepCompareEffect(() => {
 		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 	}, [buildContextOptions])
@@ -90,15 +101,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			return
 		}
 		setPendingTabChange(tab)
-
-		if (pendingTabChange) {
-			vscode.postMessage({
-				type: "togglePlanActMode",
-				chatSettings: {
-					mode: pendingTabChange,
-				},
-			})
-		}
 	}
 
 	return (
