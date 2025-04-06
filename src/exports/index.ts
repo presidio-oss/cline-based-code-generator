@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
 import { Controller } from "../core/controller"
 import { HaiAPI } from "./hai"
-import { getGlobalState } from "../core/storage/state"
+import { customGetState } from "../core/storage/state"
 
 export function createHaiAPI(outputChannel: vscode.OutputChannel, sidebarController: Controller): HaiAPI {
 	const api: HaiAPI = {
@@ -11,7 +11,7 @@ export function createHaiAPI(outputChannel: vscode.OutputChannel, sidebarControl
 		},
 
 		getCustomInstructions: async () => {
-			return (await getGlobalState(sidebarController.context, "customInstructions")) as string | undefined
+			return (await customGetState(sidebarController.context, "customInstructions")) as string | undefined
 		},
 
 		startNewTask: async (task?: string, images?: string[]) => {

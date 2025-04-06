@@ -74,7 +74,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	)
 
 	useEffect(() => {
-		vscode.postMessage({ type: "telemetrySetting", text: telemetrySetting })
+		vscode.postMessage({ type: "telemetrySetting", telemetrySetting })
 	}, [telemetrySetting])
 
 	useEffect(() => {

@@ -298,7 +298,7 @@ export class Controller {
 				// (see normalizeApiConfiguration > openrouter)
 				// Prefetch marketplace and OpenRouter models
 
-				getGlobalState(this.context, "mcpMarketplaceCatalog").then((mcpMarketplaceCatalog) => {
+				customGetState(this.context, "mcpMarketplaceCatalog").then((mcpMarketplaceCatalog) => {
 					if (mcpMarketplaceCatalog) {
 						this.postMessageToWebview({
 							type: "mcpMarketplaceCatalog",
@@ -312,7 +312,7 @@ export class Controller {
 						// update model info in state (this needs to be done here since we don't want to update state while settings is open, and we may refresh models there)
 						const { apiConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
 						if (apiConfiguration.openRouterModelId) {
-							await updateGlobalState(
+							await customUpdateState(
 								this.context,
 								"openRouterModelInfo",
 								openRouterModels[apiConfiguration.openRouterModelId],
@@ -954,7 +954,7 @@ export class Controller {
 	}
 
 	async updateTelemetrySetting(telemetrySetting: TelemetrySetting) {
-		await updateGlobalState(this.context, "telemetrySetting", telemetrySetting)
+		await customUpdateState(this.context, "telemetrySetting", telemetrySetting)
 		const isOptedIn = telemetrySetting === "enabled"
 		telemetryService.updateTelemetryState(isOptedIn)
 	}
@@ -1357,7 +1357,7 @@ export class Controller {
 			}
 
 			// Store in global state
-			await updateGlobalState(this.context, "mcpMarketplaceCatalog", catalog)
+			await customUpdateState(this.context, "mcpMarketplaceCatalog", catalog)
 			return catalog
 		} catch (error) {
 			console.error("Failed to fetch MCP marketplace:", error)
@@ -1390,7 +1390,7 @@ export class Controller {
 	private async fetchMcpMarketplace(forceRefresh: boolean = false) {
 		try {
 			// Check if we have cached data
-			const cachedCatalog = (await getGlobalState(this.context, "mcpMarketplaceCatalog")) as
+			const cachedCatalog = (await customGetState(this.context, "mcpMarketplaceCatalog")) as
 				| McpMarketplaceCatalog
 				| undefined
 			if (!forceRefresh && cachedCatalog?.items) {
@@ -1546,8 +1546,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		}
 
 		const openrouter: ApiProvider = "openrouter"
-		await updateGlobalState(this.context, "apiProvider", openrouter)
-		await storeSecret(this.context, "openRouterApiKey", apiKey)
+		await customUpdateState(this.context, "apiProvider", openrouter)
+		await customStoreSecret(this.context, "openRouterApiKey", this.workspaceId, apiKey)
 		await this.postStateToWebview()
 		if (this.task) {
 			this.task.api = buildApiHandler({
@@ -1803,7 +1803,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		uiMessagesFilePath: string
 		apiConversationHistory: Anthropic.MessageParam[]
 	}> {
-		const history = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
+		const history = ((await customGetState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
 		const historyItem = history.find((item) => item.id === id)
 		if (historyItem) {
 			const taskDirPath = path.join(this.context.globalStorageUri.fsPath, "tasks", id)
@@ -1846,7 +1846,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 	async deleteAllTaskHistory() {
 		await this.clearTask()
-		await updateGlobalState(this.context, "taskHistory", undefined)
+		await customUpdateState(this.context, "taskHistory", undefined)
 		try {
 			// Remove all contents of tasks directory
 			const taskDirPath = path.join(this.context.globalStorageUri.fsPath, "tasks")
@@ -1920,9 +1920,9 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 	async deleteTaskFromState(id: string) {
 		// Remove the task from history
-		const taskHistory = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
+		const taskHistory = ((await customGetState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
 		const updatedTaskHistory = taskHistory.filter((task) => task.id !== id)
-		await updateGlobalState(this.context, "taskHistory", updatedTaskHistory)
+		await customUpdateState(this.context, "taskHistory", updatedTaskHistory)
 
 		// Notify the webview that the task has been deleted
 		await this.postStateToWebview()
