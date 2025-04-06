@@ -663,6 +663,20 @@ export class AwsBedrockHandler implements ApiHandler {
 	}
 
 	async validateAPIKey(): Promise<boolean> {
-		return true
+		let output = false
+		try {
+			const stream = this.createMessage(
+				'You are a helpful AI. The user will send a test message — please reply with "OK"',
+				[{ role: "user", content: "Test" }],
+			)
+
+			for await (const _ of stream) {
+				output = true
+				break
+			}
+		} catch (error) {
+			console.error("Error validating Bedrock credentials: ", error)
+		}
+		return output
 	}
 }
