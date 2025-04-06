@@ -21,7 +21,7 @@ const McpMarketplaceView = () => {
 	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-	const [sortBy, setSortBy] = useState<"downloadCount" | "stars" | "name" | "newest">("downloadCount")
+	const [sortBy, setSortBy] = useState<"newest" | "stars" | "name">("newest")
 
 	const categories = useMemo(() => {
 		const uniqueCategories = new Set(items.map((item) => item.category))
@@ -47,8 +47,6 @@ const McpMarketplaceView = () => {
 		// Sort each group separately
 		const sortFn = (a: McpMarketplaceItem, b: McpMarketplaceItem) => {
 			switch (sortBy) {
-				case "downloadCount":
-					return b.downloadCount - a.downloadCount
 				case "stars":
 					return b.githubStars - a.githubStars
 				case "name":
@@ -244,9 +242,9 @@ const McpMarketplaceView = () => {
 						}}
 						value={sortBy}
 						onChange={(e) => setSortBy((e.target as HTMLInputElement).value as typeof sortBy)}>
-						<VSCodeRadio value="downloadCount">Most Installs</VSCodeRadio>
-						<VSCodeRadio value="stars">Most Stars</VSCodeRadio>
+						{/* <VSCodeRadio value="downloadCount">Most Installs</VSCodeRadio> */}
 						<VSCodeRadio value="newest">Newest</VSCodeRadio>
+						<VSCodeRadio value="stars">GitHub Stars</VSCodeRadio>
 						<VSCodeRadio value="name">Name</VSCodeRadio>
 					</VSCodeRadioGroup>
 				</div>

@@ -1,4 +1,4 @@
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeLink } from "@vscode/webview-ui-toolkit/react"
 import debounce from "debounce"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useDeepCompareEffect, useEvent, useMount } from "react-use"
@@ -18,16 +18,19 @@ import { combineCommandSequences } from "../../../../src/shared/combineCommandSe
 import { getApiMetrics } from "../../../../src/shared/getApiMetrics"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
+import HistoryPreview from "../history/HistoryPreview"
 import { normalizeApiConfiguration } from "../settings/ApiOptions"
+import Announcement from "./Announcement"
 import AutoApproveMenu from "./AutoApproveMenu"
 import BrowserSessionRow from "./BrowserSessionRow"
 import ChatRow from "./ChatRow"
 import ChatTextArea from "./ChatTextArea"
 import TaskHeader from "./TaskHeader"
-import { ReactComponent as Logo } from "../../assets/hai-dark.svg"
+import Logo from "../../assets/hai-dark.svg?react"
 import { IHaiClineTask } from "../../interfaces/hai-task.interface"
 import CodeIndexWarning from "./CodeIndexWarning"
 import QuickActions from "../welcome/QuickActions"
+import TelemetryBanner from "../common/TelemetryBanner"
 
 interface ChatViewProps {
 	isHidden: boolean
@@ -48,7 +51,7 @@ const ChatView = ({
 	onTaskSelect,
 	selectedHaiTask,
 }: ChatViewProps) => {
-	const { clineMessages: messages, apiConfiguration } = useExtensionState()
+	const { version, clineMessages: messages, taskHistory, apiConfiguration, telemetrySetting } = useExtensionState()
 
 	//const task = messages.length > 0 ? (messages[0].say === "task" ? messages[0] : undefined) : undefined) : undefined
 	const task = useMemo(() => messages.at(0), [messages]) // leaving this less safe version here since if the first message is not a task, then the extension is in a bad state and needs to be debugged (see Cline.abort)
@@ -134,9 +137,9 @@ const ChatView = ({
 							// setPrimaryButtonText(undefined)
 							// setSecondaryButtonText(undefined)
 							break
-						case "plan_mode_response":
+						case "plan_mode_respond":
 							setTextAreaDisabled(isPartial)
-							setClineAsk("plan_mode_response")
+							setClineAsk("plan_mode_respond")
 							setEnableButtons(false)
 							// setPrimaryButtonText(undefined)
 							// setSecondaryButtonText(undefined)
@@ -304,7 +307,7 @@ const ChatView = ({
 				} else if (clineAsk) {
 					switch (clineAsk) {
 						case "followup":
-						case "plan_mode_response":
+						case "plan_mode_respond":
 						case "tool":
 						case "browser_action_launch":
 						case "command": // user can provide feedback to a tool or command use
@@ -471,6 +474,18 @@ const ChatView = ({
 					if (newImages.length > 0) {
 						setSelectedImages((prevImages) => [...prevImages, ...newImages].slice(0, MAX_IMAGES_PER_MESSAGE))
 					}
+					break
+				case "addToInput":
+					setInputValue((prevValue) => {
+						const newText = message.text ?? ""
+						return prevValue ? `${prevValue}\n${newText}` : newText
+					})
+					// Add scroll to bottom after state update
+					setTimeout(() => {
+						if (textAreaRef.current) {
+							textAreaRef.current.scrollTop = textAreaRef.current.scrollHeight
+						}
+					}, 0)
 					break
 				case "invoke":
 					switch (message.invoke!) {
@@ -814,6 +829,8 @@ const ChatView = ({
 					</div>
 
 					{/* {showAnnouncement && <Announcement version={version} hideAnnouncement={hideAnnouncement} />} */}
+					{telemetrySetting === "unset" && <TelemetryBanner />}
+
 					<CodeIndexWarning
 						type="info"
 						style={{

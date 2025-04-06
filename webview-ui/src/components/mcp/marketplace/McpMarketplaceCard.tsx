@@ -181,19 +181,17 @@ const McpMarketplaceCard = ({ item, installedServers }: McpMarketplaceCardProps)
 								<span className="codicon codicon-star-full" />
 								<span style={{ wordBreak: "break-all" }}>{item.githubStars?.toLocaleString() ?? 0}</span>
 							</div>
-							{!item.isLocal && (
-								<div
-									style={{
-										display: "flex",
-										alignItems: "center",
-										gap: "4px",
-										minWidth: 0,
-										flexShrink: 0,
-									}}>
-									<span className="codicon codicon-cloud-download" />
-									<span style={{ wordBreak: "break-all" }}>{item.downloadCount?.toLocaleString() ?? 0}</span>
-								</div>
-							)}
+							{/* <div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: "4px",
+									minWidth: 0,
+									flexShrink: 0,
+								}}>
+								<span className="codicon codicon-cloud-download" />
+								<span style={{ wordBreak: "break-all" }}>{item.downloadCount?.toLocaleString() ?? 0}</span>
+							</div> */}
 							{item.requiresApiKey && (
 								<span className="codicon codicon-key" title="Requires API key" style={{ flexShrink: 0 }} />
 							)}
@@ -225,8 +223,16 @@ const McpMarketplaceCard = ({ item, installedServers }: McpMarketplaceCardProps)
 							display: "flex",
 							gap: "6px",
 							flexWrap: "nowrap",
-							overflow: "hidden",
+							overflowX: "auto",
+							scrollbarWidth: "none",
 							position: "relative",
+						}}
+						onScroll={(e) => {
+							const target = e.currentTarget
+							const gradient = target.querySelector(".tags-gradient") as HTMLElement
+							if (gradient) {
+								gradient.style.visibility = target.scrollLeft > 0 ? "hidden" : "visible"
+							}
 						}}>
 						<span
 							style={{
@@ -256,6 +262,7 @@ const McpMarketplaceCard = ({ item, installedServers }: McpMarketplaceCardProps)
 							</span>
 						))}
 						<div
+							className="tags-gradient"
 							style={{
 								position: "absolute",
 								right: 0,

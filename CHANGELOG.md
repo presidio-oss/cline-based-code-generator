@@ -1,14 +1,20 @@
 # Changelog
 
+## [3.3.0]
+
+### Added
+
+-   Implemented the Experts feature, allowing users to create their own expert or utilize an existing one.
+
 ## [3.2.0]
 
 ### Added
 
--  Added system prompt optimization
+-   Added system prompt optimization
 
 ### Fixed
 
--  Removed random gif in notify for dev release
+-   Removed random gif in notify for dev release
 
 ## [3.1.1]
 
