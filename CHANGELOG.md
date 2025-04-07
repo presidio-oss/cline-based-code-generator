@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.3.1]
+
+### Enhancements
+
+-   Implemented token tracking usage through telemetry
+-   Integrated Specifai MCP server.
+-   Automatically sync custom experts when users manually update or delete experts.
+-   Added validation to ensure the file exists before deleting it from the context directory.
+-   Added schema validation for expert data.
+-   Refactored the code to support installation and integration with any custom MCP server.
+
 ## [3.3.0]
 
 ### Added
