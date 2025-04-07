@@ -3227,7 +3227,6 @@ export class Task {
 					switch (chunk.type) {
 						case "usage":
 							didReceiveUsageChunk = true
-							console.log("[hai-build-code-generator] usage chunk", JSON.stringify(chunk, null, 2))
 							inputTokens += chunk.inputTokens
 							outputTokens += chunk.outputTokens
 							cacheWriteTokens += chunk.cacheWriteTokens ?? 0
