@@ -3320,6 +3320,14 @@ export class Task {
 				startTime,
 				new Date(),
 				this.api.getModel().id,
+				{
+					cacheWriteTokens,
+					cacheReadTokens,
+					totalCost,
+					apiProvider: this.apiConfiguration.apiProvider,
+					embeddingProvider: this.embeddingConfiguration.provider,
+					...this.api.getModel().info,
+				},
 				this.buildContextOptions?.systemPromptVersion,
 			)
 

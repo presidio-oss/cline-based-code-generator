@@ -273,6 +273,7 @@ class PostHogClient {
 		startTime: Date,
 		endTime: Date,
 		model: string,
+		metadata: Record<string, any> = {},
 		promptVersion: string = "default",
 	) {
 		this.capture({
@@ -296,6 +297,7 @@ class PostHogClient {
 					user: this.gitUserInfo.username,
 					email: this.gitUserInfo.email,
 					promptVersion: promptVersion,
+					...metadata,
 				},
 				version: this.version,
 				usage: {
