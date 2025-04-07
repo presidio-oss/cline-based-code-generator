@@ -269,8 +269,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							marginTop: "5px",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						Help improve HAI by sending anonymous usage data and error reports. No code, prompts, or personal
-						information are ever sent.
+						Help improve HAI by sending usage data and error reports. No code, prompts, or personal information are
+						ever sent. Only the{" "}
+						<a href="https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git">
+							git username and email
+						</a>{" "}
+						are sent to help us identify the user.
 					</p>
 				</div>
 

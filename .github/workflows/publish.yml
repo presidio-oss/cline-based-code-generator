@@ -81,6 +81,11 @@ jobs:
             - name: Package and Publish Extension
               env:
                   VSCE_PAT: ${{ secrets.VSCE_PAT }}
+                  LANGFUSE_API_URL: ${{ secrets.LANGFUSE_API_URL }}
+                  LANGFUSE_API_KEY: ${{ secrets.LANGFUSE_API_KEY }}
+                  LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+                  POST_HOG_API_KEY: ${{ secrets.POST_HOG_API_KEY }}
+                  POST_HOG_HOST: ${{ secrets.POST_HOG_API_URL }}
               run: |
                   # Required to generate the .vsix
                   vsce package --out "hai-build-code-generator-${{ steps.get_version.outputs.version }}.vsix"

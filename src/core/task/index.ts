@@ -3133,6 +3133,7 @@ export class Task {
 			let inputTokens = 0
 			let outputTokens = 0
 			let totalCost: number | undefined
+			let startTime = new Date()
 
 			// update api_req_started. we can't use api_req_finished anymore since it's a unique case where it could come after a streaming message (ie in the middle of being updated or executed)
 			// fortunately api_req_finished was always parsed out for the gui anyways, so it remains solely for legacy purposes to keep track of prices in tasks from history
@@ -3311,6 +3312,24 @@ export class Task {
 					await this.controllerRef.deref()?.postStateToWebview()
 				})
 			}
+
+			telemetryService.captureTokenUsage(
+				this.taskId,
+				inputTokens,
+				outputTokens,
+				startTime,
+				new Date(),
+				this.api.getModel().id,
+				{
+					cacheWriteTokens,
+					cacheReadTokens,
+					totalCost,
+					apiProvider: this.apiConfiguration.apiProvider,
+					embeddingProvider: this.embeddingConfiguration.provider,
+					...this.api.getModel().info,
+				},
+				this.buildContextOptions?.systemPromptVersion,
+			)
 
 			// need to call here in case the stream was aborted
 			if (this.abort) {
