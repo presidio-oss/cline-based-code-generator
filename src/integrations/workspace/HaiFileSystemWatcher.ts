@@ -73,7 +73,7 @@ class HaiFileSystemWatcher {
 			}
 
 			// Check for the experts
-			if (filePath.includes(".hai-experts")) {
+			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
 			}
 
