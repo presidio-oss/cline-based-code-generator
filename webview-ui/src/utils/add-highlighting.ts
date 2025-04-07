@@ -1,5 +1,7 @@
 export function addHighlighting(text: string, indices: readonly [number, number][]): string {
-	if (!indices.length) return text
+	if (!indices.length) {
+		return text
+	}
 
 	let result = ""
 	let lastIndex = 0

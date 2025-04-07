@@ -10,7 +10,9 @@ export async function deleteFromContextDirectory(filePaths: string[], srcFolder:
 	// Delete files from context directory
 	for (const filePath of filePaths) {
 		const destinationFilePath = filePath.replace(srcFolder, destinationFolderPath)
-		rmSync(destinationFilePath, { recursive: true })
+		if (existsSync(destinationFilePath)) {
+			rmSync(destinationFilePath, { recursive: true })
+		}
 	}
 
 	// Handle hash file updates

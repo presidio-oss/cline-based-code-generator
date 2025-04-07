@@ -1,7 +1,9 @@
 import fs from "fs/promises"
 import * as path from "path"
-import { ExpertData } from "../../../webview-ui/src/types/experts"
+import * as vscode from "vscode"
+import { ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
+import { GlobalFileNames } from "../../global-constants"
 
 export class ExpertManager {
 	/**
@@ -14,11 +16,17 @@ export class ExpertManager {
 			throw new Error("No workspace path provided")
 		}
 
+		// Validate expert data with Zod schema
+		const validationResult = ExpertDataSchema.safeParse(expert)
+		if (!validationResult.success) {
+			throw new Error(`Invalid expert data: ${validationResult.error.message}`)
+		}
+
 		// Create a sanitized folder name from the expert name
 		const sanitizedName = expert.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
 
 		// Create the expert directory
-		const expertDir = path.join(workspacePath, ".hai-experts", sanitizedName)
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
 		await createDirectoriesForFile(path.join(expertDir, "placeholder.txt"))
 
 		// Create metadata file
@@ -45,7 +53,7 @@ export class ExpertManager {
 			return []
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return []
 		}
@@ -62,22 +70,31 @@ export class ExpertManager {
 					try {
 						// Read metadata
 						const metadataPath = path.join(expertDir, "metadata.json")
-						if (await fileExistsAtPath(metadataPath)) {
+						const promptPath = path.join(expertDir, "prompt.md")
+
+						if ((await fileExistsAtPath(metadataPath)) && (await fileExistsAtPath(promptPath))) {
 							const metadataContent = await fs.readFile(metadataPath, "utf-8")
 							const metadata = JSON.parse(metadataContent)
 
 							// Read prompt
-							const promptPath = path.join(expertDir, "prompt.md")
-							const promptContent = (await fileExistsAtPath(promptPath))
-								? await fs.readFile(promptPath, "utf-8")
-								: ""
+							const promptContent = await fs.readFile(promptPath, "utf-8")
 
-							experts.push({
+							const expertData = {
 								name: metadata.name,
 								isDefault: metadata.isDefault,
 								prompt: promptContent,
 								createdAt: metadata.createdAt,
-							})
+							}
+
+							// Validate expert data with Zod schema
+							const validationResult = ExpertDataSchema.safeParse(expertData)
+							if (validationResult.success) {
+								experts.push(expertData)
+							} else {
+								vscode.window.showWarningMessage(
+									`Invalid expert data for ${folder}: ${validationResult.error.issues.map((issue) => issue.message).join(", ")}`,
+								)
+							}
 						}
 					} catch (error) {
 						console.error(`Failed to read expert from ${folder}:`, error)
@@ -102,7 +119,12 @@ export class ExpertManager {
 			throw new Error("No workspace path provided")
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		// Validate expert name
+		if (!expertName || typeof expertName !== "string") {
+			throw new Error("Expert name must be a non-empty string")
+		}
+
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return
 		}
@@ -145,7 +167,12 @@ export class ExpertManager {
 			throw new Error("No workspace path provided")
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		// Validate expert name
+		if (!expertName || typeof expertName !== "string") {
+			throw new Error("Expert name must be a non-empty string")
+		}
+
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return null
 		}
