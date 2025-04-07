@@ -734,7 +734,7 @@ export class Controller {
 				}
 
 				// plan act setting
-				if (message.planActSeparateModelsSetting != undefined) {
+				if (message.planActSeparateModelsSetting !== undefined) {
 					await customUpdateState(this.context, "planActSeparateModelsSetting", message.planActSeparateModelsSetting)
 				}
 
