@@ -141,7 +141,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							border: "1px solid var(--vscode-panel-border)",
 							borderRadius: "4px",
 							padding: "10px",
-							marginBottom: "20px",
+							marginBottom: "10px",
 							background: "var(--vscode-panel-background)",
 						}}>
 						<div
@@ -166,26 +166,19 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 								<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
 								<ApiOptions key={chatSettings.mode} showModelOptions={true} />
 							</div>
-
-							<div style={{ marginBottom: 10 }}>
-								<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-								<EmbeddingOptions key={chatSettings.mode} showModelOptions={true} />
-							</div>
 						</div>
 					</div>
 				) : (
-					<>
-						<div style={{ marginBottom: 10 }}>
-							<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-							<ApiOptions key={"single"} showModelOptions={true} />
-						</div>
-
-						<div style={{ marginBottom: 10 }}>
-							<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-							<EmbeddingOptions key={"single"} showModelOptions={true} />
-						</div>
-					</>
+					<div style={{ marginBottom: 10 }}>
+						<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
+						<ApiOptions key={"single"} showModelOptions={true} />
+					</div>
 				)}
+
+				<div style={{ marginBottom: 10 }}>
+					<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
+					<EmbeddingOptions showModelOptions={true} />
+				</div>
 
 				<div style={{ marginBottom: 5 }}>
 					<VSCodeTextArea
