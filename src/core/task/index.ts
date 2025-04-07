@@ -281,6 +281,12 @@ export class Task {
 				shadowGitConfigWorkTree: await this.checkpointTracker?.getShadowGitConfigWorkTree(),
 				conversationHistoryDeletedRange: this.conversationHistoryDeletedRange,
 			})
+			telemetryService.captureTokenUsage(
+				this.taskId,
+				apiMetrics.totalTokensIn,
+				apiMetrics.totalTokensOut,
+				this.api.getModel().id,
+			)
 		} catch (error) {
 			console.error("Failed to save cline messages:", error)
 		}

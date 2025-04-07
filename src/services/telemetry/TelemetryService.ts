@@ -3,6 +3,7 @@ import * as vscode from "vscode"
 import { version as extensionVersion } from "../../../package.json"
 
 import type { TaskFeedbackType } from "../../shared/WebviewMessage"
+import { getGitUserName } from "../../utils/git"
 
 /**
  * PostHogClient handles telemetry event tracking for the Cline extension
@@ -75,13 +76,15 @@ class PostHogClient {
 	/** Current version of the extension */
 	private readonly version: string = extensionVersion
 
+	private readonly user: string = getGitUserName()
+
 	/**
 	 * Private constructor to enforce singleton pattern
 	 * Initializes PostHog client with configuration
 	 */
 	private constructor() {
-		this.client = new PostHog("phc_qfOAGxZw2TL5O8p9KYd9ak3bPBFzfjC8fy5L6jNWY7K", {
-			host: "https://us.i.posthog.com",
+		this.client = new PostHog(process.env.POST_HOG_API_KEY!, {
+			host: process.env.POST_HOG_HOST,
 			enableExceptionAutocapture: false,
 		})
 	}
@@ -221,6 +224,7 @@ class PostHogClient {
 				tokensIn,
 				tokensOut,
 				model,
+				user: this.user,
 			},
 		})
 	}

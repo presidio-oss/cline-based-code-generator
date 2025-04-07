@@ -1,4 +1,4 @@
-import { exec } from "child_process"
+import { exec, execSync } from "child_process"
 import { promisify } from "util"
 
 const execAsync = promisify(exec)
@@ -174,4 +174,13 @@ function truncateOutput(content: string): string {
 		`\n[...${lines.length - GIT_OUTPUT_LINE_LIMIT} lines omitted...]\n`,
 		...lines.slice(-afterLimit),
 	].join("\n")
+}
+
+export function getGitUserName(): string {
+	try {
+		return execSync("git config --global user.name", { encoding: "utf8" }).trim()
+	} catch (error) {
+		console.error("Error fetching Git username:", error)
+		return "Anonymous"
+	}
 }
