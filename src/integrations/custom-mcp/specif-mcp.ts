@@ -1,5 +1,3 @@
-import { getReadmeContent, getStarCount } from "../../services/github/github"
-
 export const specifMcp = {
 	mcpId: "github.com/presidio-oss/specifai-mcp-server",
 	githubUrl: "https://github.com/presidio-oss/specifai-mcp-server",

@@ -1,6 +1,6 @@
-import { specifMcp } from "./specif-mcp"
-import { getReadmeContent } from "../../services/github/github"
-import { McpDownloadResponse } from "../../shared/mcp"
+import { specifMcp } from "../integrations/custom-mcp/specif-mcp"
+import { getReadmeContent } from "../services/github/github"
+import { McpDownloadResponse } from "../shared/mcp"
 
 // Registry of all local MCPs
 const localMcps = {

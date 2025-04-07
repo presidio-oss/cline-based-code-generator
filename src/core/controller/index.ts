@@ -66,7 +66,7 @@ import { ExpertData } from "../../../webview-ui/src/types/experts"
 import { buildEmbeddingHandler } from "../../embedding"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
-import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "../../utils/mcp/localMcpRegistry"
+import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "../../utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 
 /*
