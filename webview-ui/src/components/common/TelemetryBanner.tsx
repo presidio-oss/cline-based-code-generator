@@ -46,8 +46,12 @@ const TelemetryBanner = () => {
 			<div>
 				<strong>Help Improve HAI</strong>
 				<div style={{ marginTop: 4 }}>
-					Send anonymous error and usage data to help us fix bugs and improve the extension. No code, prompts, or
-					personal information is ever sent.
+					Send error and usage data to help us fix bugs and improve the extension. No code, prompts, or personal
+					information is ever sent. Only the{" "}
+					<a href="https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git">
+						git username and email
+					</a>{" "}
+					are sent to help us identify the user.
 					<div style={{ marginTop: 4 }}>
 						You can always change this in{" "}
 						<VSCodeLink href="#" onClick={handleOpenSettings}>
