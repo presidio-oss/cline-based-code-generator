@@ -1,9 +1,10 @@
 import { PostHog } from "posthog-node"
 import * as vscode from "vscode"
-import { version as extensionVersion } from "../../../package.json"
+import { version as extensionVersion, name as extensionName } from "../../../package.json"
 
 import type { TaskFeedbackType } from "../../shared/WebviewMessage"
 import { getGitUserInfo } from "../../utils/git"
+import { Langfuse, LangfuseTraceClient } from "langfuse"
 
 /**
  * PostHogClient handles telemetry event tracking for the Cline extension
@@ -83,6 +84,9 @@ class PostHogClient {
 		email: string
 	} = getGitUserInfo()
 
+	private langfuse: Langfuse
+	private langfuseTraceClient?: LangfuseTraceClient
+
 	/**
 	 * Private constructor to enforce singleton pattern
 	 * Initializes PostHog client with configuration
@@ -92,12 +96,39 @@ class PostHogClient {
 			host: process.env.POST_HOG_HOST,
 			enableExceptionAutocapture: false,
 		})
+
+		// Set distinct ID for the client & identify the user
 		this.client.identify({
 			distinctId: this.distinctId,
 			properties: {
 				name: this.gitUserInfo.username,
 				email: this.gitUserInfo.email,
 			},
+		})
+
+		// Initialize Langfuse client
+		this.langfuse = new Langfuse({
+			secretKey: process.env.LANGFUSE_API_KEY!,
+			publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
+			baseUrl: process.env.LANGFUSE_API_URL,
+			requestTimeout: 10000,
+			enabled: true,
+		})
+	}
+
+	private createLangfuseTraceClient(taskId: string, isNew: boolean = false) {
+		// Start / Re-Create a new trace in Langfuse
+		this.langfuseTraceClient = this.langfuse.trace({
+			id: taskId,
+			name: extensionName,
+			userId: this.gitUserInfo.username,
+			version: this.version,
+			sessionId: this.distinctId,
+			metadata: {
+				user: this.gitUserInfo.username,
+				email: this.gitUserInfo.email,
+			},
+			...(isNew ? { startTime: new Date() } : {}),
 		})
 	}
 
@@ -148,6 +179,7 @@ class PostHogClient {
 			const propertiesWithVersion = {
 				...event.properties,
 				extension_version: this.version,
+				extension_name: extensionName,
 			}
 			this.client.capture({ distinctId: this.distinctId, event: event.event, properties: propertiesWithVersion })
 		}
@@ -163,6 +195,9 @@ class PostHogClient {
 			event: PostHogClient.EVENTS.TASK.CREATED,
 			properties: { taskId, apiProvider },
 		})
+
+		// Start a new trace in Langfuse
+		this.createLangfuseTraceClient(taskId, true)
 	}
 
 	/**
@@ -174,6 +209,9 @@ class PostHogClient {
 			event: PostHogClient.EVENTS.TASK.RESTARTED,
 			properties: { taskId, apiProvider },
 		})
+
+		// Start a new trace in Langfuse
+		this.createLangfuseTraceClient(taskId)
 	}
 
 	/**
@@ -228,7 +266,15 @@ class PostHogClient {
 	 * @param tokensOut Number of output tokens generated
 	 * @param model The model used for token calculation
 	 */
-	public captureTokenUsage(taskId: string, tokensIn: number, tokensOut: number, model: string) {
+	public captureTokenUsage(
+		taskId: string,
+		tokensIn: number,
+		tokensOut: number,
+		startTime: Date,
+		endTime: Date,
+		model: string,
+		promptVersion: string = "default",
+	) {
 		this.capture({
 			event: PostHogClient.EVENTS.TASK.TOKEN_USAGE,
 			properties: {
@@ -240,6 +286,24 @@ class PostHogClient {
 				email: this.gitUserInfo.email,
 			},
 		})
+
+		if (tokensIn > 0 || tokensOut > 0) {
+			this.langfuseTraceClient?.generation({
+				model: model,
+				startTime: startTime,
+				endTime: endTime,
+				metadata: {
+					user: this.gitUserInfo.username,
+					email: this.gitUserInfo.email,
+					promptVersion: promptVersion,
+				},
+				version: this.version,
+				usage: {
+					input: tokensIn,
+					output: tokensOut,
+				},
+			})
+		}
 	}
 
 	/**
@@ -480,6 +544,7 @@ class PostHogClient {
 
 	public async shutdown(): Promise<void> {
 		await this.client.shutdown()
+		await this.langfuse.shutdownAsync()
 	}
 }
 
