@@ -77,7 +77,10 @@ jobs:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL }}
               run: |
-                  ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --header "authorization: Bearer $GITHUB_TOKEN" | jq -r '.artifacts[0].id')
+                  ARTIFACT_NAME="${{ env.PACKAGE_NAME }}-${{ env.BUILD_VERSION }}"
+                  echo "Artifact name: $ARTIFACT_NAME"
+
+                  ARTIFACT_ID=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id }}/artifacts --header "authorization: Bearer $GITHUB_TOKEN" | jq -r --arg NAME "$ARTIFACT_NAME" '.artifacts[] | select(.name == $NAME) | .id')
 
                   if [[ -z "$ARTIFACT_ID" || "$ARTIFACT_ID" == "null" ]]; then
                     echo "❌ ERROR: ARTIFACT_ID is missing or invalid."
