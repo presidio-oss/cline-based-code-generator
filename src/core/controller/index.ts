@@ -66,6 +66,8 @@ import { ExpertData } from "../../../webview-ui/src/types/experts"
 import { buildEmbeddingHandler } from "../../embedding"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
+import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "../../utils/local-mcp-registry"
+import { getStarCount } from "../../services/github/github"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -1343,13 +1345,37 @@ export class Controller {
 				throw new Error("Invalid response from MCP marketplace API")
 			}
 
+			// Create an array to hold all local MCPs with their star counts
+			const localMcpItems = []
+
+			// Get all local MCPs from registry
+			const localMcpIds = Object.keys(getAllLocalMcps())
+
+			// Fetch GitHub stars for each local MCP
+			for (const mcpId of localMcpIds) {
+				const mcp = getLocalMcp(mcpId)
+				if (mcp) {
+					// Update star count for this MCP and add isLocal flag
+					const gitHubStars = await getStarCount(mcp.githubUrl)
+					localMcpItems.push({
+						...mcp,
+						githubStars: gitHubStars || 0,
+						isLocal: true, // Add isLocal flag to identify local MCPs
+					})
+				}
+			}
+
 			const catalog: McpMarketplaceCatalog = {
-				items: (response.data || []).map((item: any) => ({
-					...item,
-					githubStars: item.githubStars ?? 0,
-					downloadCount: item.downloadCount ?? 0,
-					tags: item.tags ?? [],
-				})),
+				items: [
+					...localMcpItems,
+					...(response.data || []).map((item: any) => ({
+						...item,
+						githubStars: item.githubStars ?? 0,
+						downloadCount: item.downloadCount ?? 0,
+						tags: item.tags ?? [],
+						isLocal: false, // Mark remote MCPs explicitly
+					})),
+				],
 			}
 
 			// Store in global state
@@ -1425,24 +1451,32 @@ export class Controller {
 				throw new Error("This MCP server is already installed")
 			}
 
-			// Fetch server details from marketplace
-			const response = await axios.post<McpDownloadResponse>(
-				"https://api.cline.bot/v1/mcp/download",
-				{ mcpId },
-				{
-					headers: { "Content-Type": "application/json" },
-					timeout: 10000,
-				},
-			)
+			let mcpDetails: McpDownloadResponse
 
-			if (!response.data) {
-				throw new Error("Invalid response from MCP marketplace API")
+			// Check if this is a local MCP
+			if (isLocalMcp(mcpId)) {
+				// Get details from local registry
+				mcpDetails = await getLocalMcpDetails(mcpId)
+				console.log("[downloadMcp] Using local data for MCP server", { mcpDetails })
+			} else {
+				// Fetch server details from marketplace
+				const response = await axios.post<McpDownloadResponse>(
+					"https://api.cline.bot/v1/mcp/download",
+					{ mcpId },
+					{
+						headers: { "Content-Type": "application/json" },
+						timeout: 10000,
+					},
+				)
+
+				if (!response.data) {
+					throw new Error("Invalid response from MCP marketplace API")
+				}
+
+				console.log("[downloadMcp] Response from download API", { response })
+
+				mcpDetails = response.data
 			}
-
-			console.log("[downloadMcp] Response from download API", { response })
-
-			const mcpDetails = response.data
-
 			// Validate required fields
 			if (!mcpDetails.githubUrl) {
 				throw new Error("Missing GitHub URL in MCP download response")
