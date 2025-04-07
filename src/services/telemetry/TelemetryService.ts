@@ -3,7 +3,7 @@ import * as vscode from "vscode"
 import { version as extensionVersion } from "../../../package.json"
 
 import type { TaskFeedbackType } from "../../shared/WebviewMessage"
-import { getGitUserName } from "../../utils/git"
+import { getGitUserInfo } from "../../utils/git"
 
 /**
  * PostHogClient handles telemetry event tracking for the Cline extension
@@ -76,7 +76,12 @@ class PostHogClient {
 	/** Current version of the extension */
 	private readonly version: string = extensionVersion
 
-	private readonly user: string = getGitUserName()
+	/** Git user information (username and email) for tracking user identity */
+	// This is used to identify the user in PostHog and Langfuse
+	private readonly gitUserInfo: {
+		username: string
+		email: string
+	} = getGitUserInfo()
 
 	/**
 	 * Private constructor to enforce singleton pattern
@@ -86,6 +91,13 @@ class PostHogClient {
 		this.client = new PostHog(process.env.POST_HOG_API_KEY!, {
 			host: process.env.POST_HOG_HOST,
 			enableExceptionAutocapture: false,
+		})
+		this.client.identify({
+			distinctId: this.distinctId,
+			properties: {
+				name: this.gitUserInfo.username,
+				email: this.gitUserInfo.email,
+			},
 		})
 	}
 
@@ -224,7 +236,8 @@ class PostHogClient {
 				tokensIn,
 				tokensOut,
 				model,
-				user: this.user,
+				user: this.gitUserInfo.username,
+				email: this.gitUserInfo.email,
 			},
 		})
 	}

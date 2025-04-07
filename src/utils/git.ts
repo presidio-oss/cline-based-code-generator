@@ -176,11 +176,13 @@ function truncateOutput(content: string): string {
 	].join("\n")
 }
 
-export function getGitUserName(): string {
+export function getGitUserInfo(): { username: string; email: string } {
 	try {
-		return execSync("git config --global user.name", { encoding: "utf8" }).trim()
+		const username = execSync("git config --global user.name", { encoding: "utf8" }).trim()
+		const email = execSync("git config --global user.email", { encoding: "utf8" }).trim()
+		return { username, email }
 	} catch (error) {
-		console.error("Error fetching Git username:", error)
-		return "Anonymous"
+		console.error("Error fetching Git user info:", error)
+		return { username: "Anonymous", email: "unknown@example.com" }
 	}
 }
