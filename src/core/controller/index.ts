@@ -734,7 +734,7 @@ export class Controller {
 				}
 
 				// plan act setting
-				if (message.planActSeparateModelsSetting != undefined) {
+				if (message.planActSeparateModelsSetting !== undefined) {
 					await customUpdateState(this.context, "planActSeparateModelsSetting", message.planActSeparateModelsSetting)
 				}
 
@@ -835,11 +835,7 @@ export class Controller {
 				}
 				break
 			case "loadExperts":
-				const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-				await this.postMessageToWebview({
-					type: "expertsUpdated",
-					experts,
-				})
+				await this.loadExperts()
 				break
 			case "onHaiConfigure":
 				const isConfigureEnabled = message.bool !== undefined ? message.bool : true
@@ -2502,5 +2498,13 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			isInProgress: false,
 		})
 		await this.postStateToWebview()
+	}
+
+	async loadExperts() {
+		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+		await this.postMessageToWebview({
+			type: "expertsUpdated",
+			experts,
+		})
 	}
 }

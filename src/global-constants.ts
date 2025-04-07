@@ -5,4 +5,5 @@ export const GlobalFileNames = {
 	openRouterModels: "openrouter_models.json",
 	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
+	experts: ".hai-experts",
 }
