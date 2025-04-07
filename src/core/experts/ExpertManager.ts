@@ -3,6 +3,7 @@ import * as path from "path"
 import * as vscode from "vscode"
 import { ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
+import { GlobalFileNames } from "../../global-constants"
 
 export class ExpertManager {
 	/**
@@ -25,7 +26,7 @@ export class ExpertManager {
 		const sanitizedName = expert.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
 
 		// Create the expert directory
-		const expertDir = path.join(workspacePath, ".hai-experts", sanitizedName)
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
 		await createDirectoriesForFile(path.join(expertDir, "placeholder.txt"))
 
 		// Create metadata file
@@ -52,7 +53,7 @@ export class ExpertManager {
 			return []
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return []
 		}
@@ -123,7 +124,7 @@ export class ExpertManager {
 			throw new Error("Expert name must be a non-empty string")
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return
 		}
@@ -171,7 +172,7 @@ export class ExpertManager {
 			throw new Error("Expert name must be a non-empty string")
 		}
 
-		const expertsDir = path.join(workspacePath, ".hai-experts")
+		const expertsDir = path.join(workspacePath, GlobalFileNames.experts)
 		if (!(await fileExistsAtPath(expertsDir))) {
 			return null
 		}

@@ -89,7 +89,7 @@ class HaiFileSystemWatcher {
 			}
 
 			// Check for the experts
-			if (filePath.includes(".hai-experts")) {
+			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
 			}
 
@@ -99,7 +99,7 @@ class HaiFileSystemWatcher {
 		this.watcher.on("change", (filePath) => {
 			console.log("HaiFileSystemWatcher File changes", filePath)
 			// Check for the experts
-			if (filePath.includes(".hai-experts")) {
+			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
 			}
 			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
