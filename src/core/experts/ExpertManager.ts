@@ -1,11 +1,17 @@
 import fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
-import { ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
+import { DocumentLink, ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { GlobalFileNames } from "../../global-constants"
+import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 
 export class ExpertManager {
+	private extensionContext?: vscode.ExtensionContext
+
+	constructor(extensionContext?: vscode.ExtensionContext) {
+		this.extensionContext = extensionContext
+	}
 	/**
 	 * Save an expert to the .hai-experts directory
 	 * @param workspacePath The workspace path
@@ -41,6 +47,87 @@ export class ExpertManager {
 		// Create prompt file
 		const promptFilePath = path.join(expertDir, "prompt.md")
 		await fs.writeFile(promptFilePath, expert.prompt)
+
+		// Process document links if any
+		if (expert.documentLinks && expert.documentLinks.length > 0) {
+			// Create docs directory
+			const docsDir = path.join(expertDir, "docs")
+			await createDirectoriesForFile(path.join(docsDir, "placeholder.txt"))
+
+			// Create status.json file to track document processing status
+			const statusFilePath = path.join(docsDir, "status.json")
+			const statusData = expert.documentLinks.map((link, index) => ({
+				...link,
+				filename: `Doc-${index + 1}.md`,
+				status: "fetching" as "fetching" | "completed" | "failed",
+				processedAt: new Date().toISOString(),
+				error: null,
+			}))
+
+			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+
+			// Process each document link asynchronously
+			this.processDocumentLinks(expert.name, expertDir, statusData)
+		}
+	}
+
+	/**
+	 * Process document links for an expert
+	 * @param expertName The name of the expert
+	 * @param expertDir The expert directory path
+	 * @param documentLinks The document links to process
+	 */
+	private async processDocumentLinks(expertName: string, expertDir: string, documentLinks: DocumentLink[]): Promise<void> {
+		const docsDir = path.join(expertDir, "docs")
+		const statusFilePath = path.join(docsDir, "status.json")
+
+		if (!this.extensionContext) {
+			console.error("Extension context not available")
+			return
+		}
+
+		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
+
+		try {
+			// Launch browser once for all documents
+			await urlContentFetcher.launchBrowser()
+
+			// Process each document link sequentially
+			for (const link of documentLinks) {
+				try {
+					// Update status to fetching
+					link.status = "fetching"
+					link.processedAt = new Date().toISOString()
+					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
+
+					// Fetch and convert content
+					const markdown = await urlContentFetcher.urlToMarkdown(link.url)
+
+					// Save content to file
+					const docFilePath = path.join(docsDir, link.filename || "")
+					await fs.writeFile(docFilePath, markdown)
+
+					// Update status to completed
+					link.status = "completed"
+					link.processedAt = new Date().toISOString()
+					link.error = null
+					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
+				} catch (error) {
+					// Update status to failed
+					link.status = "failed"
+					link.processedAt = new Date().toISOString()
+					link.error = error instanceof Error ? error.message : String(error)
+					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
+
+					console.error(`Failed to process document link for expert ${expertName}:`, error)
+				}
+			}
+		} catch (error) {
+			console.error(`Error processing document links for expert ${expertName}:`, error)
+		} finally {
+			// Close browser
+			await urlContentFetcher.closeBrowser()
+		}
 	}
 
 	/**
@@ -79,11 +166,26 @@ export class ExpertManager {
 							// Read prompt
 							const promptContent = await fs.readFile(promptPath, "utf-8")
 
+							// Read document links status if available
+							const docsDir = path.join(expertDir, "docs")
+							const statusFilePath = path.join(docsDir, "status.json")
+							let documentLinks: DocumentLink[] | undefined = undefined
+
+							if (await fileExistsAtPath(statusFilePath)) {
+								try {
+									const statusContent = await fs.readFile(statusFilePath, "utf-8")
+									documentLinks = JSON.parse(statusContent)
+								} catch (error) {
+									console.error(`Failed to read document links status for ${folder}:`, error)
+								}
+							}
+
 							const expertData = {
 								name: metadata.name,
 								isDefault: metadata.isDefault,
 								prompt: promptContent,
 								createdAt: metadata.createdAt,
+								documentLinks,
 							}
 
 							// Validate expert data with Zod schema
@@ -105,6 +207,42 @@ export class ExpertManager {
 			return experts
 		} catch (error) {
 			console.error("Failed to read experts directory:", error)
+			return []
+		}
+	}
+
+	/**
+	 * Get document links status for an expert
+	 * @param workspacePath The workspace path
+	 * @param expertName The name of the expert
+	 * @returns Array of document links with status
+	 */
+	async getDocumentLinksStatus(workspacePath: string, expertName: string): Promise<DocumentLink[]> {
+		if (!workspacePath || !expertName) {
+			return []
+		}
+
+		// Find the expert directory
+		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
+
+		if (!(await fileExistsAtPath(expertDir))) {
+			return []
+		}
+
+		// Check for status.json file
+		const docsDir = path.join(expertDir, "docs")
+		const statusFilePath = path.join(docsDir, "status.json")
+
+		if (!(await fileExistsAtPath(statusFilePath))) {
+			return []
+		}
+
+		try {
+			const statusContent = await fs.readFile(statusFilePath, "utf-8")
+			return JSON.parse(statusContent)
+		} catch (error) {
+			console.error(`Failed to read document links status for ${expertName}:`, error)
 			return []
 		}
 	}

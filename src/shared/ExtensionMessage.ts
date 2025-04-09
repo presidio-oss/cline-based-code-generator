@@ -52,6 +52,7 @@ export interface ExtensionMessage {
 		| "addToInput"
 		| "expertsUpdated"
 		| "expertPrompt"
+		| "documentLinksStatus"
 	text?: string
 	bool?: boolean
 	action?:
@@ -100,6 +101,8 @@ export interface ExtensionMessage {
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
 	experts?: any[] // Expert data array
+	documentLinks?: any[] // Document links with status
+	expertName?: string // Expert name for document links status
 	addRemoteServerResult?: {
 		success: boolean
 		serverName: string

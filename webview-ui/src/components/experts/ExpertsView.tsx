@@ -1,9 +1,15 @@
 import React, { useState, useEffect, memo } from "react"
 import styled from "styled-components"
-import { VSCodeButton, VSCodeTextField, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import {
+	VSCodeButton,
+	VSCodeTextField,
+	VSCodeTextArea,
+	VSCodeDivider,
+	VSCodeProgressRing,
+} from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
-import { ExpertData } from "../../types/experts"
+import { DocumentLink, ExpertData } from "../../types/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 
 interface ExpertsViewProps {
@@ -15,6 +21,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
 	const [newExpertName, setNewExpertName] = useState("")
 	const [newExpertPrompt, setNewExpertPrompt] = useState("")
+	const [documentLink, setDocumentLink] = useState("")
+	const [documentLinks, setDocumentLinks] = useState<DocumentLink[]>([])
+	const [documentLinkError, setDocumentLinkError] = useState<string | null>(null)
+	const [documentLinksStatus, setDocumentLinksStatus] = useState<DocumentLink[]>([])
 	const [isFileUploaded, setIsFileUploaded] = useState(false)
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [nameError, setNameError] = useState<string | null>(null)
@@ -55,6 +65,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			if (message.type === "expertsUpdated" && message.experts) {
 				// Update experts list with custom experts from the backend
 				setExperts([...DEFAULT_EXPERTS, ...message.experts])
+			} else if (message.type === "documentLinksStatus" && message.documentLinks) {
+				// Update document links status
+				setDocumentLinksStatus(message.documentLinks)
 			}
 		}
 
@@ -72,6 +85,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const resetForm = () => {
 		setNewExpertName("")
 		setNewExpertPrompt("")
+		setDocumentLink("")
+		setDocumentLinks([])
+		setDocumentLinkError(null)
 		setIsFileUploaded(false)
 		setSelectedExpert(null)
 		setIsFormReadOnly(false)
@@ -91,6 +107,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 		// Always keep form in create mode
 		setIsFormReadOnly(false)
+
+		// If the expert has document links, fetch their status
+		if (expert.documentLinks && expert.documentLinks.length > 0) {
+			vscode.postMessage({
+				type: "getDocumentLinksStatus",
+				text: expert.name,
+			})
+		}
 	}
 
 	// Handle saving a new expert
@@ -143,6 +167,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			prompt: newExpertPrompt.trim(),
 			isDefault: false,
 			createdAt: new Date().toISOString(),
+			documentLinks: documentLinks.length > 0 ? documentLinks : undefined,
 		}
 
 		// Save to the file system
@@ -281,11 +306,36 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												style={{
 													width: "100%",
 													marginBottom: "2px",
-													textOverflow: "ellipsis",
-													overflow: "hidden",
 													cursor: "default",
 												}}>
-												{expert.name}
+												<div
+													style={{
+														display: "flex",
+														alignItems: "center",
+														width: "100%",
+														overflow: "hidden",
+													}}>
+													<span
+														style={{
+															overflow: "hidden",
+															textOverflow: "ellipsis",
+															whiteSpace: "nowrap",
+														}}>
+														{expert.name}
+													</span>
+													{expert.documentLinks && expert.documentLinks.length > 0 && (
+														<span
+															style={{
+																marginLeft: "8px",
+																fontSize: "10px",
+																flexShrink: 0,
+																display: "flex",
+																alignItems: "center",
+															}}>
+															({expert.documentLinks.length} docs)
+														</span>
+													)}
+												</div>
 											</VSCodeButton>
 											{expert.name === expertInDeleteConfirmation ? (
 												// Show confirmation buttons
@@ -364,6 +414,50 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 					</CustomExpertsContainer>
 				</Section>
 
+				{/* Document Links Status Section */}
+				{selectedExpert && selectedExpert.documentLinks && selectedExpert.documentLinks.length > 0 && (
+					<Section>
+						<SectionHeader>Expert Documents</SectionHeader>
+						<FormContainer>
+							{documentLinksStatus.length > 0 ? (
+								documentLinksStatus.map((link, index) => (
+									<DocumentStatusItem key={index}>
+										<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+											{link.status === "fetching" && (
+												<VSCodeProgressRing style={{ width: "16px", height: "16px" }} />
+											)}
+											{link.status === "completed" && (
+												<span
+													className="codicon codicon-check"
+													style={{ color: "var(--vscode-terminal-ansiGreen)" }}
+												/>
+											)}
+											{link.status === "failed" && (
+												<span
+													className="codicon codicon-error"
+													style={{ color: "var(--vscode-errorForeground)" }}
+												/>
+											)}
+											<div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+												{link.url}
+											</div>
+										</div>
+										<div style={{ fontSize: "11px", color: "var(--vscode-descriptionForeground)" }}>
+											{link.status === "fetching" && "Fetching..."}
+											{link.status === "completed" && `Completed: ${link.filename}`}
+											{link.status === "failed" && `Failed: ${link.error || "Unknown error"}`}
+										</div>
+									</DocumentStatusItem>
+								))
+							) : (
+								<p style={{ color: "var(--vscode-descriptionForeground)", fontSize: "12px" }}>
+									Loading document status...
+								</p>
+							)}
+						</FormContainer>
+					</Section>
+				)}
+
 				{/* Add/Edit Form Section */}
 
 				{vscodeWorkspacePath ? (
@@ -402,6 +496,89 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								<p className="description-text">
 									These guidelines will override the default HAI guidelines when this expert is selected.
 								</p>
+							</FormGroup>
+
+							<FormGroup>
+								<label htmlFor="document-link">Document Link</label>
+								<div style={{ display: "flex", gap: "8px" }}>
+									<VSCodeTextField
+										id="document-link"
+										value={documentLink}
+										onChange={(e) => {
+											setDocumentLink((e.target as HTMLInputElement).value)
+											setDocumentLinkError(null)
+										}}
+										placeholder="https://example.com/document"
+										style={{ flexGrow: 1 }}
+										disabled={isFormReadOnly || documentLinks.length >= 3}
+									/>
+									<VSCodeButton
+										appearance="secondary"
+										disabled={isFormReadOnly || documentLinks.length >= 3 || !documentLink}
+										onClick={() => {
+											// Basic URL validation
+											try {
+												new URL(documentLink)
+												// Add the link if it's not already in the list
+												if (!documentLinks.some((link) => link.url === documentLink)) {
+													setDocumentLinks([...documentLinks, { url: documentLink }])
+													setDocumentLink("")
+												} else {
+													setDocumentLinkError("This link has already been added")
+												}
+											} catch (e) {
+												setDocumentLinkError("Please enter a valid URL")
+											}
+										}}>
+										<span className="codicon codicon-add"></span>
+									</VSCodeButton>
+								</div>
+								{documentLinkError && (
+									<p style={{ color: "var(--vscode-errorForeground)", fontSize: "12px", marginTop: "4px" }}>
+										{documentLinkError}
+									</p>
+								)}
+								{documentLinks.length >= 3 && (
+									<p
+										style={{
+											color: "var(--vscode-editorWarning-foreground)",
+											fontSize: "12px",
+											marginTop: "4px",
+										}}>
+										Maximum of 3 document links allowed
+									</p>
+								)}
+
+								{documentLinks.length > 0 && (
+									<div style={{ marginTop: "8px" }}>
+										{documentLinks.map((link, index) => (
+											<DocumentLinkItem key={index}>
+												<span
+													style={{
+														overflow: "hidden",
+														textOverflow: "ellipsis",
+														whiteSpace: "nowrap",
+													}}>
+													{link.url}
+												</span>
+												<VSCodeButton
+													appearance="icon"
+													onClick={() => {
+														const newLinks = [...documentLinks]
+														newLinks.splice(index, 1)
+														setDocumentLinks(newLinks)
+													}}
+													style={{
+														minWidth: "20px",
+														height: "20px",
+														padding: 0,
+													}}>
+													<span className="codicon codicon-close"></span>
+												</VSCodeButton>
+											</DocumentLinkItem>
+										))}
+									</div>
+								)}
 							</FormGroup>
 
 							{!isFormReadOnly && (
@@ -627,6 +804,30 @@ const CountBadge = styled.span`
 	font-weight: normal;
 	margin-left: 6px;
 	color: var(--vscode-descriptionForeground);
+`
+
+const DocumentLinkItem = styled.div`
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 4px 8px;
+	margin-bottom: 4px;
+	background-color: var(--vscode-editor-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	font-size: 12px;
+`
+
+const DocumentStatusItem = styled.div`
+	display: flex;
+	flex-direction: column;
+	padding: 8px;
+	margin-bottom: 8px;
+	background-color: var(--vscode-editor-background);
+	border: 1px solid var(--vscode-panel-border);
+	border-radius: 4px;
+	font-size: 12px;
+	gap: 4px;
 `
 
 export default memo(ExpertsView)

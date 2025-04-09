@@ -114,7 +114,7 @@ export class Controller {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
 
-		this.expertManager = new ExpertManager()
+		this.expertManager = new ExpertManager(this.context)
 		this.codeIndexAbortController = new AbortController()
 		this.workspaceId = getWorkspaceID() || ""
 		this.isSideBar = isSideBar
@@ -809,6 +809,20 @@ export class Controller {
 					await this.updateExpertPrompt(message.prompt)
 				}
 
+				break
+			case "getDocumentLinksStatus":
+				if (message.text) {
+					const expertName = message.text
+					const documentLinks = await this.expertManager.getDocumentLinksStatus(
+						this.vsCodeWorkSpaceFolderFsPath,
+						expertName,
+					)
+					await this.postMessageToWebview({
+						type: "documentLinksStatus",
+						documentLinks,
+						expertName,
+					})
+				}
 				break
 			case "saveExpert":
 				if (message.text) {
