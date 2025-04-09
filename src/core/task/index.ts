@@ -176,6 +176,7 @@ export class Task {
 		this.chatSettings = chatSettings
 
 		// HAI variable initialization
+		this.task = task
 		this.expertPrompt = expertPrompt
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
