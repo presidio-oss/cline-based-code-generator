@@ -281,20 +281,36 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 											<AccordionContainer>
 												{exp.documentLinks.map((link, idx) => (
 													<DocumentAccordionItem key={idx}>
-														<DocumentLinkText>{link.url}</DocumentLinkText>
-														<DocumentStatusContainer>
-															{link.status && (
-																<>
-																	<StatusBadge>{link.status}</StatusBadge>
-																	{link.processedAt && (
-																		<LastSyncText>
-																			Last sync:{" "}
-																			{new Date(link.processedAt).toLocaleString()}
-																		</LastSyncText>
-																	)}
-																</>
+														{link.status && (
+															<StatusIcon
+																status={link.status}
+																className={`codicon ${
+																	link.status.toLowerCase() === "completed"
+																		? "codicon-check"
+																		: link.status.toLowerCase() === "failed"
+																			? "codicon-error"
+																			: link.status.toLowerCase() === "processing"
+																				? "codicon-pulse"
+																				: "codicon-clock"
+																}`}
+															/>
+														)}
+														<DocumentLinkContainer>
+															<DocumentLinkText>{link.url}</DocumentLinkText>
+															{link.processedAt && (
+																<TimestampText>
+																	{new Date(link.processedAt).toLocaleString("en-US", {
+																		year: "2-digit",
+																		month: "2-digit",
+																		day: "2-digit",
+																		hour: "2-digit",
+																		minute: "2-digit",
+																		second: "2-digit",
+																		hour12: false,
+																	})}
+																</TimestampText>
 															)}
-														</DocumentStatusContainer>
+														</DocumentLinkContainer>
 														<DocumentButtons>
 															<VSCodeButton
 																appearance="icon"
@@ -691,32 +707,39 @@ const DocumentAccordionItem = styled.div`
 	font-size: 12px;
 `
 
+const DocumentLinkContainer = styled.div`
+	display: flex;
+	flex-direction: column;
+	flex-grow: 1;
+	overflow: hidden;
+`
+
 const DocumentLinkText = styled.div`
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-	flex-grow: 1;
 `
 
-const DocumentStatusContainer = styled.div`
+const StatusIcon = styled.span<{ status?: string }>`
+	margin-right: 8px;
+	font-size: 14px;
 	display: flex;
-	flex-direction: column;
-	margin-left: 8px;
+	align-items: center;
+	color: ${(props) => {
+		switch (props.status?.toLowerCase()) {
+			case "completed":
+				return "var(--vscode-testing-iconPassed)"
+			case "failed":
+				return "var(--vscode-testing-iconFailed)"
+			default:
+				return "var(--vscode-foreground)"
+		}
+	}};
 `
 
-const StatusBadge = styled.span`
-	background-color: var(--vscode-editorHint-foreground);
-	color: var(--vscode-editor-background);
-	padding: 2px 6px;
-	border-radius: 4px;
-	font-size: 10px;
-	text-transform: uppercase;
-`
-
-const LastSyncText = styled.span`
+const TimestampText = styled.span`
 	font-size: 9px;
 	color: var(--vscode-descriptionForeground);
-	margin-top: 2px;
 `
 
 const DocumentButtons = styled.div`

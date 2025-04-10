@@ -1,6 +1,7 @@
 import fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
+import { v4 as uuidv4 } from "uuid"
 import { DocumentLink, ExpertData, ExpertDataSchema } from "../../../webview-ui/src/types/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { GlobalFileNames } from "../../global-constants"
@@ -46,9 +47,9 @@ export class ExpertManager {
 			await createDirectoriesForFile(path.join(docsDir, "placeholder.txt"))
 
 			// Set initial status to "pending"
-			const statusData = expert.documentLinks.map((link, index) => ({
+			const statusData = expert.documentLinks.map((link) => ({
 				...link,
-				filename: `Doc-${index + 1}.md`,
+				filename: `doc-${uuidv4()}.md`,
 				status: "pending" as "pending" | "processing" | "completed" | "failed",
 				processedAt: new Date().toISOString(),
 				error: null,
