@@ -5,7 +5,7 @@ import { z } from "zod"
 export const DocumentLinkSchema = z.object({
 	url: z.string().url("Must be a valid URL"),
 	filename: z.string().optional(),
-	status: z.enum(["fetching", "completed", "failed"]).optional(),
+	status: z.enum(["pending", "processing", "completed", "failed"]).optional(),
 	processedAt: z.string().optional(),
 	error: z.string().nullable().optional(),
 })

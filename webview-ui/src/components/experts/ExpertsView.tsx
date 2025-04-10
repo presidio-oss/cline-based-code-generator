@@ -11,11 +11,8 @@ interface ExpertsViewProps {
 }
 
 const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
-	// Experts state; defaults plus any custom experts coming from backend.
 	const [experts, setExperts] = useState<ExpertData[]>(DEFAULT_EXPERTS)
 	const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
-
-	// States for new expert creation
 	const [newExpertName, setNewExpertName] = useState("")
 	const [newExpertPrompt, setNewExpertPrompt] = useState("")
 	const [documentLink, setDocumentLink] = useState("")
@@ -25,20 +22,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [isFileUploaded, setIsFileUploaded] = useState(false)
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
-
-	// Document links statuses; expected to be updated via VSCode messages.
 	const [documentLinksStatus, setDocumentLinksStatus] = useState<DocumentLink[]>([])
-
-	// Expanded experts for which the document accordion is open.
 	const [expandedExperts, setExpandedExperts] = useState<{ [key: string]: boolean }>({})
 
-	// Workspace state from the extension context.
 	const { vscodeWorkspacePath } = useExtensionState()
-
-	// File input ref for prompt file upload
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-	// Listen for VSCode messages
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
 			const message = event.data
@@ -48,16 +37,13 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				setDocumentLinksStatus(message.documentLinks)
 			}
 		}
-
 		window.addEventListener("message", messageHandler)
 		vscode.postMessage({ type: "loadExperts" })
-
 		return () => {
 			window.removeEventListener("message", messageHandler)
 		}
 	}, [])
 
-	// Handle file selection for prompt upload.
 	const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
 		const file = event.target.files?.[0]
 		if (!file) return
@@ -73,7 +59,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
-	// Toggle the document accordion for a given expert.
 	const toggleAccordionForExpert = (expertName: string) => {
 		setExpandedExperts((prev) => {
 			const isExpanded = !prev[expertName]
@@ -84,7 +69,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		})
 	}
 
-	// Reset new expert form.
 	const resetForm = () => {
 		setNewExpertName("")
 		setNewExpertPrompt("")
@@ -97,7 +81,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setNameError(null)
 	}
 
-	// Handle expert selection (e.g. for viewing guidelines).
 	const handleSelectExpert = (expert: ExpertData) => {
 		if (selectedExpert && selectedExpert.name === expert.name) {
 			setSelectedExpert(null)
@@ -113,7 +96,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 	}
 
-	// Save new expert.
 	const handleSaveExpert = () => {
 		setNameError(null)
 		if (!newExpertName.trim()) {
@@ -154,7 +136,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		resetForm()
 	}
 
-	// Trigger file upload.
 	const handleFileUpload = () => {
 		if (newExpertPrompt.trim()) {
 			vscode.postMessage({
@@ -165,13 +146,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		fileInputRef.current?.click()
 	}
 
-	// Delete expert confirmation.
 	const handleDeleteConfirmation = (expertName: string, e: React.MouseEvent) => {
 		e.stopPropagation()
 		setExpertInDeleteConfirmation(expertName)
 	}
 
-	// Confirm deletion of expert.
 	const confirmDelete = (expertName: string, e: React.MouseEvent) => {
 		e.stopPropagation()
 		const expertToDelete = experts.find((expert) => expert.name === expertName)
@@ -185,13 +164,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setExpertInDeleteConfirmation(null)
 	}
 
-	// Cancel deletion.
 	const cancelDelete = (e: React.MouseEvent) => {
 		e.stopPropagation()
 		setExpertInDeleteConfirmation(null)
 	}
 
-	// Open the expert prompt file.
 	const handleOpenExpertPrompt = (expertName: string) => {
 		const expertToOpen = experts.find((expert) => expert.name === expertName)
 		if (expertToOpen) {
@@ -207,13 +184,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 	return (
 		<Container>
-			{/* Hidden file input for uploading prompt file */}
 			<input type="file" ref={fileInputRef} accept=".md" onChange={handleFileSelect} style={{ display: "none" }} />
 			<Header>
 				<h3>EXPERTS</h3>
 			</Header>
 			<Content>
-				{/* Default Experts Section */}
+				{/* Default Experts */}
 				<Section>
 					<SectionHeader>
 						HAI Experts <CountBadge>({experts.filter((exp) => exp.isDefault).length})</CountBadge>
@@ -238,7 +214,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 					</DefaultExpertsContainer>
 				</Section>
 
-				{/* Custom Experts Section with Accordion for Documents */}
+				{/* Custom Experts with Document Accordion */}
 				<Section>
 					<SectionHeader>
 						Custom Experts <CountBadge>({experts.filter((exp) => !exp.isDefault).length})</CountBadge>
@@ -315,50 +291,55 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										</ExpertRow>
 										{expandedExperts[exp.name] && exp.documentLinks && exp.documentLinks.length > 0 && (
 											<AccordionContainer>
-												{exp.documentLinks.map((link, idx) => (
-													<DocumentAccordionItem key={idx}>
-														<DocumentLinkText>{link.url}</DocumentLinkText>
-														<DocumentStatusText>
-															{(() => {
-																const docStatus = documentLinksStatus.find(
-																	(status) => status.url === link.url,
-																)
-																if (docStatus?.status === "fetching") return "Fetching..."
-																if (docStatus?.status === "completed")
-																	return `Completed: ${docStatus.filename}`
-																if (docStatus?.status === "failed")
-																	return `Failed: ${docStatus.error || "Unknown error"}`
-																return ""
-															})()}
-														</DocumentStatusText>
-														<DocumentButtons>
-															<VSCodeButton
-																appearance="icon"
-																onClick={(e) => {
-																	e.stopPropagation()
-																	//   vscode.postMessage({
-																	//     type: "refreshDocumentLink",
-																	//     text: link.url,
-																	//     expert: exp.name,
-																	//   });
-																}}>
-																<span className="codicon codicon-refresh" />
-															</VSCodeButton>
-															<VSCodeButton
-																appearance="icon"
-																onClick={(e) => {
-																	e.stopPropagation()
-																	//   vscode.postMessage({
-																	//     type: "editDocumentLink",
-																	//     text: link.url,
-																	//     expert: exp.name,
-																	//   });
-																}}>
-																<span className="codicon codicon-edit" />
-															</VSCodeButton>
-														</DocumentButtons>
-													</DocumentAccordionItem>
-												))}
+												{exp.documentLinks.map((link, idx) => {
+													const docStatus = documentLinksStatus.find(
+														(status) => status.url === link.url,
+													)
+													return (
+														<DocumentAccordionItem key={idx}>
+															<DocumentLinkText>{link.url}</DocumentLinkText>
+															<DocumentStatusContainer>
+																{docStatus && (
+																	<>
+																		<StatusBadge>{docStatus.status}</StatusBadge>
+																		{docStatus.processedAt && (
+																			<LastSyncText>
+																				Last sync:{" "}
+																				{new Date(docStatus.processedAt).toLocaleString()}
+																			</LastSyncText>
+																		)}
+																	</>
+																)}
+															</DocumentStatusContainer>
+															<DocumentButtons>
+																<VSCodeButton
+																	appearance="icon"
+																	onClick={(e) => {
+																		e.stopPropagation()
+																		vscode.postMessage({
+																			type: "refreshDocumentLink",
+																			text: link.url,
+																			expert: exp.name,
+																		})
+																	}}>
+																	<span className="codicon codicon-refresh" />
+																</VSCodeButton>
+																<VSCodeButton
+																	appearance="icon"
+																	onClick={(e) => {
+																		e.stopPropagation()
+																		vscode.postMessage({
+																			type: "editDocumentLink",
+																			text: link.url,
+																			expert: exp.name,
+																		})
+																	}}>
+																	<span className="codicon codicon-edit" />
+																</VSCodeButton>
+															</DocumentButtons>
+														</DocumentAccordionItem>
+													)
+												})}
 											</AccordionContainer>
 										)}
 									</div>
@@ -367,7 +348,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 					</CustomExpertsContainer>
 				</Section>
 
-				{/* Add New Expert / Edit Form Section */}
+				{/* Add/Edit Form Section */}
 				{vscodeWorkspacePath ? (
 					<Section>
 						<SectionHeader>Add New Expert</SectionHeader>
@@ -388,7 +369,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									</p>
 								)}
 							</FormGroup>
-
 							<FormGroup>
 								<label htmlFor="expert-prompt">Guidelines</label>
 								<VSCodeTextArea
@@ -405,7 +385,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									These guidelines will override the default HAI guidelines when this expert is selected.
 								</p>
 							</FormGroup>
-
 							<FormGroup>
 								<label htmlFor="document-link">Document Link</label>
 								<div style={{ display: "flex", gap: "8px" }}>
@@ -481,7 +460,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									</div>
 								)}
 							</FormGroup>
-
 							{!isFormReadOnly && (
 								<FormGroup>
 									<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
@@ -490,7 +468,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									</VSCodeButton>
 								</FormGroup>
 							)}
-
 							{!isFormReadOnly && (
 								<ActionButtons>
 									<VSCodeButton appearance="secondary" onClick={resetForm}>
@@ -580,7 +557,7 @@ const DefaultExpertsContainer = styled.div`
 `
 
 const CustomExpertsContainer = styled.div`
-	max-height: 153px;
+	max-height: 135px;
 	overflow-y: auto;
 `
 
@@ -738,10 +715,25 @@ const DocumentLinkText = styled.div`
 	flex-grow: 1;
 `
 
-const DocumentStatusText = styled.div`
-	font-size: 11px;
-	color: var(--vscode-descriptionForeground);
+const DocumentStatusContainer = styled.div`
+	display: flex;
+	flex-direction: column;
 	margin-left: 8px;
+`
+
+const StatusBadge = styled.span`
+	background-color: var(--vscode-editorHint-foreground);
+	color: var(--vscode-editor-background);
+	padding: 2px 6px;
+	border-radius: 4px;
+	font-size: 10px;
+	text-transform: uppercase;
+`
+
+const LastSyncText = styled.span`
+	font-size: 9px;
+	color: var(--vscode-descriptionForeground);
+	margin-top: 2px;
 `
 
 const DocumentButtons = styled.div`

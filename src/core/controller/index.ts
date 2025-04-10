@@ -853,6 +853,18 @@ export class Controller {
 			case "loadExperts":
 				await this.loadExperts()
 				break
+			case "refreshDocumentLink":
+				if (message.text && message.expert) {
+					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+				}
+				break
+
+			case "editDocumentLink":
+				if (message.text && message.expert) {
+					// For now, use the same extraction process as refresh
+					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+				}
+				break
 			case "onHaiConfigure":
 				const isConfigureEnabled = message.bool !== undefined ? message.bool : true
 
