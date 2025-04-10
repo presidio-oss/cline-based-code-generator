@@ -22,7 +22,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [isFileUploaded, setIsFileUploaded] = useState(false)
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
-	const [documentLinksStatus, setDocumentLinksStatus] = useState<DocumentLink[]>([])
 	const [expandedExperts, setExpandedExperts] = useState<{ [key: string]: boolean }>({})
 
 	const { vscodeWorkspacePath } = useExtensionState()
@@ -33,8 +32,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			const message = event.data
 			if (message.type === "expertsUpdated" && message.experts) {
 				setExperts([...DEFAULT_EXPERTS, ...message.experts])
-			} else if (message.type === "documentLinksStatus" && message.documentLinks) {
-				setDocumentLinksStatus(message.documentLinks)
 			}
 		}
 		window.addEventListener("message", messageHandler)
@@ -62,9 +59,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const toggleAccordionForExpert = (expertName: string) => {
 		setExpandedExperts((prev) => {
 			const isExpanded = !prev[expertName]
-			if (isExpanded) {
-				vscode.postMessage({ type: "getDocumentLinksStatus", text: expertName })
-			}
 			return { ...prev, [expertName]: isExpanded }
 		})
 	}
@@ -88,12 +82,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		}
 		setSelectedExpert(expert)
 		setIsFormReadOnly(false)
-		if (expert.documentLinks && expert.documentLinks.length > 0) {
-			vscode.postMessage({
-				type: "getDocumentLinksStatus",
-				text: expert.name,
-			})
-		}
 	}
 
 	const handleSaveExpert = () => {
@@ -291,55 +279,50 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										</ExpertRow>
 										{expandedExperts[exp.name] && exp.documentLinks && exp.documentLinks.length > 0 && (
 											<AccordionContainer>
-												{exp.documentLinks.map((link, idx) => {
-													const docStatus = documentLinksStatus.find(
-														(status) => status.url === link.url,
-													)
-													return (
-														<DocumentAccordionItem key={idx}>
-															<DocumentLinkText>{link.url}</DocumentLinkText>
-															<DocumentStatusContainer>
-																{docStatus && (
-																	<>
-																		<StatusBadge>{docStatus.status}</StatusBadge>
-																		{docStatus.processedAt && (
-																			<LastSyncText>
-																				Last sync:{" "}
-																				{new Date(docStatus.processedAt).toLocaleString()}
-																			</LastSyncText>
-																		)}
-																	</>
-																)}
-															</DocumentStatusContainer>
-															<DocumentButtons>
-																<VSCodeButton
-																	appearance="icon"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		vscode.postMessage({
-																			type: "refreshDocumentLink",
-																			text: link.url,
-																			expert: exp.name,
-																		})
-																	}}>
-																	<span className="codicon codicon-refresh" />
-																</VSCodeButton>
-																<VSCodeButton
-																	appearance="icon"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		vscode.postMessage({
-																			type: "editDocumentLink",
-																			text: link.url,
-																			expert: exp.name,
-																		})
-																	}}>
-																	<span className="codicon codicon-edit" />
-																</VSCodeButton>
-															</DocumentButtons>
-														</DocumentAccordionItem>
-													)
-												})}
+												{exp.documentLinks.map((link, idx) => (
+													<DocumentAccordionItem key={idx}>
+														<DocumentLinkText>{link.url}</DocumentLinkText>
+														<DocumentStatusContainer>
+															{link.status && (
+																<>
+																	<StatusBadge>{link.status}</StatusBadge>
+																	{link.processedAt && (
+																		<LastSyncText>
+																			Last sync:{" "}
+																			{new Date(link.processedAt).toLocaleString()}
+																		</LastSyncText>
+																	)}
+																</>
+															)}
+														</DocumentStatusContainer>
+														<DocumentButtons>
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	vscode.postMessage({
+																		type: "refreshDocumentLink",
+																		text: link.url,
+																		expert: exp.name,
+																	})
+																}}>
+																<span className="codicon codicon-refresh" />
+															</VSCodeButton>
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	vscode.postMessage({
+																		type: "editDocumentLink",
+																		text: link.url,
+																		expert: exp.name,
+																	})
+																}}>
+																<span className="codicon codicon-edit" />
+															</VSCodeButton>
+														</DocumentButtons>
+													</DocumentAccordionItem>
+												))}
 											</AccordionContainer>
 										)}
 									</div>
@@ -557,7 +540,7 @@ const DefaultExpertsContainer = styled.div`
 `
 
 const CustomExpertsContainer = styled.div`
-	max-height: 135px;
+	max-height: 250px;
 	overflow-y: auto;
 `
 

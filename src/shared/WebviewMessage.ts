@@ -90,7 +90,6 @@ export interface WebviewMessage {
 		| "optionsResponse"
 		| "requestTotalTasksSize"
 		| "taskFeedback"
-		| "getDocumentLinksStatus"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	expert?: string

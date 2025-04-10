@@ -236,32 +236,6 @@ export class ExpertManager {
 	}
 
 	/**
-	 * Get document links status for an expert
-	 */
-	async getDocumentLinksStatus(workspacePath: string, expertName: string): Promise<DocumentLink[]> {
-		if (!workspacePath || !expertName) {
-			return []
-		}
-		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
-		if (!(await fileExistsAtPath(expertDir))) {
-			return []
-		}
-		const docsDir = path.join(expertDir, "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
-		if (!(await fileExistsAtPath(statusFilePath))) {
-			return []
-		}
-		try {
-			const statusContent = await fs.readFile(statusFilePath, "utf-8")
-			return JSON.parse(statusContent)
-		} catch (error) {
-			console.error(`Failed to read document links status for ${expertName}:`, error)
-			return []
-		}
-	}
-
-	/**
 	 * Delete an expert from the .hai-experts directory
 	 */
 	async deleteExpert(workspacePath: string, expertName: string): Promise<void> {

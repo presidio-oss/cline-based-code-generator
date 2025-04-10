@@ -52,7 +52,6 @@ export interface ExtensionMessage {
 		| "addToInput"
 		| "expertsUpdated"
 		| "expertPrompt"
-		| "documentLinksStatus"
 	text?: string
 	bool?: boolean
 	action?:

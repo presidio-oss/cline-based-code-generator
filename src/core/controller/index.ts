@@ -808,21 +808,6 @@ export class Controller {
 				} else {
 					await this.updateExpertPrompt(message.prompt)
 				}
-
-				break
-			case "getDocumentLinksStatus":
-				if (message.text) {
-					const expertName = message.text
-					const documentLinks = await this.expertManager.getDocumentLinksStatus(
-						this.vsCodeWorkSpaceFolderFsPath,
-						expertName,
-					)
-					await this.postMessageToWebview({
-						type: "documentLinksStatus",
-						documentLinks,
-						expertName,
-					})
-				}
 				break
 			case "saveExpert":
 				if (message.text) {
