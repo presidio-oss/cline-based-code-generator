@@ -361,7 +361,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			awsSessionToken,
 			awsRegion,
 			awsUseCrossRegionInference,
-			awsBedrockUsePromptCache,
+			awsBedrockUsePromptCache: awsBedrockUsePromptCache ?? true,
 			awsBedrockEndpoint,
 			awsProfile,
 			awsUseProfile,
