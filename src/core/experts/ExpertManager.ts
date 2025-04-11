@@ -105,12 +105,6 @@ export class ExpertManager {
 					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
 					console.error(`Failed to process document link for expert ${expertName}:`, error)
 				}
-				// After each link update, refresh the expert list in the webview.
-				const experts = await this.readExperts(workspacePath)
-				await this.postMessageToWebview({
-					type: "expertsUpdated",
-					experts,
-				})
 			}
 		} catch (error) {
 			console.error(`Error processing document links for expert ${expertName}:`, error)
@@ -163,11 +157,6 @@ export class ExpertManager {
 		} finally {
 			await urlContentFetcher.closeBrowser()
 		}
-		const experts = await this.readExperts(workspacePath)
-		await this.postMessageToWebview({
-			type: "expertsUpdated",
-			experts,
-		})
 	}
 
 	/**
@@ -180,15 +169,21 @@ export class ExpertManager {
 		const docsDir = path.join(expertDir, "docs")
 		const statusFilePath = path.join(docsDir, "status.json")
 
-		if (!(await fileExistsAtPath(statusFilePath))) {
-			throw new Error("Status file not found")
+		// Ensure the docs directory exists
+		await createDirectoriesForFile(statusFilePath)
+
+		// Read or initialize the status file
+		let statusData: DocumentLink[] = []
+		if (await fileExistsAtPath(statusFilePath)) {
+			statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
 		}
 
-		const statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		// Check if the maximum number of document links is reached
 		if (statusData.length >= 3) {
 			throw new Error("Maximum of 3 document links allowed")
 		}
 
+		// Add the new document link
 		const newLink: DocumentLink = {
 			url: linkUrl,
 			status: "pending",
@@ -372,10 +367,5 @@ export class ExpertManager {
 			}
 		}
 		return null
-	}
-
-	// Stub for postMessageToWebview – implementation will depend on your extension's context.
-	async postMessageToWebview(message: any): Promise<void> {
-		// Implement the actual messaging mechanism here.
 	}
 }

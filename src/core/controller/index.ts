@@ -813,26 +813,14 @@ export class Controller {
 				if (message.text) {
 					const expert = JSON.parse(message.text) as ExpertData
 					await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
-
-					// Send updated experts list back to webview
-					const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-					await this.postMessageToWebview({
-						type: "expertsUpdated",
-						experts,
-					})
+					await this.loadExperts()
 				}
 				break
 			case "deleteExpert":
 				if (message.text) {
 					const expertName = message.text
 					await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
-
-					// Send updated experts list back to webview
-					const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-					await this.postMessageToWebview({
-						type: "expertsUpdated",
-						experts,
-					})
+					await this.loadExperts()
 				}
 				break
 			case "loadExperts":
@@ -842,8 +830,8 @@ export class Controller {
 				if (message.text && message.expert) {
 					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 				}
+				await this.loadExperts()
 				break
-
 			case "deleteDocumentLink":
 				if (message.text && message.expert) {
 					try {
@@ -852,13 +840,7 @@ export class Controller {
 							message.expert,
 							message.text,
 						)
-
-						// Send updated experts list back to webview
-						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-						await this.postMessageToWebview({
-							type: "expertsUpdated",
-							experts,
-						})
+						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
 						vscode.window.showErrorMessage(`Failed to delete document link: ${error.message}`)
@@ -869,13 +851,7 @@ export class Controller {
 				if (message.text && message.expert) {
 					try {
 						await this.expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
-
-						// Send updated experts list back to webview
-						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-						await this.postMessageToWebview({
-							type: "expertsUpdated",
-							experts,
-						})
+						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to add document link for expert ${message.expert}:`, error)
 						vscode.window.showErrorMessage(`Failed to add document link: ${error.message}`)
