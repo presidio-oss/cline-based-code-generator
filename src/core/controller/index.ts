@@ -844,10 +844,25 @@ export class Controller {
 				}
 				break
 
-			case "editDocumentLink":
+			case "deleteDocumentLink":
 				if (message.text && message.expert) {
-					// For now, use the same extraction process as refresh
-					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+					try {
+						await this.expertManager.deleteDocumentLink(
+							this.vsCodeWorkSpaceFolderFsPath,
+							message.expert,
+							message.text,
+						)
+
+						// Send updated experts list back to webview
+						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+						await this.postMessageToWebview({
+							type: "expertsUpdated",
+							experts,
+						})
+					} catch (error) {
+						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
+						vscode.window.showErrorMessage(`Failed to delete document link: ${error.message}`)
+					}
 				}
 				break
 			case "onHaiConfigure":

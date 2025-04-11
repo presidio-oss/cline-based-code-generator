@@ -171,6 +171,34 @@ export class ExpertManager {
 	}
 
 	/**
+	 * Delete a document link for a custom expert
+	 */
+	async deleteDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
+		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
+		const docsDir = path.join(expertDir, "docs")
+		const statusFilePath = path.join(docsDir, "status.json")
+
+		if (!(await fileExistsAtPath(statusFilePath))) {
+			throw new Error("Status file not found")
+		}
+
+		const statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		const updatedStatusData = statusData.filter((link) => link.url !== linkUrl)
+
+		await fs.writeFile(statusFilePath, JSON.stringify(updatedStatusData, null, 2))
+
+		// Optionally delete the associated file if it exists
+		const linkToDelete = statusData.find((link) => link.url === linkUrl)
+		if (linkToDelete?.filename) {
+			const filePath = path.join(docsDir, linkToDelete.filename)
+			if (await fileExistsAtPath(filePath)) {
+				await fs.unlink(filePath)
+			}
+		}
+	}
+
+	/**
 	 * Read all experts from the .hai-experts directory
 	 */
 	async readExperts(workspacePath: string): Promise<ExpertData[]> {

@@ -23,6 +23,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
 	const [expertInDeleteConfirmation, setExpertInDeleteConfirmation] = useState<string | null>(null)
 	const [expandedExperts, setExpandedExperts] = useState<{ [key: string]: boolean }>({})
+	const [documentLinkInDeleteConfirmation, setDocumentLinkInDeleteConfirmation] = useState<{
+		expertName: string
+		linkUrl: string
+	} | null>(null)
 
 	const { vscodeWorkspacePath } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -324,18 +328,44 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																}}>
 																<span className="codicon codicon-refresh" />
 															</VSCodeButton>
-															<VSCodeButton
-																appearance="icon"
-																onClick={(e) => {
-																	e.stopPropagation()
-																	vscode.postMessage({
-																		type: "editDocumentLink",
-																		text: link.url,
-																		expert: exp.name,
-																	})
-																}}>
-																<span className="codicon codicon-edit" />
-															</VSCodeButton>
+															{documentLinkInDeleteConfirmation?.expertName === exp.name &&
+															documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
+																<>
+																	<VSCodeButton
+																		appearance="icon"
+																		onClick={(e) => {
+																			e.stopPropagation()
+																			setDocumentLinkInDeleteConfirmation(null)
+																		}}>
+																		<span className="codicon codicon-close" />
+																	</VSCodeButton>
+																	<VSCodeButton
+																		appearance="icon"
+																		onClick={(e) => {
+																			e.stopPropagation()
+																			vscode.postMessage({
+																				type: "deleteDocumentLink",
+																				text: link.url,
+																				expert: exp.name,
+																			})
+																			setDocumentLinkInDeleteConfirmation(null)
+																		}}>
+																		<span className="codicon codicon-check" />
+																	</VSCodeButton>
+																</>
+															) : (
+																<VSCodeButton
+																	appearance="icon"
+																	onClick={(e) => {
+																		e.stopPropagation()
+																		setDocumentLinkInDeleteConfirmation({
+																			expertName: exp.name,
+																			linkUrl: link.url,
+																		})
+																	}}>
+																	<span className="codicon codicon-trash" />
+																</VSCodeButton>
+															)}
 														</DocumentButtons>
 													</DocumentAccordionItem>
 												))}
@@ -384,6 +414,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									These guidelines will override the default HAI guidelines when this expert is selected.
 								</p>
 							</FormGroup>
+							{!isFormReadOnly && (
+								<FormGroup>
+									<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
+										<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }} />
+										Upload Guidelines File (.md only)
+									</VSCodeButton>
+								</FormGroup>
+							)}
 							<FormGroup>
 								<label htmlFor="document-link">Document Link</label>
 								<div style={{ display: "flex", gap: "8px" }}>
@@ -459,14 +497,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									</div>
 								)}
 							</FormGroup>
-							{!isFormReadOnly && (
-								<FormGroup>
-									<VSCodeButton appearance="secondary" onClick={handleFileUpload}>
-										<span className="codicon codicon-cloud-upload" style={{ marginRight: "5px" }} />
-										Upload Guidelines File (.md only)
-									</VSCodeButton>
-								</FormGroup>
-							)}
 							{!isFormReadOnly && (
 								<ActionButtons>
 									<VSCodeButton appearance="secondary" onClick={resetForm}>

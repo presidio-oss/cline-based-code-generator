@@ -24,7 +24,7 @@ export interface WebviewMessage {
 		| "deleteExpert"
 		| "loadExperts"
 		| "refreshDocumentLink"
-		| "editDocumentLink"
+		| "deleteDocumentLink"
 		| "exportCurrentTask"
 		| "showTaskWithId"
 		| "deleteTaskWithId"
