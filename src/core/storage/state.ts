@@ -361,7 +361,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			awsSessionToken,
 			awsRegion,
 			awsUseCrossRegionInference,
-			awsBedrockUsePromptCache,
+			awsBedrockUsePromptCache: awsBedrockUsePromptCache ?? true,
 			awsBedrockEndpoint,
 			awsProfile,
 			awsUseProfile,
@@ -427,12 +427,18 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		expertPrompt,
 		isHaiRulesPresent,
 		taskHistory,
-		buildContextOptions: buildContextOptions ?? {
-			useIndex: true, // Enable Indexing by default
-			useContext: true, // Enable Use Context by default
-			useSyncWithApi: true, // Enable Sync with API by default
-			useSecretScanning: true, // Enable Secret Scanning by default
-		},
+		buildContextOptions: buildContextOptions
+			? {
+					...buildContextOptions,
+					systemPromptVersion: buildContextOptions.systemPromptVersion ?? "v3",
+				}
+			: {
+					useIndex: true, // Enable Indexing by default
+					useContext: true, // Enable Use Context by default
+					useSyncWithApi: true, // Enable Sync with API by default
+					useSecretScanning: true, // Enable Secret Scanning by default
+					systemPromptVersion: "v3", // Setting v3 as default prompt
+				},
 		buildIndexProgress: buildIndexProgress,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
 		browserSettings: browserSettings || DEFAULT_BROWSER_SETTINGS,
