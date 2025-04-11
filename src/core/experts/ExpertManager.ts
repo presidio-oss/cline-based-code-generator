@@ -171,6 +171,40 @@ export class ExpertManager {
 	}
 
 	/**
+	 * Add document link
+	 */
+
+	async addDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
+		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
+		const docsDir = path.join(expertDir, "docs")
+		const statusFilePath = path.join(docsDir, "status.json")
+
+		if (!(await fileExistsAtPath(statusFilePath))) {
+			throw new Error("Status file not found")
+		}
+
+		const statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		if (statusData.length >= 3) {
+			throw new Error("Maximum of 3 document links allowed")
+		}
+
+		const newLink: DocumentLink = {
+			url: linkUrl,
+			status: "pending",
+			filename: `doc-${uuidv4()}.md`,
+			processedAt: new Date().toISOString(),
+			error: null,
+		}
+
+		statusData.push(newLink)
+		await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+
+		// Process the newly added document link
+		await this.processDocumentLinks(expertName, expertDir, [newLink], workspacePath)
+	}
+
+	/**
 	 * Delete a document link for a custom expert
 	 */
 	async deleteDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {

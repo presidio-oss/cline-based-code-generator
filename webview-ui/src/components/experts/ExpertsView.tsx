@@ -28,6 +28,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		linkUrl: string
 	} | null>(null)
 
+	const [inlineEditingDoc, setInlineEditingDoc] = useState<{
+		expertName: string
+		linkUrl: string
+	} | null>(null)
+
 	const { vscodeWorkspacePath } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -219,23 +224,21 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									<div key={exp.name} style={{ width: "100%" }}>
 										<ExpertRow>
 											<ExpertRowLeftSide>
-												{exp.documentLinks && exp.documentLinks.length > 0 && (
-													<VSCodeButton
-														appearance="icon"
-														onClick={(e) => {
-															e.stopPropagation()
-															toggleAccordionForExpert(exp.name)
-														}}
-														style={{ marginRight: "8px" }}>
-														<span
-															className={`codicon ${
-																expandedExperts[exp.name]
-																	? "codicon-chevron-down"
-																	: "codicon-chevron-right"
-															}`}
-														/>
-													</VSCodeButton>
-												)}
+												<VSCodeButton
+													appearance="icon"
+													onClick={(e) => {
+														e.stopPropagation()
+														toggleAccordionForExpert(exp.name)
+													}}
+													style={{ marginRight: "8px" }}>
+													<span
+														className={`codicon ${
+															expandedExperts[exp.name]
+																? "codicon-chevron-down"
+																: "codicon-chevron-right"
+														}`}
+													/>
+												</VSCodeButton>
 												<span
 													style={{
 														overflow: "hidden",
@@ -281,7 +284,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												</VSCodeButton>
 											</ExpertRowActions>
 										</ExpertRow>
-										{expandedExperts[exp.name] && exp.documentLinks && exp.documentLinks.length > 0 && (
+										{expandedExperts[exp.name] && exp.documentLinks && (
 											<AccordionContainer>
 												{exp.documentLinks.map((link, idx) => (
 													<DocumentAccordionItem key={idx}>
@@ -369,6 +372,78 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 														</DocumentButtons>
 													</DocumentAccordionItem>
 												))}
+												{/* "+ Add Doc" button or inline editing */}
+												{inlineEditingDoc?.expertName === exp.name ? (
+													<DocumentAccordionItem>
+														<VSCodeTextField
+															value={inlineEditingDoc.linkUrl}
+															placeholder="Enter document link"
+															onChange={(e) =>
+																setInlineEditingDoc((prev) =>
+																	prev
+																		? {
+																				...prev,
+																				linkUrl: (e.target as HTMLInputElement).value,
+																			}
+																		: null,
+																)
+															}
+															style={{ flexGrow: 1 }}
+														/>
+														<DocumentButtons>
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	if (inlineEditingDoc.linkUrl.trim()) {
+																		vscode.postMessage({
+																			type: "addDocumentLink",
+																			text: inlineEditingDoc.linkUrl,
+																			expert: exp.name,
+																		})
+																		setExperts((prevExperts) =>
+																			prevExperts.map((expert) =>
+																				expert.name === exp.name
+																					? {
+																							...expert,
+																							documentLinks: [
+																								...(expert.documentLinks || []),
+																								{
+																									url: inlineEditingDoc.linkUrl,
+																									status: "pending",
+																								},
+																							],
+																						}
+																					: expert,
+																			),
+																		)
+																	}
+																	setInlineEditingDoc(null)
+																}}>
+																<span className="codicon codicon-check" />
+															</VSCodeButton>
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	setInlineEditingDoc(null)
+																}}>
+																<span className="codicon codicon-close" />
+															</VSCodeButton>
+														</DocumentButtons>
+													</DocumentAccordionItem>
+												) : (
+													exp.documentLinks.length < 3 && (
+														<VSCodeButton
+															appearance="secondary"
+															onClick={() =>
+																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
+															}
+															style={{ width: "100%" }}>
+															+ Add Doc
+														</VSCodeButton>
+													)
+												)}
 											</AccordionContainer>
 										)}
 									</div>

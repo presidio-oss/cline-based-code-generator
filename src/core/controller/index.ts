@@ -865,6 +865,23 @@ export class Controller {
 					}
 				}
 				break
+			case "addDocumentLink":
+				if (message.text && message.expert) {
+					try {
+						await this.expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+
+						// Send updated experts list back to webview
+						const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+						await this.postMessageToWebview({
+							type: "expertsUpdated",
+							experts,
+						})
+					} catch (error) {
+						console.error(`Failed to add document link for expert ${message.expert}:`, error)
+						vscode.window.showErrorMessage(`Failed to add document link: ${error.message}`)
+					}
+				}
+				break
 			case "onHaiConfigure":
 				const isConfigureEnabled = message.bool !== undefined ? message.bool : true
 
