@@ -51,7 +51,7 @@ const TelemetryBanner = () => {
 					<a href="https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git">
 						git username and email
 					</a>{" "}
-					are sent to help us identify the user.
+					are sent for analytics.
 					<div style={{ marginTop: 4 }}>
 						You can always change this in{" "}
 						<VSCodeLink href="#" onClick={handleOpenSettings}>

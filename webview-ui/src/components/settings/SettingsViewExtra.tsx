@@ -152,7 +152,7 @@ const SettingsViewExtra = ({
 					</label>
 					<VSCodeDropdown
 						id="system-prompt-version"
-						value={buildContextOptions?.systemPromptVersion || "default"}
+						value={buildContextOptions?.systemPromptVersion || "v3"}
 						onChange={(event: any) => {
 							setBuildContextOptions({
 								...buildContextOptions!,

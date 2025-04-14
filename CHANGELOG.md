@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.3.2]
+
+### Enhancements
+
+-   Fixed an issue where the find-files-agent returned empty files even after indexing.
+-   Enabled prompt caching by default for Bedrock.
+-   Set the V3 prompt as the default in settings.
+
 ## [3.3.1]
 
 ### Enhancements
