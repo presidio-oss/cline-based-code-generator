@@ -241,6 +241,7 @@ const AppContent = () => {
 								hideAnnouncement={() => {
 									setShowAnnouncement(false)
 								}}
+								haiConfig={haiConfig}
 							/>
 						</>
 					)}

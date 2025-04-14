@@ -943,6 +943,44 @@ export class Controller {
 					break
 				}
 				break
+			case "writeTaskStatus":
+				// write status to the file
+				const folder = message.folder
+				const taskId = message?.taskId ?? ""
+				const status = message?.status
+				const taskIdMatch = taskId.match(/^(\d+)-US(\d+)-TASK(\d+)$/)
+				if (!folder || !taskIdMatch || !status) {
+					const message = `Failed to update task status. Error: Either folder, taskId or status is invalid.`
+					vscode.window.showErrorMessage(message)
+				} else {
+					const [_, prdId, usId, taskId] = taskIdMatch
+					const prdFeatureFilePath = path.join(`${folder}`, "PRD", `PRD${prdId}-feature.json`)
+					try {
+						const fileContent = await fs.readFile(prdFeatureFilePath, "utf-8")
+						const prdFeatureJson = JSON.parse(fileContent)
+						const feature = prdFeatureJson["features"].find((feature: { id: string }) => feature.id === `US${usId}`)
+						if (feature) {
+							const selectedTask = feature["tasks"].find((task: { id: string }) => task.id === `TASK${taskId}`)
+							selectedTask.status = status
+						}
+
+						await fs.writeFile(prdFeatureFilePath, JSON.stringify(prdFeatureJson, null, 2), "utf-8")
+						const message = `Successfully marked task as ${status.toLowerCase()}.`
+						vscode.window.showInformationMessage(message)
+						await this.postMessageToWebview({
+							type: "writeTaskStatus",
+							writeTaskStatusResult: {
+								success: true,
+								message,
+								status,
+							},
+						})
+					} catch (error) {
+						const message = `Failed to mark task as ${status.toLowerCase()}. Error: ${error.message}`
+						vscode.window.showErrorMessage(message)
+					}
+				}
+				break
 			default:
 				this.customWebViewMessageHandlers(message)
 				break
@@ -2438,7 +2476,13 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 				.filter((file: string) => file.match(/\-feature.json$/))
 				.forEach((file: string) => {
 					const content = fs.readFileSync(path.join(`${url}/PRD`, file), "utf-8")
-					haiTaskList = [...haiTaskList, ...JSON.parse(content).features]
+					const prdId = file.split("-")[0].replace("PRD", "")
+					const parsedFeaturesList = JSON.parse(content).features
+					const featuresListWithPrdId = parsedFeaturesList.map((feature: any) => ({
+						...feature,
+						prdId: prdId,
+					}))
+					haiTaskList = [...haiTaskList, ...featuresListWithPrdId]
 				})
 			return haiTaskList
 		} catch (e) {
