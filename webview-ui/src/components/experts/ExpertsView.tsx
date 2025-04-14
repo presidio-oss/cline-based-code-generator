@@ -291,7 +291,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													? exp.documentLinks.map((link, idx) => (
 															<DocumentAccordionItem key={idx}>
 																{link.status && (
-																	<StatusIcon status={link.status}>
+																	<StatusIcon status={link.status} title={link.status}>
 																		{link.status.toLowerCase() === "completed" ? (
 																			<span className="codicon codicon-check" />
 																		) : link.status.toLowerCase() === "failed" ? (
@@ -314,7 +314,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																	</StatusIcon>
 																)}
 																<DocumentLinkContainer>
-																	<DocumentLinkText>{link.url}</DocumentLinkText>
+																	<DocumentLinkText title={link.url}>
+																		{link.url}
+																	</DocumentLinkText>
 																	{link.processedAt && (
 																		<TimestampText>
 																			{new Date(link.processedAt).toLocaleString("en-US", {
