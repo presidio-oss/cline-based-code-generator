@@ -83,11 +83,35 @@ export class ExpertManager {
 		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
 		try {
 			await urlContentFetcher.launchBrowser()
+
+			// Read the existing status data
+			let existingStatusData: DocumentLink[] = []
+			if (await fileExistsAtPath(statusFilePath)) {
+				try {
+					const fileContent = await fs.readFile(statusFilePath, "utf-8")
+					existingStatusData = JSON.parse(fileContent)
+				} catch (error) {
+					console.error("Failed to read existing status data:", error)
+				}
+			}
+
 			for (const link of documentLinks) {
+				// Find the existing link in the status data
+				const existingLinkIndex = existingStatusData.findIndex((l) => l.url === link.url)
+
 				// Update to processing before extraction
 				link.status = "processing"
 				link.processedAt = new Date().toISOString()
-				await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
+
+				if (existingLinkIndex !== -1) {
+					// Update the existing link
+					existingStatusData[existingLinkIndex] = link
+				} else {
+					// Add the new link
+					existingStatusData.push(link)
+				}
+
+				await fs.writeFile(statusFilePath, JSON.stringify(existingStatusData, null, 2))
 
 				try {
 					const markdown = await urlContentFetcher.urlToMarkdown(link.url)
@@ -97,14 +121,20 @@ export class ExpertManager {
 					link.status = "completed"
 					link.processedAt = new Date().toISOString()
 					link.error = null
-					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
 				} catch (error) {
 					link.status = "failed"
 					link.processedAt = new Date().toISOString()
 					link.error = error instanceof Error ? error.message : String(error)
-					await fs.writeFile(statusFilePath, JSON.stringify(documentLinks, null, 2))
 					console.error(`Failed to process document link for expert ${expertName}:`, error)
 				}
+
+				// Update the status file after processing
+				if (existingLinkIndex !== -1) {
+					existingStatusData[existingLinkIndex] = link
+				} else {
+					existingStatusData.push(link)
+				}
+				await fs.writeFile(statusFilePath, JSON.stringify(existingStatusData, null, 2))
 			}
 		} catch (error) {
 			console.error(`Error processing document links for expert ${expertName}:`, error)

@@ -438,12 +438,16 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													</DocumentAccordionItem>
 												) : (
 													// Show "+ Add Doc" button only if inline editing is not active
-													<VSCodeButton
-														appearance="secondary"
-														onClick={() => setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })}
-														style={{ width: "100%", marginTop: "8px" }}>
-														+ Add Doc
-													</VSCodeButton>
+													(exp.documentLinks ?? []).length < 3 && (
+														<VSCodeButton
+															appearance="secondary"
+															onClick={() =>
+																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
+															}
+															style={{ width: "100%", marginTop: "8px" }}>
+															+ Add Doc
+														</VSCodeButton>
+													)
 												)}
 											</AccordionContainer>
 										)}
