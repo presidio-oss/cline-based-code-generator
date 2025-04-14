@@ -779,8 +779,8 @@ export class Controller {
 				}
 				break
 			case "expertPrompt":
+				const expertName = message.text || ""
 				if (message.category === "viewExpert") {
-					const expertName = message.text || ""
 					if (message.isDefault && message.prompt) {
 						try {
 							// Create a unique URI for this expert prompt
@@ -806,7 +806,7 @@ export class Controller {
 						}
 					}
 				} else {
-					await this.updateExpertPrompt(message.prompt)
+					await this.updateExpertPrompt(message.prompt, expertName)
 				}
 				break
 			case "saveExpert":
@@ -2535,12 +2535,22 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		}
 	}
 
-	async updateExpertPrompt(prompt?: string) {
+	async updateExpertPrompt(prompt?: string, expertName?: string) {
 		// User may be clearing the field
 		await customUpdateState(this.context, "expertPrompt", prompt || undefined)
-		if (this.task) {
-			this.task.expertPrompt = prompt || undefined
+
+		let additionalContext = ""
+
+		if (expertName) {
+			additionalContext = await this.getExpertDocumentsContent(expertName)
 		}
+
+		const updatedPrompt = prompt ? `${prompt}${additionalContext}` : additionalContext
+
+		if (this.task) {
+			this.task.expertPrompt = updatedPrompt || undefined
+		}
+
 		await this.postStateToWebview()
 	}
 
@@ -2559,5 +2569,36 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			type: "expertsUpdated",
 			experts,
 		})
+	}
+
+	private async getExpertDocumentsContent(expertName: string): Promise<string> {
+		const expertPath = await this.expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
+
+		if (!expertPath) {
+			return ""
+		}
+
+		const docsDir = path.join(path.dirname(expertPath), "docs")
+		const statusFilePath = path.join(docsDir, "status.json")
+
+		if (!(await fileExistsAtPath(statusFilePath))) {
+			return ""
+		}
+
+		const statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		let additionalContext = ""
+		let documentCounter = 1
+		for (const document of statusData) {
+			if (document.status === "completed" && document.filename) {
+				const docFilePath = path.join(docsDir, document.filename)
+				if (await fileExistsAtPath(docFilePath)) {
+					const docContent = await fs.readFile(docFilePath, "utf-8")
+					additionalContext += `\n\n### Document-${documentCounter} Reference\n${docContent}`
+					documentCounter++
+				}
+			}
+		}
+
+		return additionalContext
 	}
 }

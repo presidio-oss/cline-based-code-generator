@@ -1,6 +1,6 @@
 import React, { useState, useEffect, memo } from "react"
 import styled from "styled-components"
-import { VSCodeButton, VSCodeTextField, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { DocumentLink, ExpertData } from "../../types/experts"
@@ -291,18 +291,27 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													? exp.documentLinks.map((link, idx) => (
 															<DocumentAccordionItem key={idx}>
 																{link.status && (
-																	<StatusIcon
-																		status={link.status}
-																		className={`codicon ${
-																			link.status.toLowerCase() === "completed"
-																				? "codicon-check"
-																				: link.status.toLowerCase() === "failed"
-																					? "codicon-error"
-																					: link.status.toLowerCase() === "processing"
-																						? "codicon-pulse"
-																						: "codicon-clock"
-																		}`}
-																	/>
+																	<StatusIcon status={link.status}>
+																		{link.status.toLowerCase() === "completed" ? (
+																			<span className="codicon codicon-check" />
+																		) : link.status.toLowerCase() === "failed" ? (
+																			<span className="codicon codicon-error" />
+																		) : link.status.toLowerCase() === "processing" ? (
+																			<div
+																				style={{
+																					transform: "scale(0.8)",
+																					width: "20px",
+																					height: "20px",
+																					display: "flex",
+																					alignItems: "center",
+																					justifyContent: "center",
+																				}}>
+																				<VSCodeProgressRing />
+																			</div>
+																		) : (
+																			<span className="codicon codicon-clock" />
+																		)}
+																	</StatusIcon>
 																)}
 																<DocumentLinkContainer>
 																	<DocumentLinkText>{link.url}</DocumentLinkText>
