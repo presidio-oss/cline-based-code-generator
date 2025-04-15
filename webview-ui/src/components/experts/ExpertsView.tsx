@@ -18,6 +18,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [documentLink, setDocumentLink] = useState("")
 	const [documentLinks, setDocumentLinks] = useState<DocumentLink[]>([])
 	const [documentLinkError, setDocumentLinkError] = useState<string | null>(null)
+	const [inlineDocLinkError, setInlineDocLinkError] = useState<string | null>(null)
 	const [nameError, setNameError] = useState<string | null>(null)
 	const [isFileUploaded, setIsFileUploaded] = useState(false)
 	const [isFormReadOnly, setIsFormReadOnly] = useState(false)
@@ -390,50 +391,73 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												{/* Inline editing for adding a document */}
 												{inlineEditingDoc?.expertName === exp.name ? (
 													<DocumentAccordionItem>
-														<VSCodeTextField
-															value={inlineEditingDoc.linkUrl}
-															placeholder="Enter document link"
-															onChange={(e) =>
-																setInlineEditingDoc((prev) =>
-																	prev
-																		? {
-																				...prev,
-																				linkUrl: (e.target as HTMLInputElement).value,
-																			}
-																		: null,
-																)
-															}
-															style={{ flexGrow: 1 }}
-														/>
+														<div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+															<VSCodeTextField
+																value={inlineEditingDoc.linkUrl}
+																placeholder="Enter document link"
+																onChange={(e) => {
+																	setInlineDocLinkError(null) // Reset error on input change
+																	setInlineEditingDoc((prev) =>
+																		prev
+																			? {
+																					...prev,
+																					linkUrl: (e.target as HTMLInputElement).value,
+																				}
+																			: null,
+																	)
+																}}
+																style={{ flexGrow: 1 }}
+															/>
+															{inlineDocLinkError && (
+																<p
+																	style={{
+																		color: "var(--vscode-errorForeground)",
+																		fontSize: "12px",
+																		marginTop: "4px",
+																	}}>
+																	{inlineDocLinkError}
+																</p>
+															)}
+														</div>
 														<DocumentButtons>
 															<VSCodeButton
 																appearance="icon"
 																onClick={(e) => {
 																	e.stopPropagation()
-																	if (inlineEditingDoc.linkUrl.trim()) {
-																		vscode.postMessage({
-																			type: "addDocumentLink",
-																			text: inlineEditingDoc.linkUrl,
-																			expert: exp.name,
-																		})
-																		setExperts((prevExperts) =>
-																			prevExperts.map((expert) =>
-																				expert.name === exp.name
-																					? {
-																							...expert,
-																							documentLinks: [
-																								...(expert.documentLinks || []),
-																								{
-																									url: inlineEditingDoc.linkUrl,
-																									status: "pending",
-																								},
-																							],
-																						}
-																					: expert,
-																			),
-																		)
+																	try {
+																		const url = new URL(inlineEditingDoc.linkUrl.trim())
+																		if (url.protocol !== "https:") {
+																			setInlineDocLinkError("Only HTTPS links are allowed")
+																			return
+																		}
+																		if (inlineEditingDoc.linkUrl.trim()) {
+																			vscode.postMessage({
+																				type: "addDocumentLink",
+																				text: inlineEditingDoc.linkUrl,
+																				expert: exp.name,
+																			})
+																			setExperts((prevExperts) =>
+																				prevExperts.map((expert) =>
+																					expert.name === exp.name
+																						? {
+																								...expert,
+																								documentLinks: [
+																									...(expert.documentLinks ||
+																										[]),
+																									{
+																										url: inlineEditingDoc.linkUrl,
+																										status: "pending",
+																									},
+																								],
+																							}
+																						: expert,
+																				),
+																			)
+																		}
+																		setInlineEditingDoc(null)
+																	} catch (e) {
+																		setInlineDocLinkError("Please enter a valid URL")
 																	}
-																	setInlineEditingDoc(null)
 																}}>
 																<span className="codicon codicon-check" />
 															</VSCodeButton>
@@ -442,6 +466,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																onClick={(e) => {
 																	e.stopPropagation()
 																	setInlineEditingDoc(null)
+																	setInlineDocLinkError(null) // Clear error on cancel
 																}}>
 																<span className="codicon codicon-close" />
 															</VSCodeButton>
@@ -452,9 +477,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													(exp.documentLinks ?? []).length < 3 && (
 														<VSCodeButton
 															appearance="secondary"
-															onClick={() =>
+															onClick={() => {
 																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
-															}
+																setInlineDocLinkError(null) // Reset error when starting inline editing
+															}}
 															style={{ width: "100%", marginTop: "8px" }}>
 															+ Add Doc
 														</VSCodeButton>
@@ -532,7 +558,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										disabled={isFormReadOnly || documentLinks.length >= 3 || !documentLink}
 										onClick={() => {
 											try {
-												new URL(documentLink)
+												const url = new URL(documentLink)
+												if (url.protocol !== "https:") {
+													setDocumentLinkError("Only HTTPS links are allowed")
+													return
+												}
 												if (!documentLinks.some((link) => link.url === documentLink)) {
 													setDocumentLinks([...documentLinks, { url: documentLink }])
 													setDocumentLink("")
