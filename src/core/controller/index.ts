@@ -2536,9 +2536,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	}
 
 	async updateExpertPrompt(prompt?: string, expertName?: string) {
-		// User may be clearing the field
-		await customUpdateState(this.context, "expertPrompt", prompt || undefined)
-
 		let additionalContext = ""
 
 		if (expertName) {
@@ -2546,6 +2543,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		}
 
 		const updatedPrompt = prompt ? `${prompt}${additionalContext}` : additionalContext
+
+		await customUpdateState(this.context, "expertPrompt", updatedPrompt || undefined)
 
 		if (this.task) {
 			this.task.expertPrompt = updatedPrompt || undefined

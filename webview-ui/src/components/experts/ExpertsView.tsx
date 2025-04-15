@@ -511,7 +511,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						<SectionHeader>Add New Expert</SectionHeader>
 						<FormContainer>
 							<FormGroup>
-								<label htmlFor="expert-name">Name</label>
+								<label htmlFor="expert-name">
+									Name<span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
+								</label>
 								<VSCodeTextField
 									id="expert-name"
 									value={newExpertName}
@@ -527,7 +529,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								)}
 							</FormGroup>
 							<FormGroup>
-								<label htmlFor="expert-prompt">Guidelines</label>
+								<label htmlFor="expert-prompt">
+									Guidelines<span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
+								</label>
 								<VSCodeTextArea
 									id="expert-prompt"
 									value={newExpertPrompt}
