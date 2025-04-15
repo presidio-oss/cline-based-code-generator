@@ -36,6 +36,7 @@ export class ExpertManager {
 			name: expert.name,
 			isDefault: expert.isDefault,
 			createdAt: expert.createdAt || new Date().toISOString(),
+			documentLinks: expert.documentLinks || [],
 		}
 		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
 
@@ -198,6 +199,7 @@ export class ExpertManager {
 		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
 		const docsDir = path.join(expertDir, "docs")
 		const statusFilePath = path.join(docsDir, "status.json")
+		const metadataFilePath = path.join(expertDir, "metadata.json")
 
 		// Ensure the docs directory exists
 		await createDirectoriesForFile(statusFilePath)
@@ -225,6 +227,11 @@ export class ExpertManager {
 		statusData.push(newLink)
 		await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
 
+		// Update metadata.json with the new document link
+		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
+		metadata.documentLinks = statusData.map((link) => ({ url: link.url }))
+		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+
 		// Process the newly added document link
 		await this.processDocumentLinks(expertName, expertDir, [newLink], workspacePath)
 	}
@@ -237,6 +244,7 @@ export class ExpertManager {
 		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
 		const docsDir = path.join(expertDir, "docs")
 		const statusFilePath = path.join(docsDir, "status.json")
+		const metadataFilePath = path.join(expertDir, "metadata.json")
 
 		if (!(await fileExistsAtPath(statusFilePath))) {
 			throw new Error("Status file not found")
@@ -246,6 +254,11 @@ export class ExpertManager {
 		const updatedStatusData = statusData.filter((link) => link.url !== linkUrl)
 
 		await fs.writeFile(statusFilePath, JSON.stringify(updatedStatusData, null, 2))
+
+		// Update metadata.json after deleting the document link
+		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
+		metadata.documentLinks = updatedStatusData.map((link) => ({ url: link.url }))
+		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
 
 		// Optionally delete the associated file if it exists
 		const linkToDelete = statusData.find((link) => link.url === linkUrl)
