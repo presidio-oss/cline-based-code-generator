@@ -430,6 +430,17 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																			setInlineDocLinkError("Only HTTPS links are allowed")
 																			return
 																		}
+																		if (
+																			exp.documentLinks?.some(
+																				(link) =>
+																					link.url === inlineEditingDoc.linkUrl.trim(),
+																			)
+																		) {
+																			setInlineDocLinkError(
+																				"This link has already been added",
+																			)
+																			return
+																		}
 																		if (inlineEditingDoc.linkUrl.trim()) {
 																			vscode.postMessage({
 																				type: "addDocumentLink",
@@ -563,12 +574,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													setDocumentLinkError("Only HTTPS links are allowed")
 													return
 												}
-												if (!documentLinks.some((link) => link.url === documentLink)) {
-													setDocumentLinks([...documentLinks, { url: documentLink }])
-													setDocumentLink("")
-												} else {
+												if (documentLinks.some((link) => link.url === documentLink.trim())) {
 													setDocumentLinkError("This link has already been added")
+													return
 												}
+												setDocumentLinks([...documentLinks, { url: documentLink.trim() }])
+												setDocumentLink("")
 											} catch (e) {
 												setDocumentLinkError("Please enter a valid URL")
 											}
