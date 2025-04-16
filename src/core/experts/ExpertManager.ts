@@ -6,12 +6,19 @@ import { DocumentLink, ExpertData, ExpertDataSchema } from "../../../webview-ui/
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { GlobalFileNames } from "../../global-constants"
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
+import { getAllExtensionState } from "../storage/state"
+import { buildApiHandler } from "../../api"
+import { HaiBuildDefaults } from "../../shared/haiDefaults"
 
 export class ExpertManager {
-	private extensionContext?: vscode.ExtensionContext
+	private extensionContext: vscode.ExtensionContext
+	private workspaceId: string
+	private systemPrompt: string
 
-	constructor(extensionContext?: vscode.ExtensionContext) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
 		this.extensionContext = extensionContext
+		this.workspaceId = workspaceId
+		this.systemPrompt = HaiBuildDefaults.defaultMarkDownSummarizer
 	}
 
 	/**
@@ -116,8 +123,9 @@ export class ExpertManager {
 
 				try {
 					const markdown = await urlContentFetcher.urlToMarkdown(link.url)
+					const summarizedMarkDown = await this.summarizeMarDownContent(markdown)
 					const docFilePath = path.join(docsDir, link.filename || "")
-					await fs.writeFile(docFilePath, markdown)
+					await fs.writeFile(docFilePath, summarizedMarkDown)
 
 					link.status = "completed"
 					link.processedAt = new Date().toISOString()
@@ -172,8 +180,9 @@ export class ExpertManager {
 		await urlContentFetcher.launchBrowser()
 		try {
 			const markdown = await urlContentFetcher.urlToMarkdown(linkUrl)
+			const summarizedMarkDown = await this.summarizeMarDownContent(markdown)
 			const docFilePath = path.join(docsDir, statusData[index].filename || "")
-			await fs.writeFile(docFilePath, markdown)
+			await fs.writeFile(docFilePath, summarizedMarkDown)
 
 			statusData[index].status = "completed"
 			statusData[index].processedAt = new Date().toISOString()
@@ -451,5 +460,27 @@ export class ExpertManager {
 			}
 		}
 		return null
+	}
+
+	/**
+	 * Summarize the content
+	 */
+	private async summarizeMarDownContent(markDownContent: string) {
+		let content = ""
+		const { apiConfiguration } = await getAllExtensionState(this.extensionContext, this.workspaceId)
+		const llmApi = buildApiHandler(apiConfiguration)
+		const apiStream = llmApi.createMessage(this.systemPrompt, [
+			{
+				role: "user",
+				content: markDownContent,
+			},
+		])
+		const iterator = apiStream[Symbol.asyncIterator]()
+		for await (const chunk of iterator) {
+			if (chunk && chunk.type === "text" && chunk.text) {
+				content += chunk.text
+			}
+		}
+		return content
 	}
 }

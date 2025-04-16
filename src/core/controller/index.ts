@@ -114,9 +114,9 @@ export class Controller {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
 
-		this.expertManager = new ExpertManager(this.context)
 		this.codeIndexAbortController = new AbortController()
 		this.workspaceId = getWorkspaceID() || ""
+		this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (getWorkspacePath() || "").trim()
 		if (this.vsCodeWorkSpaceFolderFsPath) {
