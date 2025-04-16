@@ -212,7 +212,8 @@ export class ExpertManager {
 
 		// Check if the maximum number of document links is reached
 		if (statusData.length >= 3) {
-			throw new Error("Maximum of 3 document links allowed")
+			vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
+			return
 		}
 
 		// Add the new document link
@@ -293,21 +294,59 @@ export class ExpertManager {
 					try {
 						const metadataPath = path.join(expertDir, "metadata.json")
 						const promptPath = path.join(expertDir, "prompt.md")
+						const docsDir = path.join(expertDir, "docs")
+						const statusFilePath = path.join(docsDir, "status.json")
+
 						if ((await fileExistsAtPath(metadataPath)) && (await fileExistsAtPath(promptPath))) {
 							const metadataContent = await fs.readFile(metadataPath, "utf-8")
 							const metadata = JSON.parse(metadataContent)
 							const promptContent = await fs.readFile(promptPath, "utf-8")
-							const docsDir = path.join(expertDir, "docs")
-							const statusFilePath = path.join(docsDir, "status.json")
-							let documentLinks: DocumentLink[] | undefined = undefined
+
+							// Initialize documentLinks from metadata.json
+							let documentLinks: DocumentLink[] = metadata.documentLinks || []
+
+							// Check if status.json exists
 							if (await fileExistsAtPath(statusFilePath)) {
 								try {
 									const statusContent = await fs.readFile(statusFilePath, "utf-8")
-									documentLinks = JSON.parse(statusContent)
+									const statusLinks: DocumentLink[] = JSON.parse(statusContent)
+
+									// Synchronize metadata.json and status.json
+									const statusUrls = new Set(statusLinks.map((link) => link.url))
+									const metadataUrls = new Set(documentLinks.map((link) => link.url))
+
+									// Add missing links from metadata.json to status.json
+									for (const link of documentLinks) {
+										if (!statusUrls.has(link.url)) {
+											await this.addDocumentLink(workspacePath, metadata.name, link.url)
+										}
+									}
+
+									// Remove extra links from status.json not in metadata.json
+									for (const link of statusLinks) {
+										if (!metadataUrls.has(link.url)) {
+											await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
+										}
+									}
+
+									// Reload documentLinks after synchronization
+									documentLinks = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
 								} catch (error) {
-									console.error(`Failed to read document links status for ${folder}:`, error)
+									console.error(`Failed to read or synchronize document links for ${folder}:`, error)
+								}
+							} else {
+								// If status.json is missing, process all links from metadata.json
+								for (const link of documentLinks) {
+									await this.addDocumentLink(workspacePath, metadata.name, link.url)
+								}
+
+								// Reload documentLinks after processing
+								if (await fileExistsAtPath(statusFilePath)) {
+									documentLinks = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
 								}
 							}
+
+							// Construct expert data
 							const expertData = {
 								name: metadata.name,
 								isDefault: metadata.isDefault,
@@ -315,6 +354,8 @@ export class ExpertManager {
 								createdAt: metadata.createdAt,
 								documentLinks,
 							}
+
+							// Validate expert data
 							const validationResult = ExpertDataSchema.safeParse(expertData)
 							if (validationResult.success) {
 								experts.push(expertData)
