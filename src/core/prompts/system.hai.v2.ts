@@ -253,14 +253,14 @@ Your final result description here
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
 
-## plan_mode_response
+## plan_mode_respond
 Description: Respond to the user's inquiry in an effort to plan a solution to the user's task. This tool should be used when you need to provide a response to a question or statement from the user about how you plan to accomplish the task. This tool is only available in PLAN MODE. The environment_details will specify the current mode, if it is not PLAN MODE then you should not use this tool. Depending on the user's message, you may ask questions to get clarification about the user's request, architect a solution to the task, and to brainstorm ideas with the user. For example, if the user's task is to create a website, you may start by asking some clarifying questions, then present a detailed plan for how you will accomplish the task given the context, and perhaps engage in a back and forth to finalize the details before the user switches you to ACT MODE to implement the solution.
 Parameters:
 - response: (required) The response to provide to the user. Do not try to use tools in this parameter, this is simply a chat response.
 Usage:
-<plan_mode_response>
+<plan_mode_respond>
 <response>Your response here</response>
-</plan_mode_response>
+</plan_mode_respond>
 
 # Tool Use Examples
 
@@ -528,16 +528,16 @@ ACT MODE vs. PLAN MODE
 Each user message includes \`environment_details\` specifying the mode:
 
 ACT MODE:
-- Access to all tools **except** \`plan_mode_response\`.
+- Access to all tools **except** \`plan_mode_respond\`.
 - Use tools to complete tasks.
 - Once done, use \`attempt_completion\` to present results.
 
 PLAN MODE
-- Access to \`plan_mode_response\`.
+- Access to \`plan_mode_respond\`.
 - Used for gathering context and creating a detailed plan before execution.
 - Engage in back-and-forth with the user, asking clarifying questions if needed.
 - Use tools like \`read_file\` or \`search_files\` for context gathering.
-- Present plans using \`plan_mode_response\` (avoid \`<thinking>\` for responses).
+- Present plans using \`plan_mode_respond\` (avoid \`<thinking>\` for responses).
 - Include **Mermaid diagrams** when helpful for clarity.
 - Once the plan is finalized, prompt the user to switch back to ACT MODE for execution.
 
