@@ -1,11 +1,19 @@
 import { z } from "zod"
 
-export const DocumentStatus = z.enum(["pending", "processing", "completed", "failed"])
+export enum DocumentStatus {
+	PENDING = "pending",
+	PROCESSING = "processing",
+	COMPLETED = "completed",
+	FAILED = "failed",
+}
 
 export const DocumentLinkSchema = z.object({
-	url: z.string().trim().url("Must be a valid URL"),
+	url: z
+		.string()
+		.trim()
+		.refine((url) => url.startsWith("https://"), "Must be an HTTPS URL"),
 	filename: z.string().trim().optional(),
-	status: DocumentStatus.optional(),
+	status: z.nativeEnum(DocumentStatus).optional(),
 	processedAt: z.string().trim().optional(),
 	error: z.string().nullable().optional(),
 })

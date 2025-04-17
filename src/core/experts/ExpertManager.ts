@@ -2,7 +2,7 @@ import fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 import { v4 as uuidv4 } from "uuid"
-import { DocumentLink, ExpertData, ExpertDataSchema } from "../../shared/experts"
+import { DocumentLink, ExpertData, ExpertDataSchema, DocumentStatus } from "../../shared/experts"
 import { fileExistsAtPath, createDirectoriesForFile } from "../../utils/fs"
 import { GlobalFileNames } from "../../global-constants"
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
@@ -15,10 +15,35 @@ export class ExpertManager {
 	private workspaceId: string
 	private systemPrompt: string
 
+	private static readonly METADATA_FILE = "metadata.json"
+	private static readonly PROMPT_FILE = "prompt.md"
+	private static readonly DOCS_DIR = "docs"
+	private static readonly STATUS_FILE = "status.json"
+	private static readonly PLACEHOLDER_FILE = "placeholder.txt"
+
 	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
 		this.systemPrompt = HaiBuildDefaults.defaultMarkDownSummarizer
+	}
+
+	/**
+	 * Utility function to format expert names
+	 */
+	private formatExpertName(name: string): string {
+		return name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
+	}
+
+	/**
+	 * Helper to get expert directory paths
+	 */
+	private getExpertPaths(workspacePath: string, expertName: string) {
+		const sanitizedName = this.formatExpertName(expertName)
+		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
+		const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
+		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
+		const metadataFilePath = path.join(expertDir, ExpertManager.METADATA_FILE)
+		return { sanitizedName, expertDir, docsDir, statusFilePath, metadataFilePath }
 	}
 
 	/**
@@ -34,40 +59,40 @@ export class ExpertManager {
 			throw new Error(`Invalid expert data: ${validationResult.error.message}`)
 		}
 
-		const sanitizedName = expert.name.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
-		await createDirectoriesForFile(path.join(expertDir, "placeholder.txt"))
+		const parsedExpert = validationResult.data
 
-		const metadataFilePath = path.join(expertDir, "metadata.json")
+		const { expertDir, docsDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, parsedExpert.name)
+		await createDirectoriesForFile(path.join(expertDir, ExpertManager.PLACEHOLDER_FILE))
+
 		const metadata = {
-			name: expert.name,
-			isDefault: expert.isDefault,
-			createdAt: expert.createdAt || new Date().toISOString(),
-			documentLinks: expert.documentLinks || [],
+			name: parsedExpert.name,
+			isDefault: parsedExpert.isDefault,
+			createdAt: parsedExpert.createdAt || new Date().toISOString(),
+			documentLinks: parsedExpert.documentLinks || [],
 		}
 		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
 
-		const promptFilePath = path.join(expertDir, "prompt.md")
-		await fs.writeFile(promptFilePath, expert.prompt)
+		const promptFilePath = path.join(expertDir, ExpertManager.PROMPT_FILE)
+		await fs.writeFile(promptFilePath, parsedExpert.prompt)
 
-		if (expert.documentLinks && expert.documentLinks.length > 0) {
-			const docsDir = path.join(expertDir, "docs")
-			await createDirectoriesForFile(path.join(docsDir, "placeholder.txt"))
+		if (parsedExpert.documentLinks && parsedExpert.documentLinks.length > 0) {
+			const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
+			await createDirectoriesForFile(path.join(docsDir, ExpertManager.PLACEHOLDER_FILE))
 
 			// Set initial status to "pending"
-			const statusData = expert.documentLinks.map((link) => ({
+			const statusData = parsedExpert.documentLinks.map((link) => ({
 				...link,
 				filename: `doc-${uuidv4()}.md`,
-				status: "pending" as "pending" | "processing" | "completed" | "failed",
+				status: DocumentStatus.PENDING,
 				processedAt: new Date().toISOString(),
 				error: null,
 			}))
 
-			const statusFilePath = path.join(docsDir, "status.json")
+			const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
 			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
 
 			// Process document links (pass workspacePath)
-			this.processDocumentLinks(expert.name, expertDir, statusData, workspacePath)
+			this.processDocumentLinks(parsedExpert.name, expertDir, statusData, workspacePath)
 		}
 	}
 
@@ -80,8 +105,7 @@ export class ExpertManager {
 		documentLinks: DocumentLink[],
 		workspacePath: string,
 	): Promise<void> {
-		const docsDir = path.join(expertDir, "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
+		const { docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		if (!this.extensionContext) {
 			console.error("Extension context not available")
@@ -108,7 +132,7 @@ export class ExpertManager {
 				const existingLinkIndex = existingStatusData.findIndex((l) => l.url === link.url)
 
 				// Update to processing before extraction
-				link.status = "processing"
+				link.status = DocumentStatus.PROCESSING
 				link.processedAt = new Date().toISOString()
 
 				if (existingLinkIndex !== -1) {
@@ -127,11 +151,11 @@ export class ExpertManager {
 					const docFilePath = path.join(docsDir, link.filename || "")
 					await fs.writeFile(docFilePath, summarizedMarkDown)
 
-					link.status = "completed"
+					link.status = DocumentStatus.COMPLETED
 					link.processedAt = new Date().toISOString()
 					link.error = null
 				} catch (error) {
-					link.status = "failed"
+					link.status = DocumentStatus.FAILED
 					link.processedAt = new Date().toISOString()
 					link.error = error instanceof Error ? error.message : String(error)
 					console.error(`Failed to process document link for expert ${expertName}:`, error)
@@ -156,10 +180,7 @@ export class ExpertManager {
 	 * Refresh (or edit) a single document link for an expert.
 	 */
 	async refreshDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
-		const docsDir = path.join(expertDir, "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
+		const { expertDir, docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		let statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
 		const index = statusData.findIndex((link) => link.url === linkUrl)
@@ -168,7 +189,7 @@ export class ExpertManager {
 		}
 
 		// Update status to processing
-		statusData[index].status = "processing"
+		statusData[index].status = DocumentStatus.PROCESSING
 		statusData[index].processedAt = new Date().toISOString()
 		await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
 
@@ -184,12 +205,12 @@ export class ExpertManager {
 			const docFilePath = path.join(docsDir, statusData[index].filename || "")
 			await fs.writeFile(docFilePath, summarizedMarkDown)
 
-			statusData[index].status = "completed"
+			statusData[index].status = DocumentStatus.COMPLETED
 			statusData[index].processedAt = new Date().toISOString()
 			statusData[index].error = null
 			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
 		} catch (error) {
-			statusData[index].status = "failed"
+			statusData[index].status = DocumentStatus.FAILED
 			statusData[index].processedAt = new Date().toISOString()
 			statusData[index].error = error instanceof Error ? error.message : String(error)
 			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
@@ -204,11 +225,7 @@ export class ExpertManager {
 	 */
 
 	async addDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
-		const docsDir = path.join(expertDir, "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
-		const metadataFilePath = path.join(expertDir, "metadata.json")
+		const { expertDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		// Ensure the docs directory exists
 		await createDirectoriesForFile(statusFilePath)
@@ -228,7 +245,7 @@ export class ExpertManager {
 		// Add the new document link
 		const newLink: DocumentLink = {
 			url: linkUrl,
-			status: "pending",
+			status: DocumentStatus.PENDING,
 			filename: `doc-${uuidv4()}.md`,
 			processedAt: new Date().toISOString(),
 			error: null,
@@ -250,11 +267,7 @@ export class ExpertManager {
 	 * Delete a document link for a custom expert
 	 */
 	async deleteDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const sanitizedName = expertName.replace(/[^a-zA-Z0-9_-]/g, "_").toLowerCase()
-		const expertDir = path.join(workspacePath, GlobalFileNames.experts, sanitizedName)
-		const docsDir = path.join(expertDir, "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
-		const metadataFilePath = path.join(expertDir, "metadata.json")
+		const { docsDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		if (!(await fileExistsAtPath(statusFilePath))) {
 			throw new Error("Status file not found")
@@ -296,89 +309,100 @@ export class ExpertManager {
 		try {
 			const expertFolders = await fs.readdir(expertsDir)
 			const experts: ExpertData[] = []
+
 			for (const folder of expertFolders) {
 				const expertDir = path.join(expertsDir, folder)
 				const stats = await fs.stat(expertDir)
-				if (stats.isDirectory()) {
-					try {
-						const metadataPath = path.join(expertDir, "metadata.json")
-						const promptPath = path.join(expertDir, "prompt.md")
-						const docsDir = path.join(expertDir, "docs")
-						const statusFilePath = path.join(docsDir, "status.json")
+				if (!stats.isDirectory()) {
+					continue
+				}
 
-						if ((await fileExistsAtPath(metadataPath)) && (await fileExistsAtPath(promptPath))) {
-							const metadataContent = await fs.readFile(metadataPath, "utf-8")
-							const metadata = JSON.parse(metadataContent)
-							const promptContent = await fs.readFile(promptPath, "utf-8")
+				try {
+					const metadataPath = path.join(expertDir, ExpertManager.METADATA_FILE)
+					const promptPath = path.join(expertDir, ExpertManager.PROMPT_FILE)
+					const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
+					const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
 
-							// Initialize documentLinks from metadata.json
-							let documentLinks: DocumentLink[] = metadata.documentLinks || []
+					if (!(await fileExistsAtPath(metadataPath)) || !(await fileExistsAtPath(promptPath))) {
+						continue
+					}
 
-							// Check if status.json exists
-							if (await fileExistsAtPath(statusFilePath)) {
-								try {
-									const statusContent = await fs.readFile(statusFilePath, "utf-8")
-									const statusLinks: DocumentLink[] = JSON.parse(statusContent)
+					const metadataContent = await fs.readFile(metadataPath, "utf-8")
+					const metadata = JSON.parse(metadataContent)
+					const promptContent = await fs.readFile(promptPath, "utf-8")
 
-									// Synchronize metadata.json and status.json
-									const statusUrls = new Set(statusLinks.map((link) => link.url))
-									const metadataUrls = new Set(documentLinks.map((link) => link.url))
+					let documentLinks: DocumentLink[] = metadata.documentLinks || []
 
-									// Add missing links from metadata.json to status.json
-									for (const link of documentLinks) {
-										if (!statusUrls.has(link.url)) {
-											await this.addDocumentLink(workspacePath, metadata.name, link.url)
-										}
-									}
+					// Keep metadata.json as source of truth
+					if (await fileExistsAtPath(statusFilePath)) {
+						try {
+							const statusContent = await fs.readFile(statusFilePath, "utf-8")
+							const allStatusLinks: DocumentLink[] = JSON.parse(statusContent)
 
-									// Remove extra links from status.json not in metadata.json
-									for (const link of statusLinks) {
-										if (!metadataUrls.has(link.url)) {
-											await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
-										}
-									}
+							const metadataUrls = new Set(documentLinks.map((link) => link.url))
+							const statusUrls = new Set(allStatusLinks.map((link) => link.url))
 
-									// Reload documentLinks after synchronization
-									documentLinks = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
-								} catch (error) {
-									console.error(`Failed to read or synchronize document links for ${folder}:`, error)
-								}
-							} else {
-								// If status.json is missing, process all links from metadata.json
-								for (const link of documentLinks) {
+							// Add missing links from metadata.json
+							for (const link of documentLinks) {
+								if (!statusUrls.has(link.url)) {
 									await this.addDocumentLink(workspacePath, metadata.name, link.url)
 								}
+							}
 
-								// Reload documentLinks after processing
-								if (await fileExistsAtPath(statusFilePath)) {
-									documentLinks = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+							// Remove links from status.json that are not in metadata.json
+							for (const link of allStatusLinks) {
+								if (!metadataUrls.has(link.url)) {
+									await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
 								}
 							}
 
-							// Construct expert data
-							const expertData = {
-								name: metadata.name,
-								isDefault: metadata.isDefault,
-								prompt: promptContent,
-								createdAt: metadata.createdAt,
-								documentLinks,
-							}
+							// Filtered status.json entries based on metadata.json
+							const seenUrls = new Set<string>()
+							documentLinks = []
 
-							// Validate expert data
-							const validationResult = ExpertDataSchema.safeParse(expertData)
-							if (validationResult.success) {
-								experts.push(expertData)
-							} else {
-								vscode.window.showWarningMessage(
-									`Invalid expert data for ${folder}: ${validationResult.error.issues.map((issue) => issue.message).join(", ")}`,
-								)
+							for (const link of allStatusLinks) {
+								if (metadataUrls.has(link.url) && !seenUrls.has(link.url)) {
+									documentLinks.push(link)
+									seenUrls.add(link.url)
+								}
 							}
+						} catch (error) {
+							console.error(`Failed to sync status.json for ${folder}:`, error)
 						}
-					} catch (error) {
-						console.error(`Failed to read expert from ${folder}:`, error)
+					} else {
+						// status.json missing, process links from metadata
+						for (const link of documentLinks) {
+							await this.addDocumentLink(workspacePath, metadata.name, link.url)
+						}
+
+						if (await fileExistsAtPath(statusFilePath)) {
+							const refreshed = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+							const metadataUrls = new Set(documentLinks.map((l) => l.url))
+							documentLinks = refreshed.filter((link: DocumentLink) => metadataUrls.has(link.url))
+						}
 					}
+
+					const expertData = {
+						name: metadata.name,
+						isDefault: metadata.isDefault,
+						prompt: promptContent,
+						createdAt: metadata.createdAt,
+						documentLinks,
+					}
+
+					const validationResult = ExpertDataSchema.safeParse(expertData)
+					if (validationResult.success) {
+						experts.push(validationResult.data)
+					} else {
+						vscode.window.showWarningMessage(
+							`Invalid expert data for ${folder}: ${validationResult.error.issues.map((i) => i.message).join(", ")}`,
+						)
+					}
+				} catch (err) {
+					console.error(`Error reading expert folder ${folder}:`, err)
 				}
 			}
+
 			return experts
 		} catch (error) {
 			console.error("Failed to read experts directory:", error)
@@ -405,7 +429,7 @@ export class ExpertManager {
 			const expertDir = path.join(expertsDir, folder)
 			const stats = await fs.stat(expertDir)
 			if (stats.isDirectory()) {
-				const metadataPath = path.join(expertDir, "metadata.json")
+				const metadataPath = path.join(expertDir, ExpertManager.METADATA_FILE)
 				if (await fileExistsAtPath(metadataPath)) {
 					try {
 						const metadataContent = await fs.readFile(metadataPath, "utf-8")
@@ -441,13 +465,13 @@ export class ExpertManager {
 			const expertDir = path.join(expertsDir, folder)
 			const stats = await fs.stat(expertDir)
 			if (stats.isDirectory()) {
-				const metadataPath = path.join(expertDir, "metadata.json")
+				const metadataPath = path.join(expertDir, ExpertManager.METADATA_FILE)
 				if (await fileExistsAtPath(metadataPath)) {
 					try {
 						const metadataContent = await fs.readFile(metadataPath, "utf-8")
 						const metadata = JSON.parse(metadataContent)
 						if (metadata.name === expertName) {
-							const promptPath = path.join(expertDir, "prompt.md")
+							const promptPath = path.join(expertDir, ExpertManager.PROMPT_FILE)
 							if (await fileExistsAtPath(promptPath)) {
 								return promptPath
 							}
