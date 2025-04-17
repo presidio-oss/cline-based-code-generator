@@ -2577,8 +2577,8 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			return ""
 		}
 
-		const docsDir = path.join(path.dirname(expertPath), "docs")
-		const statusFilePath = path.join(docsDir, "status.json")
+		const docsDir = path.join(path.dirname(expertPath), ExpertManager.DOCS_DIR)
+		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
 
 		if (!(await fileExistsAtPath(statusFilePath))) {
 			return ""

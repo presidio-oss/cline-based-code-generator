@@ -15,11 +15,11 @@ export class ExpertManager {
 	private workspaceId: string
 	private systemPrompt: string
 
-	private static readonly METADATA_FILE = "metadata.json"
-	private static readonly PROMPT_FILE = "prompt.md"
-	private static readonly DOCS_DIR = "docs"
-	private static readonly STATUS_FILE = "status.json"
-	private static readonly PLACEHOLDER_FILE = "placeholder.txt"
+	public static readonly METADATA_FILE = "metadata.json"
+	public static readonly PROMPT_FILE = "prompt.md"
+	public static readonly DOCS_DIR = "docs"
+	public static readonly STATUS_FILE = "status.json"
+	public static readonly PLACEHOLDER_FILE = "placeholder.txt"
 
 	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
 		this.extensionContext = extensionContext

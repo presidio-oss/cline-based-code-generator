@@ -5,6 +5,7 @@ import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { DocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
+import { capitalizeFirstLetter, formatTimestamp } from "../../utils/format"
 
 interface ExpertsViewProps {
 	onDone: () => void
@@ -293,7 +294,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 														? exp.documentLinks.map((link, idx) => (
 																<DocumentAccordionItem key={idx}>
 																	{link.status && (
-																		<StatusIcon status={link.status} title={link.status}>
+																		<StatusIcon
+																			status={link.status}
+																			title={capitalizeFirstLetter(link.status)}>
 																			{link.status.toLowerCase() === "completed" ? (
 																				<span className="codicon codicon-check" />
 																			) : link.status.toLowerCase() === "failed" ? (
@@ -321,18 +324,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																		</DocumentLinkText>
 																		{link.processedAt && (
 																			<TimestampText>
-																				{new Date(link.processedAt).toLocaleString(
-																					"en-US",
-																					{
-																						year: "2-digit",
-																						month: "2-digit",
-																						day: "2-digit",
-																						hour: "2-digit",
-																						minute: "2-digit",
-																						second: "2-digit",
-																						hour12: false,
-																					},
-																				)}
+																				{formatTimestamp(link.processedAt)}
 																			</TimestampText>
 																		)}
 																	</DocumentLinkContainer>
