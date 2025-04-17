@@ -62,7 +62,7 @@ import { CodeContextErrorMessage, CodeIndexStartMessage } from "../webview/custo
 import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
 import { ICodeIndexProgress } from "../../integrations/code-prep/type"
 import { VectorizeCodeAgent } from "../../integrations/code-prep/VectorizeCodeAgent"
-import { ExpertData } from "../../../webview-ui/src/types/experts"
+import { ExpertData } from "../../shared/experts"
 import { buildEmbeddingHandler } from "../../embedding"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"

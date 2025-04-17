@@ -7,7 +7,7 @@ import { mentionRegex, mentionRegexGlobal } from "../../../../src/shared/context
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
-import { ExpertData } from "../../types/experts"
+import { ExpertData } from "../../../../src/shared/experts.ts"
 import {
 	ContextMenuOptionType,
 	getContextMenuOptions,

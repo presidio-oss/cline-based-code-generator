@@ -1,4 +1,4 @@
-import { ExpertData } from "../types/experts"
+import { ExpertData } from "../../../src/shared/experts.ts"
 import { DOTNET_EXPERT_PROMPT } from "./experts/dotnetExpert"
 import { TERRAFORM_EXPERT_PROMPT } from "./experts/terraformExpert"
 import { NODEJS_EXPERT_PROMPT } from "./experts/nodejsExpert"

@@ -3,7 +3,7 @@ import styled from "styled-components"
 import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
 import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
-import { DocumentLink, ExpertData } from "../../types/experts"
+import { DocumentLink, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 
 interface ExpertsViewProps {
