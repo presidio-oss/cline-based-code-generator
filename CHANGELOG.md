@@ -1,5 +1,15 @@
 # Changelog
 
+## [3.4.0]
+
+### Added
+
+-  Ability to add reference document link for custom experts.
+
+### Fixed
+
+-  Fixed plan mode tool name issue with plan_mode_response.
+
 ## [3.3.2]
 
 ### Enhancements
