@@ -5,6 +5,7 @@ import CopyClipboard from "../common/CopyClipboard"
 
 interface HaiTaskComponentProps {
 	id: string
+	prdId: string
 	name: string
 	description: string
 	task: IHaiTask
@@ -12,7 +13,7 @@ interface HaiTaskComponentProps {
 	onTaskSelect: (task: IHaiClineTask) => void
 }
 
-const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, name, description, task, onTaskSelect, onTaskClick }) => {
+const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, description, task, onTaskSelect, onTaskClick }) => {
 	return (
 		<div
 			style={{
@@ -43,6 +44,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, name, descripti
 						textOverflow: "ellipsis",
 						display: "flex",
 						flexDirection: "row",
+						alignItems: "center",
 					}}>
 					<span
 						style={{
@@ -65,6 +67,12 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, name, descripti
 							/>
 						)}{" "}
 					</span>
+					{task.status === "Completed" && (
+						<span
+							className={`codicon codicon-pass-filled`}
+							style={{ marginLeft: "4px", color: "green", fontSize: "13px" }}
+						/>
+					)}
 				</div>
 				<span
 					style={{
@@ -92,7 +100,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, name, descripti
 						onTaskSelect({
 							context: `${name}: ${description}`,
 							...task,
-							id: `${id}-${task.id}`,
+							id: `${prdId}-${id}-${task.id}`,
 						})
 					}}>
 					<span className="codicon codicon-play" style={{ fontSize: 14, cursor: "pointer" }} />

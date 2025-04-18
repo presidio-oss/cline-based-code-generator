@@ -11,6 +11,7 @@ interface HaiStoryAccordionProps {
 	tasks: IHaiTask[]
 	onTaskSelect: (task: IHaiClineTask) => void
 	id: string
+	prdId: string
 	storyTicketId?: string
 	isAllExpanded: boolean
 }
@@ -24,6 +25,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 	description,
 	storyTicketId,
 	id,
+	prdId,
 	isAllExpanded,
 }) => {
 	const [isExpanded, setIsExpanded] = useState<boolean>(true)
@@ -136,7 +138,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 					<VSCodeButton
 						appearance="icon"
 						title="View Story"
-						onClick={() => onStoryClick({ id, name, description, storyTicketId, tasks })}>
+						onClick={() => onStoryClick({ id, prdId, name, description, storyTicketId, tasks })}>
 						<span
 							className="codicon codicon-eye"
 							style={{
@@ -169,6 +171,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 											name={name}
 											description={description}
 											task={task}
+											prdId={prdId}
 											onTaskSelect={onTaskSelect}
 											onTaskClick={onTaskClick}
 										/>

@@ -39,6 +39,9 @@ interface ChatViewProps {
 	showHistoryView: () => void
 	onTaskSelect: (task: IHaiClineTask) => void
 	selectedHaiTask: IHaiClineTask | null
+	haiConfig: {
+		[x: string]: any
+	}
 }
 
 export const MAX_IMAGES_PER_MESSAGE = 20 // Anthropic limits to 20 images
@@ -50,6 +53,7 @@ const ChatView = ({
 	showHistoryView,
 	onTaskSelect,
 	selectedHaiTask,
+	haiConfig,
 }: ChatViewProps) => {
 	const { version, clineMessages: messages, taskHistory, apiConfiguration, telemetrySetting } = useExtensionState()
 
@@ -90,6 +94,7 @@ const ChatView = ({
 	const disableAutoScrollRef = useRef(false)
 	const [showScrollToBottom, setShowScrollToBottom] = useState(false)
 	const [isAtBottom, setIsAtBottom] = useState(false)
+	const [lastSuccessfullyExecutedTaskId, setLastSuccessfullyExecutedTaskId] = useState<string | undefined>(undefined)
 
 	// UI layout depends on the last 2 messages
 	// (since it relies on the content of these messages, we are deep comparing. i.e. the button state after hitting button sets enableButtons to false, and this effect otherwise would have to true again even if messages didn't change
@@ -97,7 +102,10 @@ const ChatView = ({
 	const secondLastMessage = useMemo(() => messages.at(-2), [messages])
 
 	useEffect(() => {
-		selectedHaiTask && setInputValue(`Task: ${selectedHaiTask.list} ${selectedHaiTask.acceptance} ${selectedHaiTask.context}`)
+		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
+		selectedHaiTask &&
+			selectedHaiTask?.id &&
+			setInputValue(`Task: ${selectedHaiTask.list} ${selectedHaiTask.acceptance} ${selectedHaiTask.context}`)
 	}, [selectedHaiTask])
 
 	useDeepCompareEffect(() => {
@@ -200,6 +208,7 @@ const ChatView = ({
 							setEnableButtons(!isPartial)
 							setPrimaryButtonText("Start New Task")
 							setSecondaryButtonText(undefined)
+							setLastSuccessfullyExecutedTaskId(selectedHaiTask?.id)
 							break
 						case "resume_task":
 							setTextAreaDisabled(false)
@@ -378,6 +387,9 @@ const ChatView = ({
 					setSelectedImages([])
 					break
 				case "completion_result":
+					clearSelectedHaiTaskId()
+					startNewTask()
+					break
 				case "resume_completed_task":
 					// extension waiting for feedback. but we can just present a new task button
 					startNewTask()
@@ -467,6 +479,10 @@ const ChatView = ({
 								textAreaRef.current?.focus()
 							}
 							break
+						case "chatButtonClicked":
+							// Starting new chat so setting the current selected HaiTask Id to null
+							clearSelectedHaiTaskId()
+							break
 					}
 					break
 				case "selectedImages":
@@ -499,6 +515,10 @@ const ChatView = ({
 							handleSecondaryButtonClick(message.text ?? "", message.images ?? [])
 							break
 					}
+					break
+				case "writeTaskStatus":
+					if (message.writeTaskStatusResult?.success && message.writeTaskStatusResult?.status === "Completed")
+						setLastSuccessfullyExecutedTaskId(undefined)
 			}
 			// textAreaRef.current is not explicitly required here since react guarantees that ref will be stable across re-renders, and we're not using its value but its reference.
 		},
@@ -790,6 +810,16 @@ const ChatView = ({
 		[expandedRows, modifiedMessages, groupedMessages.length, toggleRowExpansion, handleRowHeightChange],
 	)
 
+	const clearSelectedHaiTaskId = () => {
+		onTaskSelect({
+			acceptance: selectedHaiTask?.acceptance ?? "",
+			context: selectedHaiTask?.context ?? "",
+			id: "",
+			list: selectedHaiTask?.list ?? "",
+			status: selectedHaiTask?.status ?? "",
+		})
+	}
+
 	return (
 		<div
 			style={{
@@ -910,6 +940,45 @@ const ChatView = ({
 						/>
 					</div>
 					<AutoApproveMenu />
+					{selectedHaiTask?.id &&
+						enableButtons &&
+						!isStreaming &&
+						lastSuccessfullyExecutedTaskId &&
+						selectedHaiTask?.id === lastSuccessfullyExecutedTaskId && (
+							<div style={{ padding: "12px 15px 0px" }}>
+								<p style={{ margin: "0px 0px 6px" }}>Do you want to mark this task as completed?</p>
+								<div
+									style={{
+										display: "flex",
+									}}>
+									<VSCodeButton
+										appearance="primary"
+										style={{
+											marginRight: "6px",
+											flexGrow: 1,
+										}}
+										onClick={async () => {
+											// write status to the file
+											vscode.postMessage({
+												type: "writeTaskStatus",
+												folder: haiConfig?.folder,
+												taskId: selectedHaiTask?.id,
+												status: "Completed",
+											})
+										}}>
+										Yes
+									</VSCodeButton>
+									<VSCodeButton
+										appearance="secondary"
+										style={{
+											flexGrow: 1,
+										}}
+										onClick={() => setLastSuccessfullyExecutedTaskId(undefined)}>
+										No
+									</VSCodeButton>
+								</div>
+							</div>
+						)}
 					{showScrollToBottom ? (
 						<div
 							style={{
