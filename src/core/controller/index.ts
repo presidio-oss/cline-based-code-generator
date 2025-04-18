@@ -62,7 +62,7 @@ import { CodeContextErrorMessage, CodeIndexStartMessage } from "../webview/custo
 import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
 import { ICodeIndexProgress } from "../../integrations/code-prep/type"
 import { VectorizeCodeAgent } from "../../integrations/code-prep/VectorizeCodeAgent"
-import { ExpertData } from "../../../webview-ui/src/types/experts"
+import { ExpertData } from "../../shared/experts"
 import { buildEmbeddingHandler } from "../../embedding"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
@@ -114,9 +114,9 @@ export class Controller {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
 
-		this.expertManager = new ExpertManager()
 		this.codeIndexAbortController = new AbortController()
 		this.workspaceId = getWorkspaceID() || ""
+		this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (getWorkspacePath() || "").trim()
 		if (this.vsCodeWorkSpaceFolderFsPath) {
@@ -779,8 +779,8 @@ export class Controller {
 				}
 				break
 			case "expertPrompt":
+				const expertName = message.text || ""
 				if (message.category === "viewExpert") {
-					const expertName = message.text || ""
 					if (message.isDefault && message.prompt) {
 						try {
 							// Create a unique URI for this expert prompt
@@ -806,38 +806,57 @@ export class Controller {
 						}
 					}
 				} else {
-					await this.updateExpertPrompt(message.prompt)
+					await this.updateExpertPrompt(message.prompt, expertName)
 				}
-
 				break
 			case "saveExpert":
 				if (message.text) {
 					const expert = JSON.parse(message.text) as ExpertData
 					await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
-
-					// Send updated experts list back to webview
-					const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-					await this.postMessageToWebview({
-						type: "expertsUpdated",
-						experts,
-					})
+					await this.loadExperts()
 				}
 				break
 			case "deleteExpert":
 				if (message.text) {
 					const expertName = message.text
 					await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
-
-					// Send updated experts list back to webview
-					const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-					await this.postMessageToWebview({
-						type: "expertsUpdated",
-						experts,
-					})
+					await this.loadExperts()
 				}
 				break
 			case "loadExperts":
 				await this.loadExperts()
+				break
+			case "refreshDocumentLink":
+				if (message.text && message.expert) {
+					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+				}
+				await this.loadExperts()
+				break
+			case "deleteDocumentLink":
+				if (message.text && message.expert) {
+					try {
+						await this.expertManager.deleteDocumentLink(
+							this.vsCodeWorkSpaceFolderFsPath,
+							message.expert,
+							message.text,
+						)
+						await this.loadExperts()
+					} catch (error) {
+						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
+						vscode.window.showErrorMessage(`Failed to delete document link: ${error.message}`)
+					}
+				}
+				break
+			case "addDocumentLink":
+				if (message.text && message.expert) {
+					try {
+						await this.expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+						await this.loadExperts()
+					} catch (error) {
+						console.error(`Failed to add document link for expert ${message.expert}:`, error)
+						vscode.window.showErrorMessage(`Failed to add document link: ${error.message}`)
+					}
+				}
 				break
 			case "onHaiConfigure":
 				const isConfigureEnabled = message.bool !== undefined ? message.bool : true
@@ -2516,12 +2535,21 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		}
 	}
 
-	async updateExpertPrompt(prompt?: string) {
-		// User may be clearing the field
-		await customUpdateState(this.context, "expertPrompt", prompt || undefined)
-		if (this.task) {
-			this.task.expertPrompt = prompt || undefined
+	async updateExpertPrompt(prompt?: string, expertName?: string) {
+		let additionalContext = ""
+
+		if (expertName) {
+			additionalContext = await this.getExpertDocumentsContent(expertName)
 		}
+
+		const updatedPrompt = prompt ? `${prompt}${additionalContext}` : additionalContext
+
+		await customUpdateState(this.context, "expertPrompt", updatedPrompt || undefined)
+
+		if (this.task) {
+			this.task.expertPrompt = updatedPrompt || undefined
+		}
+
 		await this.postStateToWebview()
 	}
 
@@ -2540,5 +2568,36 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			type: "expertsUpdated",
 			experts,
 		})
+	}
+
+	private async getExpertDocumentsContent(expertName: string): Promise<string> {
+		const expertPath = await this.expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
+
+		if (!expertPath) {
+			return ""
+		}
+
+		const docsDir = path.join(path.dirname(expertPath), ExpertManager.DOCS_DIR)
+		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
+
+		if (!(await fileExistsAtPath(statusFilePath))) {
+			return ""
+		}
+
+		const statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		let additionalContext = ""
+		let documentCounter = 1
+		for (const document of statusData) {
+			if (document.status === "completed" && document.filename) {
+				const docFilePath = path.join(docsDir, document.filename)
+				if (await fileExistsAtPath(docFilePath)) {
+					const docContent = await fs.readFile(docFilePath, "utf-8")
+					additionalContext += `\n\n### Document-${documentCounter} Reference\n${docContent}`
+					documentCounter++
+				}
+			}
+		}
+
+		return additionalContext
 	}
 }

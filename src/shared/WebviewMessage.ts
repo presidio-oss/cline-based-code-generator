@@ -23,6 +23,9 @@ export interface WebviewMessage {
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"
+		| "refreshDocumentLink"
+		| "deleteDocumentLink"
+		| "addDocumentLink"
 		| "exportCurrentTask"
 		| "showTaskWithId"
 		| "deleteTaskWithId"
@@ -90,6 +93,7 @@ export interface WebviewMessage {
 		| "taskFeedback"
 	// | "relaunchChromeDebugMode"
 	text?: string
+	expert?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
