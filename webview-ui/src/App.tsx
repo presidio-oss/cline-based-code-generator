@@ -31,98 +31,104 @@ const AppContent = () => {
 	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
 	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
 
-	const onConfigure = useCallback((loadDefault: boolean) => {
-		if (loadDefault) {
-			vscode.postMessage({ type: "onHaiConfigure", text: haiConfig?.folder })
-		} else {
-			vscode.postMessage({ type: "onHaiConfigure" })
-		}
-	}, [haiConfig?.folder])
+	const onConfigure = useCallback(
+		(loadDefault: boolean) => {
+			if (loadDefault) {
+				vscode.postMessage({ type: "onHaiConfigure", text: haiConfig?.folder })
+			} else {
+				vscode.postMessage({ type: "onHaiConfigure" })
+			}
+		},
+		[haiConfig?.folder],
+	)
 
-	const handleMessage = useCallback((e: MessageEvent) => {
-		const message: ExtensionMessage = e.data
-		switch (message.type) {
-			case "action":
-				switch (message.action!) {
-					case "settingsButtonClicked":
-						setShowSettings(true)
-						setShowHistory(false)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "historyButtonClicked":
-						setShowSettings(false)
-						setShowHistory(true)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "mcpButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(true)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "accountButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(true)
-						setShowExperts(false)
-						break
-					case "chatButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "haiBuildTaskListClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						setShowHaiTaskList(true)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "expertsButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(true)
-						break
-				}
-				break
-			case "haiTaskData":
-				setTaskList(message.haiTaskData!.tasks)
-				setTaskLastUpdatedTs(message.haiTaskData!.ts)
-				setHaiConfig({ ...haiConfig, folder: message.haiTaskData!.folder, ts: message.haiTaskData!.ts })
-				break
-		}
-	}, [haiConfig, setHaiConfig])
+	const handleMessage = useCallback(
+		(e: MessageEvent) => {
+			const message: ExtensionMessage = e.data
+			switch (message.type) {
+				case "action":
+					switch (message.action!) {
+						case "settingsButtonClicked":
+							setShowSettings(true)
+							setShowHistory(false)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(false)
+							setShowExperts(false)
+							break
+						case "historyButtonClicked":
+							setShowSettings(false)
+							setShowHistory(true)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(false)
+							setShowExperts(false)
+							break
+						case "mcpButtonClicked":
+							setShowSettings(false)
+							setShowHistory(false)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(true)
+							setShowAccount(false)
+							setShowExperts(false)
+							break
+						case "accountButtonClicked":
+							setShowSettings(false)
+							setShowHistory(false)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(true)
+							setShowExperts(false)
+							break
+						case "chatButtonClicked":
+							setShowSettings(false)
+							setShowHistory(false)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(false)
+							setShowExperts(false)
+							break
+						case "haiBuildTaskListClicked":
+							setShowSettings(false)
+							setShowHistory(false)
+							setShowHaiTaskList(true)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(false)
+							setShowExperts(false)
+							break
+						case "expertsButtonClicked":
+							setShowSettings(false)
+							setShowHistory(false)
+							setShowHaiTaskList(false)
+							setDetailedStory(null)
+							setDetailedTask(null)
+							setShowMcp(false)
+							setShowAccount(false)
+							setShowExperts(true)
+							break
+					}
+					break
+				case "haiTaskData":
+					setTaskList(message.haiTaskData!.tasks)
+					setTaskLastUpdatedTs(message.haiTaskData!.ts)
+					setHaiConfig({ ...haiConfig, folder: message.haiTaskData!.folder, ts: message.haiTaskData!.ts })
+					break
+			}
+		},
+		[haiConfig, setHaiConfig],
+	)
 
 	useEvent("message", handleMessage)
 
