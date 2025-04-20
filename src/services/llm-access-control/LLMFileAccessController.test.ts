@@ -145,7 +145,10 @@ describe("LLMFileAccessController", () => {
 
 		it("should handle comments in .clineignore", async () => {
 			// Create a new .clineignore with comments
-			await fs.writeFile(path.join(tempDir, ".clineignore"), ["# Comment line", "*.secret", "private/", "temp.*"].join("\n"))
+			await fs.writeFile(
+				path.join(tempDir, ".clineignore"),
+				["# Comment line", "*.secret", "private/", "temp.*"].join("\n"),
+			)
 
 			controller = new LLMFileAccessController(tempDir)
 			await controller.initialize()
