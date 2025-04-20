@@ -31,6 +31,14 @@ const AppContent = () => {
 	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
 	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
 
+	const onConfigure = useCallback((loadDefault: boolean) => {
+		if (loadDefault) {
+			vscode.postMessage({ type: "onHaiConfigure", text: haiConfig?.folder })
+		} else {
+			vscode.postMessage({ type: "onHaiConfigure" })
+		}
+	}, [haiConfig?.folder])
+
 	const handleMessage = useCallback((e: MessageEvent) => {
 		const message: ExtensionMessage = e.data
 		switch (message.type) {
@@ -114,8 +122,7 @@ const AppContent = () => {
 				setHaiConfig({ ...haiConfig, folder: message.haiTaskData!.folder, ts: message.haiTaskData!.ts })
 				break
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
+	}, [haiConfig, setHaiConfig])
 
 	useEvent("message", handleMessage)
 
@@ -139,16 +146,10 @@ const AppContent = () => {
 		if (haiConfig?.folder) {
 			onConfigure(true)
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [haiConfig?.folder])
+	}, [haiConfig?.folder, onConfigure])
 
 	const onHaiTaskCancel = () => {
 		setShowHaiTaskList(false)
-	}
-
-	const onConfigure = (loadDefault: boolean) => {
-		loadDefault && vscode.postMessage({ type: "onHaiConfigure", text: haiConfig?.folder })
-		!loadDefault && vscode.postMessage({ type: "onHaiConfigure" })
 	}
 
 	const onHaiTaskReset = () => {
