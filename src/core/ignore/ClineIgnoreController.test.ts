@@ -16,7 +16,7 @@ describe("ClineIgnoreController", () => {
 
 		// Create default .clineignore file
 		await fs.writeFile(
-			path.join(tempDir, ".haiignore"),
+			path.join(tempDir, ".clineignore"),
 			[".env", "*.secret", "private/", "# This is a comment", "", "temp.*", "file-with-space-at-end.* ", "**/.git/**"].join(
 				"\n",
 			),
@@ -50,8 +50,8 @@ describe("ClineIgnoreController", () => {
 			results.forEach((result) => result.should.be.true())
 		})
 
-		it("should block access to .haiignore file", async () => {
-			const result = controller.validateAccess(".haiignore")
+		it("should block access to .clineignore file", async () => {
+			const result = controller.validateAccess(".clineignore")
 			result.should.be.false()
 		})
 	})
@@ -81,7 +81,7 @@ describe("ClineIgnoreController", () => {
 
 		it("should handle pattern edge cases", async () => {
 			await fs.writeFile(
-				path.join(tempDir, ".haiignore"),
+				path.join(tempDir, ".clineignore"),
 				["*.secret", "private/", "*.tmp", "data-*.json", "temp/*"].join("\n"),
 			)
 
@@ -148,9 +148,9 @@ describe("ClineIgnoreController", () => {
 		// 	results[9].should.be.true() // assets/public/data.json
 		// })
 
-		it("should handle comments in .haiignore", async () => {
-			// Create a new .haiignore with comments
-			await fs.writeFile(path.join(tempDir, ".haiignore"), ["# Comment line", "*.secret", "private/", "temp.*"].join("\n"))
+		it("should handle comments in .clineignore", async () => {
+			// Create a new .clineignore with comments
+			await fs.writeFile(path.join(tempDir, ".clineignore"), ["# Comment line", "*.secret", "private/", "temp.*"].join("\n"))
 
 			controller = new ClineIgnoreController(tempDir)
 			await controller.initialize()
@@ -214,8 +214,8 @@ describe("ClineIgnoreController", () => {
 			result.should.be.true()
 		})
 
-		it("should handle missing .haiignore gracefully", async () => {
-			// Create a new controller in a directory without .haiignore
+		it("should handle missing .clineignore gracefully", async () => {
+			// Create a new controller in a directory without .clineignore
 			const emptyDir = path.join(os.tmpdir(), `llm-test-empty-${Date.now()}`)
 			await fs.mkdir(emptyDir)
 
@@ -229,8 +229,8 @@ describe("ClineIgnoreController", () => {
 			}
 		})
 
-		it("should handle empty .haiignore", async () => {
-			await fs.writeFile(path.join(tempDir, ".haiignore"), "")
+		it("should handle empty .clineignore", async () => {
+			await fs.writeFile(path.join(tempDir, ".clineignore"), "")
 
 			controller = new ClineIgnoreController(tempDir)
 			await controller.initialize()

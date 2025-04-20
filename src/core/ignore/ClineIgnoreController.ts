@@ -37,7 +37,7 @@ export class ClineIgnoreController {
 	 * Set up the file watcher for .clineignore changes
 	 */
 	private setupFileWatcher(): void {
-		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".haiignore")
+		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".clineignore")
 		const fileWatcher = vscode.workspace.createFileSystemWatcher(clineignorePattern)
 
 		// Watch for changes and updates
@@ -64,18 +64,18 @@ export class ClineIgnoreController {
 		try {
 			// Reset ignore instance to prevent duplicate patterns
 			this.ignoreInstance = ignore()
-			const ignorePath = path.join(this.cwd, ".haiignore")
+			const ignorePath = path.join(this.cwd, ".clineignore")
 			if (await fileExistsAtPath(ignorePath)) {
 				const content = await fs.readFile(ignorePath, "utf8")
 				this.clineIgnoreContent = content
 				this.ignoreInstance.add(content)
-				this.ignoreInstance.add(".haiignore")
+				this.ignoreInstance.add(".clineignore")
 			} else {
 				this.clineIgnoreContent = undefined
 			}
 		} catch (error) {
 			// Should never happen: reading file failed even though it exists
-			console.error("Unexpected error loading .haiignore:", error)
+			console.error("Unexpected error loading .clineignore:", error)
 		}
 	}
 

@@ -7,7 +7,7 @@ import * as vscode from "vscode"
 /**
  * Controls LLM access to files by enforcing ignore patterns.
  * Designed to be instantiated once in Cline.ts and passed to file manipulation services.
- * Uses the 'ignore' library to support standard .gitignore syntax in .haiignore files.
+ * Uses the 'ignore' library to support standard .gitignore syntax in .clineignore files.
  */
 export class LLMFileAccessController {
 	private cwd: string
@@ -26,7 +26,7 @@ export class LLMFileAccessController {
 		this.ignoreInstance.add(LLMFileAccessController.DEFAULT_PATTERNS)
 		this.fileWatcher = null
 
-		// Set up file watcher for .haiignore
+		// Set up file watcher for .clineignore
 		this.setupFileWatcher()
 	}
 
@@ -39,22 +39,22 @@ export class LLMFileAccessController {
 	}
 
 	/**
-	 * Set up the file watcher for .haiignore changes
+	 * Set up the file watcher for .clineignore changes
 	 */
 	private setupFileWatcher(): void {
-		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".haiignore")
+		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".clineignore")
 		this.fileWatcher = vscode.workspace.createFileSystemWatcher(clineignorePattern)
 
 		// Watch for changes and updates
 		this.disposables.push(
 			this.fileWatcher.onDidChange(() => {
 				this.loadCustomPatterns().catch((error) => {
-					console.error("Failed to load updated .haiignore patterns:", error)
+					console.error("Failed to load updated .clineignore patterns:", error)
 				})
 			}),
 			this.fileWatcher.onDidCreate(() => {
 				this.loadCustomPatterns().catch((error) => {
-					console.error("Failed to load new .haiignore patterns:", error)
+					console.error("Failed to load new .clineignore patterns:", error)
 				})
 			}),
 			this.fileWatcher.onDidDelete(() => {
@@ -67,11 +67,11 @@ export class LLMFileAccessController {
 	}
 
 	/**
-	 * Load custom patterns from .haiignore if it exists
+	 * Load custom patterns from .clineignore if it exists
 	 */
 	private async loadCustomPatterns(): Promise<void> {
 		try {
-			const ignorePath = path.join(this.cwd, ".haiignore")
+			const ignorePath = path.join(this.cwd, ".clineignore")
 			if (await fileExistsAtPath(ignorePath)) {
 				// Reset ignore instance to prevent duplicate patterns
 				this.resetToDefaultPatterns()
