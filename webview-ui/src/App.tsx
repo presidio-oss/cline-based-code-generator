@@ -155,12 +155,20 @@ const AppContent = () => {
 		setTaskList([])
 		vscode.postMessage({ type: "onHaiConfigure", bool: false })
 	}
-
 	const handleTaskClick = (task: IHaiTask) => {
-		setDetailedTask(task)
-		const story = taskList.find((story) => story.tasks.some((t) => t.id === task.id && t === task))
-		setDetailedStory(story ? story : null)
-	}
+		setDetailedTask(task);
+	
+		for (const story of taskList) {
+			const match = story.tasks.find((t) => t.id === task.id && t === task);
+			if (match) {
+				setDetailedStory(story);
+				return;
+			}
+		}
+	
+		setDetailedStory(null);
+	};
+	
 
 	const handleStoryClick = (story: IHaiStory) => {
 		setDetailedStory(story)
