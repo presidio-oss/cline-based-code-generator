@@ -128,12 +128,12 @@ const AppContent = () => {
 	// 	}
 	// }, [telemetrySetting, vscMachineId])
 
-	// useEffect(() => {
-	// 	if (shouldShowAnnouncement) {
-	// 		setShowAnnouncement(true)
-	// 		vscode.postMessage({ type: "didShowAnnouncement" })
-	// 	}
-	// }, [shouldShowAnnouncement])
+	useEffect(() => {
+		if (shouldShowAnnouncement) {
+			setShowAnnouncement(true)
+			vscode.postMessage({ type: "didShowAnnouncement" })
+		}
+	}, [shouldShowAnnouncement])
 
 	useEffect(() => {
 		if (haiConfig?.folder) {
