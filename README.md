@@ -131,6 +131,38 @@ Enhance your code editing experience with inline editing, allowing you to make c
 
 ---
 
+### 🧑‍💻 Experts
+
+The **Experts** feature enables HAI Code Generator to deliver context-aware code generation tailored to specific technologies or domains.
+
+<div align="center">
+  <img src="assets/gifs/experts.gif" alt="Experts Feature Demo" />
+  <p><i>Experts</i></p>
+</div>
+
+#### Built-in Experts
+
+- Four built-in experts are available: **.NET, Terraform, Node.js, and Go**.
+- Each provides predefined guidelines and best practices in read-only mode for quick reference.
+
+#### Custom Experts
+
+- Users can create custom experts to define their own guidelines and (optionally) attach up to three reference document links.
+- Custom experts are stored in the `.hai-experts` folder under a subfolder named after the expert.
+- Each expert folder contains:
+  - `metadata.json`: Stores expert name, creation date, and any document links.
+  - `prompt.md`: Contains the expert’s guidelines (required).
+- If document links are provided, a `docs` folder is created with:
+  - Markdown files for each processed document.
+  - `status.json` to track processing status.
+
+**Note:**  
+- Expert name and guidelines are mandatory when creating a custom expert.  
+- Document links are optional and can be added for richer context.
+
+This feature allows you to extend HAI Code Generator’s knowledge with your own standards, best practices, and documentation—ensuring more accurate and relevant code generation for your unique stack.
+
+---
 
 ### ⚙️ Settings Interface
 Customize and seamlessly integrate advanced language and embedding models into your AI-powered workflow, ensuring you stay at the forefront of AI innovations.
