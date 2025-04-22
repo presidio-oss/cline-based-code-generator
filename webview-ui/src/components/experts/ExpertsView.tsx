@@ -225,7 +225,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 											{exp.iconComponent ? (
 												<img src={exp.iconComponent} alt={`${exp.name} icon`} width="24" height="24" />
 											) : (
-												<span className="codicon codicon-person" />
+												<span
+													className="codicon codicon-person"
+													style={{ fontSize: "24px", width: "24px", height: "24px" }}
+												/>
 											)}
 										</IconContainer>
 										<ExpertName>{exp.name}</ExpertName>

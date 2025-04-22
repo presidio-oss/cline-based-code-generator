@@ -545,6 +545,10 @@ export class ExpertManager {
 					console.warn(`Icon not found for ${folderName}`)
 				}
 
+				if (!prompt.trim()) {
+					return null
+				}
+
 				return {
 					name: folderName,
 					prompt,
@@ -554,6 +558,6 @@ export class ExpertManager {
 			}),
 		)
 
-		return experts
+		return experts.filter((expert) => expert !== null) as ExpertData[]
 	}
 }
