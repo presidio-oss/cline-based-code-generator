@@ -2,7 +2,6 @@ import React, { useState, useEffect, memo } from "react"
 import styled from "styled-components"
 import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
-import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { DocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { capitalizeFirstLetter, formatTimestamp } from "../../utils/format"
@@ -10,6 +9,8 @@ import { capitalizeFirstLetter, formatTimestamp } from "../../utils/format"
 interface ExpertsViewProps {
 	onDone: () => void
 }
+
+let DEFAULT_EXPERTS: ExpertData[] = []
 
 const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [experts, setExperts] = useState<ExpertData[]>(DEFAULT_EXPERTS)
@@ -38,14 +39,35 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const { vscodeWorkspacePath } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
+	const updateExpertsState = (customExperts: ExpertData[] = []) => {
+		const combinedExperts = [...DEFAULT_EXPERTS, ...customExperts].filter(
+			(expert, index, self) => index === self.findIndex((e) => e.name === expert.name),
+		)
+		setExperts(combinedExperts)
+	}
+
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
 			const message = event.data
-			if (message.type === "expertsUpdated" && message.experts) {
-				setExperts([...DEFAULT_EXPERTS, ...message.experts])
+
+			switch (message.type) {
+				case "defaultExpertsUpdated":
+					if (message.experts) {
+						DEFAULT_EXPERTS = message.experts
+						updateExpertsState() // Update state with only default experts if no custom experts are present
+					}
+					break
+
+				case "expertsUpdated":
+					updateExpertsState(message.experts || []) // Update state with both default and custom experts
+					break
+
+				default:
+					console.warn(`Unhandled message type: ${message.type}`)
 			}
 		}
 		window.addEventListener("message", messageHandler)
+		vscode.postMessage({ type: "loadDefaultExperts" })
 		vscode.postMessage({ type: "loadExperts" })
 		return () => {
 			window.removeEventListener("message", messageHandler)
@@ -201,7 +223,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									<ExpertCard key={exp.name} onClick={() => handleOpenExpertPrompt(exp.name)}>
 										<IconContainer>
 											{exp.iconComponent ? (
-												<exp.iconComponent width="24" height="24" />
+												<img src={exp.iconComponent} alt={`${exp.name} icon`} width="24" height="24" />
 											) : (
 												<span className="codicon codicon-person" />
 											)}

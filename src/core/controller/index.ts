@@ -826,6 +826,9 @@ export class Controller {
 			case "loadExperts":
 				await this.loadExperts()
 				break
+			case "loadDefaultExperts":
+				await this.loadDefaultExperts()
+				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
 					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
@@ -2566,6 +2569,14 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
 		await this.postMessageToWebview({
 			type: "expertsUpdated",
+			experts,
+		})
+	}
+
+	async loadDefaultExperts() {
+		const experts = await this.expertManager.loadDefaultExperts()
+		await this.postMessageToWebview({
+			type: "defaultExpertsUpdated",
 			experts,
 		})
 	}

@@ -507,4 +507,53 @@ export class ExpertManager {
 		}
 		return content
 	}
+
+	/**
+	 * Load the default Experts
+	 */
+
+	async loadDefaultExperts(): Promise<ExpertData[]> {
+		const expertsDir = path.join(this.extensionContext.extensionPath, GlobalFileNames.defaultExperts)
+
+		let expertFolders: string[] = []
+		try {
+			const dirents = await fs.readdir(expertsDir, { withFileTypes: true })
+			expertFolders = dirents.filter((dirent) => dirent.isDirectory()).map((dirent) => dirent.name)
+		} catch (error) {
+			console.error("Error reading experts directory:", error)
+			return []
+		}
+
+		const experts = await Promise.all(
+			expertFolders.map(async (folderName) => {
+				const folderPath = path.join(expertsDir, folderName)
+				const promptPath = path.join(folderPath, ExpertManager.PROMPT_FILE)
+				const iconPath = path.join(folderPath, `${folderName}.svg`)
+
+				let prompt = ""
+				try {
+					prompt = await fs.readFile(promptPath, "utf8")
+				} catch (error) {
+					console.error(`Error reading prompt for ${folderName}:`, error)
+				}
+
+				let iconBase64 = ""
+				try {
+					const svgContent = await fs.readFile(iconPath)
+					iconBase64 = `data:image/svg+xml;base64,${svgContent.toString("base64")}`
+				} catch (error) {
+					console.warn(`Icon not found for ${folderName}`)
+				}
+
+				return {
+					name: folderName,
+					prompt,
+					isDefault: true,
+					iconComponent: iconBase64,
+				}
+			}),
+		)
+
+		return experts
+	}
 }

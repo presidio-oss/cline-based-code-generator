@@ -51,6 +51,7 @@ export interface ExtensionMessage {
 		| "totalTasksSize"
 		| "addToInput"
 		| "expertsUpdated"
+		| "defaultExpertsUpdated"
 		| "expertPrompt"
 	text?: string
 	bool?: boolean

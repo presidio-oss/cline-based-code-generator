@@ -23,6 +23,7 @@ export interface WebviewMessage {
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"
+		| "loadDefaultExperts"
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
