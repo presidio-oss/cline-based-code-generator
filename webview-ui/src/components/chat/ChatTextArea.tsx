@@ -6,7 +6,6 @@ import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "../../../../src/shared/context-mentions"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import { useExtensionState } from "../../context/ExtensionStateContext"
-import { DEFAULT_EXPERTS } from "../../data/defaultExperts"
 import { ExpertData } from "../../../../src/shared/experts.ts"
 import {
 	ContextMenuOptionType,
@@ -369,8 +368,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [menuPosition, setMenuPosition] = useState(0)
 		const [shownTooltipMode, setShownTooltipMode] = useState<ChatSettings["mode"] | null>(null)
 
-		// Experts dropdown state
-		const [experts] = useState<ExpertData[]>(DEFAULT_EXPERTS)
+		const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
 		const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
 		const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
 		const [showExpertsSelector, setShowExpertsSelector] = useState(false)
@@ -411,6 +409,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "expertsUpdated": {
 					if (message.experts) {
 						setCustomExperts(message.experts)
+					}
+					break
+				}
+				case "defaultExpertsLoaded": {
+					if (message.experts) {
+						setDefaultExperts(message.experts)
 					}
 					break
 				}
@@ -899,6 +903,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleExpertsButtonClick = useCallback(() => {
 			// Request custom experts from the extension
 			vscode.postMessage({ type: "loadExperts" })
+			vscode.postMessage({ type: "loadDefaultExperts" })
 			setShowExpertsSelector(!showExpertsSelector)
 		}, [showExpertsSelector])
 
@@ -920,11 +925,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				setExpertsMenuPosition(buttonRect.top + 1)
 			}
 		}, [showExpertsSelector, viewportWidth, viewportHeight])
-
-		// Combined experts list
-		useMemo(() => {
-			return [...experts, ...customExperts]
-		}, [experts, customExperts])
 
 		// Get model display name
 		const modelDisplayName = useMemo(() => {
@@ -1320,7 +1320,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 										</ExpertItem>
 
 										{/* Default experts with Inbuilt tag */}
-										{experts.map((expert) => (
+										{defaultExperts.map((expert) => (
 											<ExpertItem
 												key={expert.name}
 												isSelected={selectedExpert?.name === expert.name}
