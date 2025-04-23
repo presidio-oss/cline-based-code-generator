@@ -2576,7 +2576,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	async loadDefaultExperts() {
 		const experts = await this.expertManager.loadDefaultExperts()
 		await this.postMessageToWebview({
-			type: "defaultExpertsUpdated",
+			type: "defaultExpertsLoaded",
 			experts,
 		})
 	}

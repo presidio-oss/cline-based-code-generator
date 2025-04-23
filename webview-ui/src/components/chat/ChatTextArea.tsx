@@ -412,7 +412,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					}
 					break
 				}
-				case "defaultExpertsUpdated": {
+				case "defaultExpertsLoaded": {
 					if (message.experts) {
 						setDefaultExperts(message.experts)
 					}
@@ -925,9 +925,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				setExpertsMenuPosition(buttonRect.top + 1)
 			}
 		}, [showExpertsSelector, viewportWidth, viewportHeight])
-
-		// Combined experts list
-		const allExperts = useMemo(() => [...defaultExperts, ...customExperts], [defaultExperts, customExperts])
 
 		// Get model display name
 		const modelDisplayName = useMemo(() => {

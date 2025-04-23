@@ -1,4 +1,4 @@
-import React, { useState, useEffect, memo } from "react"
+import React, { useState, useEffect, memo, useMemo } from "react"
 import styled from "styled-components"
 import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
@@ -10,10 +10,9 @@ interface ExpertsViewProps {
 	onDone: () => void
 }
 
-let DEFAULT_EXPERTS: ExpertData[] = []
-
 const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
-	const [experts, setExperts] = useState<ExpertData[]>(DEFAULT_EXPERTS)
+	const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
+	const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
 	const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
 	const [newExpertName, setNewExpertName] = useState("")
 	const [newExpertPrompt, setNewExpertPrompt] = useState("")
@@ -39,27 +38,23 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const { vscodeWorkspacePath } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-	const updateExpertsState = (customExperts: ExpertData[] = []) => {
-		const combinedExperts = [...DEFAULT_EXPERTS, ...customExperts].filter(
-			(expert, index, self) => index === self.findIndex((e) => e.name === expert.name),
-		)
-		setExperts(combinedExperts)
-	}
+	const allExperts = useMemo(() => [...defaultExperts, ...customExperts], [defaultExperts, customExperts])
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
 			const message = event.data
 
 			switch (message.type) {
-				case "defaultExpertsUpdated":
+				case "defaultExpertsLoaded":
 					if (message.experts) {
-						DEFAULT_EXPERTS = message.experts
-						updateExpertsState() // Update state with only default experts if no custom experts are present
+						setDefaultExperts(message.experts)
 					}
 					break
 
 				case "expertsUpdated":
-					updateExpertsState(message.experts || []) // Update state with both default and custom experts
+					if (message.experts) {
+						setCustomExperts(message.experts)
+					}
 					break
 
 				default:
@@ -133,7 +128,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			})
 			return
 		}
-		const expertExists = experts.some((expert) => expert.name.toLowerCase() === newExpertName.toLowerCase())
+		const expertExists = allExperts.some((expert) => expert.name.toLowerCase() === newExpertName.toLowerCase())
 		if (expertExists) {
 			setNameError("An expert with this name already exists")
 			vscode.postMessage({
@@ -153,7 +148,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			type: "saveExpert",
 			text: JSON.stringify(newExpert),
 		})
-		setExperts([...experts, newExpert])
+		setCustomExperts([...customExperts, newExpert])
 		resetForm()
 	}
 
@@ -174,10 +169,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 	const confirmDelete = (expertName: string, e: React.MouseEvent) => {
 		e.stopPropagation()
-		const expertToDelete = experts.find((expert) => expert.name === expertName)
+		const expertToDelete = customExperts.find((expert) => expert.name === expertName)
 		if (expertToDelete && !expertToDelete.isDefault) {
 			vscode.postMessage({ type: "deleteExpert", text: expertName.trim() })
-			setExperts(experts.filter((expert) => expert.name !== expertName))
+			setCustomExperts(customExperts.filter((expert) => expert.name !== expertName))
 			if (selectedExpert && selectedExpert.name === expertName) {
 				resetForm()
 			}
@@ -191,7 +186,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	}
 
 	const handleOpenExpertPrompt = (expertName: string) => {
-		const expertToOpen = experts.find((expert) => expert.name === expertName)
+		const expertToOpen = allExperts.find((expert) => expert.name === expertName)
 		if (expertToOpen) {
 			vscode.postMessage({
 				type: "expertPrompt",
@@ -213,27 +208,25 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				{/* Default Experts */}
 				<Section>
 					<SectionHeader>
-						HAI Experts <CountBadge>({experts.filter((exp) => exp.isDefault).length})</CountBadge>
+						HAI Experts <CountBadge>({defaultExperts.length})</CountBadge>
 					</SectionHeader>
 					<DefaultExpertsContainer>
 						<ExpertGrid>
-							{experts
-								.filter((exp) => exp.isDefault)
-								.map((exp) => (
-									<ExpertCard key={exp.name} onClick={() => handleOpenExpertPrompt(exp.name)}>
-										<IconContainer>
-											{exp.iconComponent ? (
-												<img src={exp.iconComponent} alt={`${exp.name} icon`} width="24" height="24" />
-											) : (
-												<span
-													className="codicon codicon-person"
-													style={{ fontSize: "24px", width: "24px", height: "24px" }}
-												/>
-											)}
-										</IconContainer>
-										<ExpertName>{exp.name}</ExpertName>
-									</ExpertCard>
-								))}
+							{defaultExperts.map((exp) => (
+								<ExpertCard key={exp.name} onClick={() => handleOpenExpertPrompt(exp.name)}>
+									<IconContainer>
+										{exp.iconComponent ? (
+											<img src={exp.iconComponent} alt={`${exp.name} icon`} width="24" height="24" />
+										) : (
+											<span
+												className="codicon codicon-person"
+												style={{ fontSize: "24px", width: "24px", height: "24px" }}
+											/>
+										)}
+									</IconContainer>
+									<ExpertName>{exp.name}</ExpertName>
+								</ExpertCard>
+							))}
 						</ExpertGrid>
 					</DefaultExpertsContainer>
 				</Section>
@@ -241,293 +234,285 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				{/* Custom Experts with Document Accordion */}
 				<Section>
 					<SectionHeader>
-						Custom Experts <CountBadge>({experts.filter((exp) => !exp.isDefault).length})</CountBadge>
+						Custom Experts <CountBadge>({customExperts.length})</CountBadge>
 					</SectionHeader>
 					<CustomExpertsContainer>
 						<ExpertsList>
-							{experts.filter((expert) => !expert.isDefault).length > 0 ? (
-								experts
-									.filter((exp) => !exp.isDefault)
-									.map((exp) => (
-										<div key={exp.name} style={{ width: "100%" }}>
-											<ExpertRow>
-												<ExpertRowLeftSide>
-													<VSCodeButton
-														appearance="icon"
-														onClick={(e) => {
-															e.stopPropagation()
-															toggleAccordionForExpert(exp.name)
-														}}
-														style={{ marginRight: "8px" }}>
-														<span
-															className={`codicon ${
-																expandedExperts[exp.name]
-																	? "codicon-chevron-down"
-																	: "codicon-chevron-right"
-															}`}
-														/>
-													</VSCodeButton>
+							{customExperts.length > 0 ? (
+								customExperts.map((exp) => (
+									<div key={exp.name} style={{ width: "100%" }}>
+										<ExpertRow>
+											<ExpertRowLeftSide>
+												<VSCodeButton
+													appearance="icon"
+													onClick={(e) => {
+														e.stopPropagation()
+														toggleAccordionForExpert(exp.name)
+													}}
+													style={{ marginRight: "8px" }}>
 													<span
-														style={{
-															overflow: "hidden",
-															textOverflow: "ellipsis",
-															whiteSpace: "nowrap",
-															cursor: "pointer",
-														}}
-														onClick={() => handleSelectExpert(exp)}>
-														{exp.name}
-													</span>
-												</ExpertRowLeftSide>
-												<ExpertRowActions>
-													{exp.name === expertInDeleteConfirmation ? (
-														<>
-															<VSCodeButton
-																appearance="icon"
-																onClick={(e) => cancelDelete(e)}
-																style={{ marginRight: "10px" }}>
-																<span className="codicon codicon-close" />
-															</VSCodeButton>
-															<VSCodeButton
-																appearance="icon"
-																onClick={(e) => confirmDelete(exp.name, e)}
-																style={{ marginRight: "10px" }}>
-																<span className="codicon codicon-check" />
-															</VSCodeButton>
-														</>
-													) : (
+														className={`codicon ${
+															expandedExperts[exp.name]
+																? "codicon-chevron-down"
+																: "codicon-chevron-right"
+														}`}
+													/>
+												</VSCodeButton>
+												<span
+													style={{
+														overflow: "hidden",
+														textOverflow: "ellipsis",
+														whiteSpace: "nowrap",
+														cursor: "pointer",
+													}}
+													onClick={() => handleSelectExpert(exp)}>
+													{exp.name}
+												</span>
+											</ExpertRowLeftSide>
+											<ExpertRowActions>
+												{exp.name === expertInDeleteConfirmation ? (
+													<>
 														<VSCodeButton
 															appearance="icon"
-															onClick={(e) => handleDeleteConfirmation(exp.name, e)}
+															onClick={(e) => cancelDelete(e)}
 															style={{ marginRight: "10px" }}>
-															<span className="codicon codicon-trash" />
+															<span className="codicon codicon-close" />
 														</VSCodeButton>
-													)}
+														<VSCodeButton
+															appearance="icon"
+															onClick={(e) => confirmDelete(exp.name, e)}
+															style={{ marginRight: "10px" }}>
+															<span className="codicon codicon-check" />
+														</VSCodeButton>
+													</>
+												) : (
 													<VSCodeButton
 														appearance="icon"
-														onClick={(e) => {
-															e.stopPropagation()
-															handleOpenExpertPrompt(exp.name)
-														}}>
-														<span className="codicon codicon-link-external" />
+														onClick={(e) => handleDeleteConfirmation(exp.name, e)}
+														style={{ marginRight: "10px" }}>
+														<span className="codicon codicon-trash" />
 													</VSCodeButton>
-												</ExpertRowActions>
-											</ExpertRow>
-											{expandedExperts[exp.name] && (
-												<AccordionContainer>
-													{/* Render document links if available */}
-													{exp.documentLinks && exp.documentLinks.length > 0
-														? exp.documentLinks.map((link, idx) => (
-																<DocumentAccordionItem key={idx}>
-																	{link.status && (
-																		<StatusIcon
-																			status={link.status}
-																			title={capitalizeFirstLetter(link.status)}>
-																			{link.status.toLowerCase() === "completed" ? (
-																				<span className="codicon codicon-check" />
-																			) : link.status.toLowerCase() === "failed" ? (
-																				<span className="codicon codicon-error" />
-																			) : link.status.toLowerCase() === "processing" ? (
-																				<div
-																					style={{
-																						transform: "scale(0.8)",
-																						width: "20px",
-																						height: "20px",
-																						display: "flex",
-																						alignItems: "center",
-																						justifyContent: "center",
-																					}}>
-																					<VSCodeProgressRing />
-																				</div>
-																			) : (
-																				<span className="codicon codicon-clock" />
-																			)}
-																		</StatusIcon>
-																	)}
-																	<DocumentLinkContainer>
-																		<DocumentLinkText title={link.url}>
-																			{link.url}
-																		</DocumentLinkText>
-																		{link.processedAt && (
-																			<TimestampText>
-																				{formatTimestamp(link.processedAt)}
-																			</TimestampText>
-																		)}
-																	</DocumentLinkContainer>
-																	<DocumentButtons>
-																		<VSCodeButton
-																			appearance="icon"
-																			onClick={(e) => {
-																				e.stopPropagation()
-																				vscode.postMessage({
-																					type: "refreshDocumentLink",
-																					text: link.url,
-																					expert: exp.name,
-																				})
-																			}}>
-																			<span className="codicon codicon-refresh" />
-																		</VSCodeButton>
-																		{documentLinkInDeleteConfirmation?.expertName ===
-																			exp.name &&
-																		documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
-																			<>
-																				<VSCodeButton
-																					appearance="icon"
-																					onClick={(e) => {
-																						e.stopPropagation()
-																						setDocumentLinkInDeleteConfirmation(null)
-																					}}>
-																					<span className="codicon codicon-close" />
-																				</VSCodeButton>
-																				<VSCodeButton
-																					appearance="icon"
-																					onClick={(e) => {
-																						e.stopPropagation()
-																						vscode.postMessage({
-																							type: "deleteDocumentLink",
-																							text: link.url,
-																							expert: exp.name,
-																						})
-																						setDocumentLinkInDeleteConfirmation(null)
-																					}}>
-																					<span className="codicon codicon-check" />
-																				</VSCodeButton>
-																			</>
+												)}
+												<VSCodeButton
+													appearance="icon"
+													onClick={(e) => {
+														e.stopPropagation()
+														handleOpenExpertPrompt(exp.name)
+													}}>
+													<span className="codicon codicon-link-external" />
+												</VSCodeButton>
+											</ExpertRowActions>
+										</ExpertRow>
+										{expandedExperts[exp.name] && (
+											<AccordionContainer>
+												{/* Render document links if available */}
+												{exp.documentLinks && exp.documentLinks.length > 0
+													? exp.documentLinks.map((link, idx) => (
+															<DocumentAccordionItem key={idx}>
+																{link.status && (
+																	<StatusIcon
+																		status={link.status}
+																		title={capitalizeFirstLetter(link.status)}>
+																		{link.status.toLowerCase() === "completed" ? (
+																			<span className="codicon codicon-check" />
+																		) : link.status.toLowerCase() === "failed" ? (
+																			<span className="codicon codicon-error" />
+																		) : link.status.toLowerCase() === "processing" ? (
+																			<div
+																				style={{
+																					transform: "scale(0.8)",
+																					width: "20px",
+																					height: "20px",
+																					display: "flex",
+																					alignItems: "center",
+																					justifyContent: "center",
+																				}}>
+																				<VSCodeProgressRing />
+																			</div>
 																		) : (
+																			<span className="codicon codicon-clock" />
+																		)}
+																	</StatusIcon>
+																)}
+																<DocumentLinkContainer>
+																	<DocumentLinkText title={link.url}>
+																		{link.url}
+																	</DocumentLinkText>
+																	{link.processedAt && (
+																		<TimestampText>
+																			{formatTimestamp(link.processedAt)}
+																		</TimestampText>
+																	)}
+																</DocumentLinkContainer>
+																<DocumentButtons>
+																	<VSCodeButton
+																		appearance="icon"
+																		onClick={(e) => {
+																			e.stopPropagation()
+																			vscode.postMessage({
+																				type: "refreshDocumentLink",
+																				text: link.url,
+																				expert: exp.name,
+																			})
+																		}}>
+																		<span className="codicon codicon-refresh" />
+																	</VSCodeButton>
+																	{documentLinkInDeleteConfirmation?.expertName === exp.name &&
+																	documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
+																		<>
 																			<VSCodeButton
 																				appearance="icon"
 																				onClick={(e) => {
 																					e.stopPropagation()
-																					setDocumentLinkInDeleteConfirmation({
-																						expertName: exp.name,
-																						linkUrl: link.url,
-																					})
+																					setDocumentLinkInDeleteConfirmation(null)
 																				}}>
-																				<span className="codicon codicon-trash" />
+																				<span className="codicon codicon-close" />
 																			</VSCodeButton>
-																		)}
-																	</DocumentButtons>
-																</DocumentAccordionItem>
-															))
-														: null}
-
-													{/* Inline editing for adding a document */}
-													{inlineEditingDoc?.expertName === exp.name ? (
-														<DocumentAccordionItem>
-															<div
-																style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-																<VSCodeTextField
-																	value={inlineEditingDoc.linkUrl}
-																	placeholder="Enter document link"
-																	onChange={(e) => {
-																		setInlineDocLinkError(null) // Reset error on input change
-																		setInlineEditingDoc((prev) =>
-																			prev
-																				? {
-																						...prev,
-																						linkUrl: (e.target as HTMLInputElement)
-																							.value,
-																					}
-																				: null,
-																		)
-																	}}
-																	style={{ flexGrow: 1 }}
-																/>
-																{inlineDocLinkError && (
-																	<p
-																		style={{
-																			color: "var(--vscode-errorForeground)",
-																			fontSize: "12px",
-																			marginTop: "4px",
-																		}}>
-																		{inlineDocLinkError}
-																	</p>
-																)}
-															</div>
-															<DocumentButtons>
-																<VSCodeButton
-																	appearance="icon"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		try {
-																			const url = new URL(inlineEditingDoc.linkUrl.trim())
-																			if (url.protocol !== "https:") {
-																				setInlineDocLinkError(
-																					"Only HTTPS links are allowed",
-																				)
-																				return
-																			}
-																			if (
-																				exp.documentLinks?.some(
-																					(link) =>
-																						link.url ===
-																						inlineEditingDoc.linkUrl.trim(),
-																				)
-																			) {
-																				setInlineDocLinkError(
-																					"This link has already been added",
-																				)
-																				return
-																			}
-																			if (inlineEditingDoc.linkUrl.trim()) {
-																				vscode.postMessage({
-																					type: "addDocumentLink",
-																					text: inlineEditingDoc.linkUrl,
-																					expert: exp.name,
+																			<VSCodeButton
+																				appearance="icon"
+																				onClick={(e) => {
+																					e.stopPropagation()
+																					vscode.postMessage({
+																						type: "deleteDocumentLink",
+																						text: link.url,
+																						expert: exp.name,
+																					})
+																					setDocumentLinkInDeleteConfirmation(null)
+																				}}>
+																				<span className="codicon codicon-check" />
+																			</VSCodeButton>
+																		</>
+																	) : (
+																		<VSCodeButton
+																			appearance="icon"
+																			onClick={(e) => {
+																				e.stopPropagation()
+																				setDocumentLinkInDeleteConfirmation({
+																					expertName: exp.name,
+																					linkUrl: link.url,
 																				})
-																				setExperts((prevExperts) =>
-																					prevExperts.map((expert) =>
-																						expert.name === exp.name
-																							? {
-																									...expert,
-																									documentLinks: [
-																										...(expert.documentLinks ||
-																											[]),
-																										{
-																											url: inlineEditingDoc.linkUrl,
-																											status: DocumentStatus.PENDING,
-																										},
-																									],
-																								}
-																							: expert,
-																					),
-																				)
-																			}
-																			setInlineEditingDoc(null)
-																		} catch (e) {
-																			setInlineDocLinkError("Please enter a valid URL")
-																		}
-																	}}>
-																	<span className="codicon codicon-check" />
-																</VSCodeButton>
-																<VSCodeButton
-																	appearance="icon"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		setInlineEditingDoc(null)
-																		setInlineDocLinkError(null) // Clear error on cancel
-																	}}>
-																	<span className="codicon codicon-close" />
-																</VSCodeButton>
-															</DocumentButtons>
-														</DocumentAccordionItem>
-													) : (
-														// Show "+ Add Doc" button only if inline editing is not active
-														(exp.documentLinks ?? []).length < 3 && (
-															<VSCodeButton
-																appearance="secondary"
-																onClick={() => {
-																	setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
-																	setInlineDocLinkError(null) // Reset error when starting inline editing
+																			}}>
+																			<span className="codicon codicon-trash" />
+																		</VSCodeButton>
+																	)}
+																</DocumentButtons>
+															</DocumentAccordionItem>
+														))
+													: null}
+
+												{/* Inline editing for adding a document */}
+												{inlineEditingDoc?.expertName === exp.name ? (
+													<DocumentAccordionItem>
+														<div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+															<VSCodeTextField
+																value={inlineEditingDoc.linkUrl}
+																placeholder="Enter document link"
+																onChange={(e) => {
+																	setInlineDocLinkError(null) // Reset error on input change
+																	setInlineEditingDoc((prev) =>
+																		prev
+																			? {
+																					...prev,
+																					linkUrl: (e.target as HTMLInputElement).value,
+																				}
+																			: null,
+																	)
 																}}
-																style={{ width: "100%", marginTop: "8px" }}>
-																+ Add Doc
+																style={{ flexGrow: 1 }}
+															/>
+															{inlineDocLinkError && (
+																<p
+																	style={{
+																		color: "var(--vscode-errorForeground)",
+																		fontSize: "12px",
+																		marginTop: "4px",
+																	}}>
+																	{inlineDocLinkError}
+																</p>
+															)}
+														</div>
+														<DocumentButtons>
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	try {
+																		const url = new URL(inlineEditingDoc.linkUrl.trim())
+																		if (url.protocol !== "https:") {
+																			setInlineDocLinkError("Only HTTPS links are allowed")
+																			return
+																		}
+																		if (
+																			exp.documentLinks?.some(
+																				(link) =>
+																					link.url === inlineEditingDoc.linkUrl.trim(),
+																			)
+																		) {
+																			setInlineDocLinkError(
+																				"This link has already been added",
+																			)
+																			return
+																		}
+																		if (inlineEditingDoc.linkUrl.trim()) {
+																			vscode.postMessage({
+																				type: "addDocumentLink",
+																				text: inlineEditingDoc.linkUrl,
+																				expert: exp.name,
+																			})
+																			setCustomExperts((prevExperts) =>
+																				prevExperts.map((expert) =>
+																					expert.name === exp.name
+																						? {
+																								...expert,
+																								documentLinks: [
+																									...(expert.documentLinks ||
+																										[]),
+																									{
+																										url: inlineEditingDoc.linkUrl,
+																										status: DocumentStatus.PENDING,
+																									},
+																								],
+																							}
+																						: expert,
+																				),
+																			)
+																		}
+																		setInlineEditingDoc(null)
+																	} catch (e) {
+																		setInlineDocLinkError("Please enter a valid URL")
+																	}
+																}}>
+																<span className="codicon codicon-check" />
 															</VSCodeButton>
-														)
-													)}
-												</AccordionContainer>
-											)}
-										</div>
-									))
+															<VSCodeButton
+																appearance="icon"
+																onClick={(e) => {
+																	e.stopPropagation()
+																	setInlineEditingDoc(null)
+																	setInlineDocLinkError(null) // Clear error on cancel
+																}}>
+																<span className="codicon codicon-close" />
+															</VSCodeButton>
+														</DocumentButtons>
+													</DocumentAccordionItem>
+												) : (
+													// Show "+ Add Doc" button only if inline editing is not active
+													(exp.documentLinks ?? []).length < 3 && (
+														<VSCodeButton
+															appearance="secondary"
+															onClick={() => {
+																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
+																setInlineDocLinkError(null) // Reset error when starting inline editing
+															}}
+															style={{ width: "100%", marginTop: "8px" }}>
+															+ Add Doc
+														</VSCodeButton>
+													)
+												)}
+											</AccordionContainer>
+										)}
+									</div>
+								))
 							) : (
 								<EmptyState>
 									<p>No custom experts yet.</p>
