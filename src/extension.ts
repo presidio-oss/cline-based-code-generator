@@ -257,14 +257,11 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 	context.subscriptions.push(vscode.window.registerUriHandler({ handleUri }))
 
-	const inlineEditingInstance = WebviewProvider.getVisibleInstance()
-	if (inlineEditingInstance) {
-		getAllExtensionState(inlineEditingInstance.controller.context, getWorkspaceID() || "").then(({ apiConfiguration }) => {
-			context.subscriptions.push(
-				...new InlineEditingProvider().withContext(context).withApiConfiguration(apiConfiguration).build(),
-			)
-		})
-	}
+	getAllExtensionState(sidebarWebview.controller.context, getWorkspaceID() || "").then(({ apiConfiguration }) => {
+		context.subscriptions.push(
+			...new InlineEditingProvider().withContext(context).withApiConfiguration(apiConfiguration).build(),
+		)
+	})
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", (webview: any) => {
