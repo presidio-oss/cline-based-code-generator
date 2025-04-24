@@ -45,6 +45,9 @@ docs/**
 !node_modules/@vscode/codicons/dist/codicon.css
 !node_modules/@vscode/codicons/dist/codicon.ttf
 
+#Include default experts folder
+!src/experts
+
 # Include default themes JSON files used in getTheme
 !src/integrations/theme/default-themes/**
 
