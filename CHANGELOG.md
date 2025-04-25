@@ -1,14 +1,27 @@
 # Changelog
 
+## [3.4.1]
+
+### Enhancements
+
+-   Marking the HAI tasks as 'Completed' upon successful execution.
+-   Modified default experts folder structure for easier contribution.
+
+### Fixed
+
+-   Fixed issue with HTML rendering during fuzzy search.
+-   Fixed Inline edit not working.
+-   Typo fix in system prompt.
+
 ## [3.4.0]
 
 ### Added
 
--  Ability to add reference document link for custom experts.
+-   Ability to add reference document link for custom experts.
 
 ### Fixed
 
--  Fixed plan mode tool name issue with plan_mode_response.
+-   Fixed plan mode tool name issue with plan_mode_response.
 
 ## [3.3.2]
 
