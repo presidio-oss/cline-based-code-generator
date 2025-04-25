@@ -23,6 +23,7 @@ export interface WebviewMessage {
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"
+		| "loadDefaultExperts"
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
@@ -91,6 +92,7 @@ export interface WebviewMessage {
 		| "optionsResponse"
 		| "requestTotalTasksSize"
 		| "taskFeedback"
+		| "writeTaskStatus"
 	// | "relaunchChromeDebugMode"
 	text?: string
 	expert?: string
@@ -109,6 +111,9 @@ export interface WebviewMessage {
 	isDefault?: boolean
 	prompt?: string
 	category?: string
+	folder?: string
+	taskId?: string
+	status?: string
 
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration

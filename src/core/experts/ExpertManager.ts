@@ -17,6 +17,7 @@ export class ExpertManager {
 
 	public static readonly METADATA_FILE = "metadata.json"
 	public static readonly PROMPT_FILE = "prompt.md"
+	public static readonly ICON = "icon.svg"
 	public static readonly DOCS_DIR = "docs"
 	public static readonly STATUS_FILE = "status.json"
 	public static readonly PLACEHOLDER_FILE = "placeholder.txt"
@@ -506,5 +507,61 @@ export class ExpertManager {
 			}
 		}
 		return content
+	}
+
+	/**
+	 * Load the default Experts
+	 */
+
+	async loadDefaultExperts(): Promise<ExpertData[]> {
+		const expertsDir = path.join(this.extensionContext.extensionPath, GlobalFileNames.defaultExperts)
+
+		let experts: ExpertData[] = []
+
+		try {
+			const directoryEntries = await fs.readdir(expertsDir, { withFileTypes: true })
+
+			for (const directoryEntry of directoryEntries) {
+				if (!directoryEntry.isDirectory()) {
+					continue
+				}
+
+				const folderName = directoryEntry.name
+				const folderPath = path.join(expertsDir, folderName)
+				const promptPath = path.join(folderPath, ExpertManager.PROMPT_FILE)
+				const iconPath = path.join(folderPath, ExpertManager.ICON)
+
+				let prompt = ""
+				try {
+					prompt = await fs.readFile(promptPath, "utf8")
+					if (!prompt.trim()) {
+						console.warn(`Empty prompt for ${folderName}, skipping...`)
+						continue
+					}
+				} catch (error) {
+					console.error(`Error reading prompt for ${folderName}:`, error)
+					continue
+				}
+
+				let iconBase64 = ""
+				try {
+					const svgContent = await fs.readFile(iconPath)
+					iconBase64 = `data:image/svg+xml;base64,${svgContent.toString("base64")}`
+				} catch {
+					console.warn(`Icon not found for ${folderName}`)
+				}
+
+				experts.push({
+					name: folderName,
+					prompt,
+					isDefault: true,
+					iconComponent: iconBase64,
+				})
+			}
+		} catch (error) {
+			console.error("Error reading experts directory:", error)
+		}
+
+		return experts
 	}
 }

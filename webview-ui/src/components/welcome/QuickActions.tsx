@@ -13,6 +13,7 @@ const createHaiTask = (title: string, description: string, context: string): IHa
 	list: title,
 	acceptance: description,
 	id: "",
+	status: "",
 })
 
 const QuickActions = ({ onTaskSelect }: QuickActionProps) => {

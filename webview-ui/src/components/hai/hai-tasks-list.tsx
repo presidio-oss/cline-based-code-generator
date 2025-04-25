@@ -210,6 +210,7 @@ export function HaiTasksList({
 								name={story.name}
 								tasks={story.tasks}
 								id={story.id}
+								prdId={story.prdId}
 								onTaskSelect={selectedHaiTask}
 								onTaskClick={onTaskClick}
 								onStoryClick={onStoryClick}

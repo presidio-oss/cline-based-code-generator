@@ -3,6 +3,7 @@ export interface IHaiTask {
 	acceptance: string
 	id: string
 	subTaskTicketId?: string
+	status: string
 }
 
 export interface IHaiClineTask extends IHaiTask {
@@ -11,6 +12,7 @@ export interface IHaiClineTask extends IHaiTask {
 
 export interface IHaiStory {
 	id: string
+	prdId: string
 	name: string
 	description: string
 	storyTicketId?: string

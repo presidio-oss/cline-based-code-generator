@@ -6,4 +6,5 @@ export const GlobalFileNames = {
 	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
 	experts: ".hai-experts",
+	defaultExperts: "src/experts",
 }
