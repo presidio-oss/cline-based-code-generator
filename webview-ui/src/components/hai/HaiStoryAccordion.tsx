@@ -3,17 +3,24 @@ import { IHaiClineTask, IHaiTask, IHaiStory } from "../../interfaces/hai-task.in
 import HaiTaskComponent from "./HaiTaskComponent"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 
+// Interface for the highlighted task structure
+interface IHighlightedHaiTask {
+	original: IHaiTask
+	highlighted: IHaiTask
+}
+
 interface HaiStoryAccordionProps {
 	onTaskClick: (task: IHaiTask) => void
 	onStoryClick: (story: IHaiStory) => void
 	name: string
 	description: string
-	tasks: IHaiTask[]
+	tasks: IHighlightedHaiTask[]
 	onTaskSelect: (task: IHaiClineTask) => void
 	id: string
 	prdId: string
 	storyTicketId?: string
 	isAllExpanded: boolean
+	originalStory: IHaiStory
 }
 
 export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
@@ -27,6 +34,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 	id,
 	prdId,
 	isAllExpanded,
+	originalStory,
 }) => {
 	const [isExpanded, setIsExpanded] = useState<boolean>(true)
 
@@ -135,10 +143,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 							/>
 						</div>
 					</div>
-					<VSCodeButton
-						appearance="icon"
-						title="View Story"
-						onClick={() => onStoryClick({ id, prdId, name, description, storyTicketId, tasks })}>
+					<VSCodeButton appearance="icon" title="View Story" onClick={() => onStoryClick(originalStory)}>
 						<span
 							className="codicon codicon-eye"
 							style={{
@@ -164,7 +169,7 @@ export const HaiStoryAccordion: React.FC<HaiStoryAccordionProps> = ({
 								boxSizing: "border-box",
 							}}>
 							{tasks.map((task) => (
-								<div key={task.id}>
+								<div key={task.original.id}>
 									<div>
 										<HaiTaskComponent
 											id={id}

@@ -3,12 +3,18 @@ import { IHaiClineTask, IHaiTask } from "../../interfaces/hai-task.interface"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import CopyClipboard from "../common/CopyClipboard"
 
+// Interface for the highlighted task structure
+interface IHighlightedHaiTask {
+	original: IHaiTask
+	highlighted: IHaiTask
+}
+
 interface HaiTaskComponentProps {
 	id: string
 	prdId: string
 	name: string
 	description: string
-	task: IHaiTask
+	task: IHighlightedHaiTask
 	onTaskClick: (task: IHaiTask) => void
 	onTaskSelect: (task: IHaiClineTask) => void
 }
@@ -52,8 +58,8 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 							fontWeight: "bold",
 							color: "var(--vscode-descriptionForeground)",
 						}}>
-						<span dangerouslySetInnerHTML={{ __html: task.id }} />
-						{task.subTaskTicketId && (
+						<span dangerouslySetInnerHTML={{ __html: task.highlighted.id }} />
+						{task.highlighted.subTaskTicketId && (
 							<span
 								style={{
 									fontSize: "12px",
@@ -62,12 +68,12 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 									textOverflow: "ellipsis",
 								}}
 								dangerouslySetInnerHTML={{
-									__html: ` • ${task.subTaskTicketId}`,
+									__html: ` • ${task.highlighted.subTaskTicketId}`,
 								}}
 							/>
 						)}{" "}
 					</span>
-					{task.status === "Completed" && (
+					{task.original.status === "Completed" && (
 						<span
 							className={`codicon codicon-pass-filled`}
 							style={{ marginLeft: "4px", color: "green", fontSize: "13px" }}
@@ -83,7 +89,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 						wordBreak: "break-word",
 						overflowWrap: "anywhere",
 					}}
-					dangerouslySetInnerHTML={{ __html: task.list }}
+					dangerouslySetInnerHTML={{ __html: task.highlighted.list }}
 				/>
 			</div>
 
@@ -99,8 +105,8 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 					onClick={() => {
 						onTaskSelect({
 							context: `${name}: ${description}`,
-							...task,
-							id: `${prdId}-${id}-${task.id}`,
+							...task.original,
+							id: `${prdId}-${id}-${task.original.id}`,
 						})
 					}}>
 					<span className="codicon codicon-play" style={{ fontSize: 14, cursor: "pointer" }} />
@@ -108,10 +114,10 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 				<CopyClipboard
 					title="Copy Task"
 					onCopyContent={() => {
-						return `Task (${task.id}): ${task.list}\nAcceptance: ${task.acceptance}\n\nContext:\nStory (${id}): ${name}\nStory Acceptance: ${description}\n`
+						return `Task (${task.original.id}): ${task.original.list}\nAcceptance: ${task.original.acceptance}\n\nContext:\nStory (${id}): ${name}\nStory Acceptance: ${description}\n`
 					}}
 				/>
-				<VSCodeButton appearance="icon" title="View Task" onClick={() => onTaskClick(task)}>
+				<VSCodeButton appearance="icon" title="View Task" onClick={() => onTaskClick(task.original)}>
 					<span className="codicon codicon-eye" style={{ fontSize: 14, cursor: "pointer" }} />
 				</VSCodeButton>
 			</div>
