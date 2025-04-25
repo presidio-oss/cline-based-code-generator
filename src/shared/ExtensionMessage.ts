@@ -53,6 +53,7 @@ export interface ExtensionMessage {
 		| "expertsUpdated"
 		| "defaultExpertsLoaded"
 		| "expertPrompt"
+		| "writeTaskStatus"
 	text?: string
 	bool?: boolean
 	action?:
@@ -107,6 +108,11 @@ export interface ExtensionMessage {
 		success: boolean
 		serverName: string
 		error?: string
+	}
+	writeTaskStatusResult?: {
+		success: boolean
+		message: string
+		status: string
 	}
 }
 
