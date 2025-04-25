@@ -6,6 +6,17 @@ import { v4 as uuidv4 } from "uuid"
 import Fuse from "fuse.js"
 import { addHighlighting } from "../../utils/add-highlighting"
 
+// Define interfaces to store both original and highlighted versions
+interface IHighlightedHaiTask {
+	original: IHaiTask
+	highlighted: IHaiTask
+}
+
+interface IHighlightedHaiStory {
+	original: IHaiStory
+	highlighted: IHaiStory & { tasks: IHighlightedHaiTask[] }
+}
+
 type SearchableTaskFields = keyof IHaiTask
 const TASK_PREFIX = "tasks."
 
@@ -47,12 +58,28 @@ export function HaiTasksList({
 	}, [haiTaskList])
 
 	const taskSearchResults = useMemo(() => {
-		if (!searchQuery.trim()) return haiTaskList
+		if (!searchQuery.trim()) {
+			// For no search query, return the original list with both original and highlighted
+			// properties pointing to the same objects (no highlighting needed)
+			return haiTaskList.map((story) => ({
+				original: story,
+				highlighted: {
+					...story,
+					tasks: story.tasks.map((task) => ({
+						original: task,
+						highlighted: task,
+					})),
+				},
+			}))
+		}
 
 		const searchResults = fuse.search(searchQuery)
 
 		return searchResults
 			.map(({ item, matches }) => {
+				// Store the original story
+				const originalStory = item
+				// Create a copy for highlighting
 				const highlightedStory = { ...item }
 				let hasStoryMatch = false
 
@@ -69,9 +96,10 @@ export function HaiTasksList({
 				})
 
 				// Process task-level matches
-				const processedTasks = highlightedStory.tasks
+				const processedTasks = originalStory.tasks
 					.map((task) => {
 						let hasTaskMatch = false
+						// Create a copy for highlighting
 						const highlightedTask = { ...task }
 
 						matches?.forEach((match) => {
@@ -84,19 +112,29 @@ export function HaiTasksList({
 							}
 						})
 
-						return hasTaskMatch || hasStoryMatch ? highlightedTask : null
+						// Only keep tasks that match or are in a matching story
+						return hasTaskMatch || hasStoryMatch
+							? {
+									original: task,
+									highlighted: highlightedTask,
+								}
+							: null
 					})
-					.filter((task): task is IHaiTask => task !== null)
+					.filter((task): task is IHighlightedHaiTask => task !== null)
 
 				if (processedTasks.length === 0) return null
 				setIsAllExpanded(true)
 
+				// Return both the original and highlighted versions
 				return {
-					...highlightedStory,
-					tasks: processedTasks,
+					original: originalStory,
+					highlighted: {
+						...highlightedStory,
+						tasks: processedTasks,
+					},
 				}
 			})
-			.filter((story): story is IHaiStory => story !== null)
+			.filter((story): story is IHighlightedHaiStory => story !== null)
 	}, [searchQuery, haiTaskList, fuse])
 
 	function isTaskField(key: string): key is SearchableTaskFields {
@@ -204,13 +242,14 @@ export function HaiTasksList({
 					{taskSearchResults.length > 0 ? (
 						taskSearchResults.map((story) => (
 							<HaiStoryAccordion
-								description={story.description}
-								storyTicketId={story.storyTicketId}
+								description={story.highlighted.description}
+								storyTicketId={story.highlighted.storyTicketId}
 								key={uuidv4()}
-								name={story.name}
-								tasks={story.tasks}
-								id={story.id}
-								prdId={story.prdId}
+								name={story.highlighted.name}
+								tasks={story.highlighted.tasks}
+								id={story.highlighted.id}
+								prdId={story.highlighted.prdId}
+								originalStory={story.original}
 								onTaskSelect={selectedHaiTask}
 								onTaskClick={onTaskClick}
 								onStoryClick={onStoryClick}

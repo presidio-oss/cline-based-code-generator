@@ -5,6 +5,11 @@ import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { addHighlighting } from "../../utils/add-highlighting"
 import CopyClipboard from "../common/CopyClipboard"
 
+// Define interface to store both original and highlighted versions
+interface IHighlightedHaiTask {
+	original: IHaiTask
+	highlighted: IHaiTask
+}
 interface DetailedViewProps {
 	task: IHaiTask | null
 	story: IHaiStory | null
@@ -34,17 +39,34 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 	}, [story])
 
 	// Filter tasks based on the search query and apply highlighting
-	const filteredTasks = useMemo(() => {
-		if (!searchQuery.trim() || !fuse) return story?.tasks || []
+	const filteredTasks = useMemo<IHighlightedHaiTask[]>(() => {
+		if (!searchQuery.trim() || !fuse) {
+			// If no search query, return all tasks with both original and highlighted pointing to the same object
+			return (story?.tasks || []).map((task) => ({
+				original: task,
+				highlighted: task,
+			}))
+		}
+
+		// With search query, apply highlighting to copies while preserving originals
 		const results = fuse.search(searchQuery)
 		return results.map(({ item, matches }) => {
+			// Store original task
+			const originalTask = item
+			// Create copy for highlighting
 			const highlightedTask = { ...item }
+
+			// Apply highlighting to the copy
 			matches?.forEach((match) => {
 				if (match.key && match.indices && isTaskField(match.key)) {
 					highlightedTask[match.key] = addHighlighting(String(match.value), match.indices)
 				}
 			})
-			return highlightedTask
+
+			return {
+				original: originalTask,
+				highlighted: highlightedTask,
+			}
 		})
 	}, [searchQuery, fuse, story])
 
@@ -126,7 +148,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 					<div>
 						{filteredTasks.map((task) => (
 							<div
-								key={task.id}
+								key={task.original.id}
 								style={{
 									display: "flex",
 									alignItems: "center",
@@ -162,8 +184,8 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 												fontWeight: "bold",
 												color: "var(--vscode-descriptionForeground)",
 											}}>
-											<span dangerouslySetInnerHTML={{ __html: task.id }} />
-											{task.subTaskTicketId && (
+											<span dangerouslySetInnerHTML={{ __html: task.highlighted.id }} />
+											{task.highlighted.subTaskTicketId && (
 												<span
 													style={{
 														fontSize: "12px",
@@ -173,7 +195,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 														textOverflow: "ellipsis",
 													}}
 													dangerouslySetInnerHTML={{
-														__html: ` • ${task.subTaskTicketId}`,
+														__html: ` • ${task.highlighted.subTaskTicketId}`,
 													}}
 												/>
 											)}{" "}
@@ -188,7 +210,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 											wordBreak: "break-word",
 											overflowWrap: "anywhere",
 										}}
-										dangerouslySetInnerHTML={{ __html: task.list }}
+										dangerouslySetInnerHTML={{ __html: task.highlighted.list }}
 									/>
 								</div>
 
@@ -205,8 +227,8 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 										onClick={() => {
 											onTaskSelect({
 												context: `${story?.name}: ${story?.description}`,
-												...task,
-												id: `${story?.id}-${task.id}`,
+												...task.original,
+												id: `${story?.id}-${task.original.id}`,
 											})
 										}}>
 										<span className="codicon codicon-play" style={{ fontSize: 14, cursor: "pointer" }} />
@@ -214,15 +236,15 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 									<CopyClipboard
 										title="Copy Task"
 										onCopyContent={() => {
-											return `Task (${task.id}): ${task.list}\nAcceptance: ${task.acceptance}\n\nContext:\nStory (${story?.id}): ${story?.name}\nStory Acceptance: ${story?.description}\n`
+											return `Task (${task.original.id}): ${task.original.list}\nAcceptance: ${task.original.acceptance}\n\nContext:\nStory (${story?.id}): ${story?.name}\nStory Acceptance: ${story?.description}\n`
 										}}
 									/>
 									<VSCodeButton
 										appearance="icon"
 										title="View Task"
 										onClick={() => {
-											setSelectedTask(task)
-											onTaskClick(task)
+											setSelectedTask(task.original)
+											onTaskClick(task.original)
 										}}>
 										<span className="codicon codicon-eye" style={{ fontSize: 14, cursor: "pointer" }} />
 									</VSCodeButton>
