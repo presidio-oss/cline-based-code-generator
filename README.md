@@ -20,13 +20,15 @@
 
 > 🏗️ **Built on [Cline](https://github.com/cline/cline)**'s powerful foundation for AI-assisted development.
 
-## ⚡ Core Offerings and Innovations
+## ⚡ Extended Feature Set
 
 - [🧑‍💻 Experts](#-experts) : Context-aware code generation with built-in and custom domain experts  
 - [✏️ Inline Editing](#-inline-editing) : Make quick, AI-assisted edits without leaving your codebase  
 - [📝 HAI Tasks](#-hai-tasks) : Integrate AI-generated user stories and tasks seamlessly into your workflow  
 - [🔍 File Identification](#-file-identification) : Discover and contextualize code files with intelligent indexing  
 - [⚙️ Settings Interface](#-settings-interface) : Easily configure LLMs and embedding models for tailored performance
+
+<br>
 
 <div align="center" style="margin-top: 20px;">
   <img src="assets/gifs/hai-home-page.gif" alt="HAI Demo" />
