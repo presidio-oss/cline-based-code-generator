@@ -1297,10 +1297,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									onClick={handleExpertsButtonClick}
 									tabIndex={0}>
 									<ExpertsButtonContent>
-										{selectedExpert && selectedExpert.iconComponent && (
+										{selectedExpert && selectedExpert.iconComponent ? (
 											<div style={{ width: "12px", height: "12px", display: "flex", alignItems: "center" }}>
-												<selectedExpert.iconComponent />
+												<img src={selectedExpert.iconComponent} alt={`${selectedExpert.name} icon`} />
 											</div>
+										) : (
+											<span
+												className="codicon codicon-person"
+												style={{ fontSize: "12px", width: "12px", height: "12px" }}
+											/>
 										)}
 										{selectedExpert ? selectedExpert.name : "Default"}
 									</ExpertsButtonContent>
