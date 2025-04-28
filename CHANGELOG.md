@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.4.2]
+
+### Fixed
+
+-   Fix the expert icon rendering to correctly display the provided image, or fallback to a default icon if the image is unavailable.
+
 ## [3.4.1]
 
 ### Enhancements
