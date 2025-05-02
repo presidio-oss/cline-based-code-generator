@@ -1,11 +1,11 @@
-# Cline and Model Context Protocol (MCP) Servers: Enhancing AI Capabilities
+# HAI and Model Context Protocol (MCP) Servers: Enhancing AI Capabilities
 
 **Quick Links:**
 
 -   [Building MCP Servers from GitHub](mcp-server-from-github.md)
 -   [Building Custom MCP Servers from Scratch](mcp-server-from-scratch.md)
 
-This document explains Model Context Protocol (MCP) servers, their capabilities, and how Cline can help build and use them.
+This document explains Model Context Protocol (MCP) servers, their capabilities, and how HAI can help build and use them.
 
 ## Overview
 
@@ -64,22 +64,22 @@ The potential of MCP servers is vast. They can be used for a variety of purposes
 -   **Customize Existing Servers:** Modify existing servers to fit your specific requirements
 -   **Build from Scratch:** Create completely custom servers for unique use cases
 
-## Integration with Cline
+## Integration with HAI
 
-Cline simplifies the building and use of MCP servers through its AI capabilities.
+HAI simplifies the building and use of MCP servers through its AI capabilities.
 
 ### Building MCP Servers
 
--   **Natural language understanding:** Instruct Cline in natural language to build an MCP server by describing its functionalities. Cline will interpret your instructions and generate the necessary code.
--   **Cloning and building servers:** Cline can clone existing MCP server repositories from GitHub and build them automatically.
--   **Configuration and dependency management:** Cline handles configuration files, environment variables, and dependencies.
--   **Troubleshooting and debugging:** Cline helps identify and resolve errors during development.
+-   **Natural language understanding:** Instruct HAI in natural language to build an MCP server by describing its functionalities. HAI will interpret your instructions and generate the necessary code.
+-   **Cloning and building servers:** HAI can clone existing MCP server repositories from GitHub and build them automatically.
+-   **Configuration and dependency management:** HAI handles configuration files, environment variables, and dependencies.
+-   **Troubleshooting and debugging:** HAI helps identify and resolve errors during development.
 
 ### Using MCP Servers
 
--   **Tool execution:** Cline seamlessly integrates with MCP servers, allowing you to execute their defined tools.
--   **Context-aware interactions:** Cline can intelligently suggest using relevant tools based on conversation context.
--   **Dynamic integrations:** Combine multiple MCP server capabilities for complex tasks. For example, Cline could use a GitHub server to get data and a Notion server to create a formatted report.
+-   **Tool execution:** HAI seamlessly integrates with MCP servers, allowing you to execute their defined tools.
+-   **Context-aware interactions:** HAI can intelligently suggest using relevant tools based on conversation context.
+-   **Dynamic integrations:** Combine multiple MCP server capabilities for complex tasks. For example, HAI could use a GitHub server to get data and a Notion server to create a formatted report.
 
 ## Security Considerations
 
@@ -100,4 +100,3 @@ There are various resources available for finding and learning about MCP servers
 -   **GitHub Repositories:** [https://github.com/modelcontextprotocol/servers](https://github.com/modelcontextprotocol/servers) and [https://github.com/punkpeye/awesome-mcp-servers](https://github.com/punkpeye/awesome-mcp-servers)
 -   **Online Directories:** [https://mcpservers.org/](https://mcpservers.org/), [https://mcp.so/](https://mcp.so/), and [https://glama.ai/mcp/servers](https://glama.ai/mcp/servers)
 -   **PulseMCP:** [https://www.pulsemcp.com/](https://www.pulsemcp.com/)
--   **YouTube Tutorial (AI-Driven Coder):** A video guide for building and using MCP servers: [https://www.youtube.com/watch?v=b5pqTNiuuJg](https://www.youtube.com/watch?v=b5pqTNiuuJg)

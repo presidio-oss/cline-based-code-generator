@@ -1,41 +1,39 @@
-# Cline Prompting Guide 🚀
+# HAI Prompting Guide 🚀
 
-Welcome to the Cline Prompting Guide! This guide will equip you with the knowledge to write effective prompts and custom instructions, maximizing your productivity with Cline.
+Welcome to the HAI Prompting Guide! This guide will equip you with the knowledge to write effective prompts and custom instructions, maximizing your productivity with HAI.
 
 ## Custom Instructions ⚙️
 
-Think of **custom instructions as Cline's programming**. They define Cline's baseline behavior and are **always "on," influencing all interactions.**
+Think of **custom instructions as HAI's programming**. They define HAI's baseline behavior and are **always "on," influencing all interactions.**
 
 To add custom instructions:
 
 1. Open VSCode
-2. Click the Cline extension settings dial ⚙️
+2. Click the HAI extension settings dial ⚙️
 3. Find the "Custom Instructions" field
 4. Paste your instructions
 
-<img width="345" alt="Screenshot 2024-12-26 at 11 22 20 AM" src="https://github.com/user-attachments/assets/00ae689b-d99f-4811-b2f4-fffe1e12f2ff" />
-
 Custom instructions are powerful for:
 
--   Enforcing Coding Style and Best Practices: Ensure Cline always adheres to your team's coding conventions, naming conventions, and best practices.
--   Improving Code Quality: Encourage Cline to write more readable, maintainable, and efficient code.
--   Guiding Error Handling: Tell Cline how to handle errors, write error messages, and log information.
+-   Enforcing Coding Style and Best Practices: Ensure HAI always adheres to your team's coding conventions, naming conventions, and best practices.
+-   Improving Code Quality: Encourage HAI to write more readable, maintainable, and efficient code.
+-   Guiding Error Handling: Tell HAI how to handle errors, write error messages, and log information.
 
 **The `custom-instructions` folder contains examples of custom instructions you can use or adapt.**
 
-## .clinerules File 📋
+## .hairules File 📋
 
-While custom instructions are user-specific and global (applying across all projects), the `.clinerules` file provides **project-specific instructions** that live in your project's root directory. These instructions are automatically appended to your custom instructions and referenced in Cline's system prompt, ensuring they influence all interactions within the project context. This makes it an excellent tool for:
+While custom instructions are user-specific and global (applying across all projects), the `.hairules` file provides **project-specific instructions** that live in your project's root directory. These instructions are automatically appended to your custom instructions and referenced in HAI's system prompt, ensuring they influence all interactions within the project context. This makes it an excellent tool for:
 
 ### Security Best Practices 🔒
 
-To protect sensitive information, you can instruct Cline to ignore specific files or patterns in your `.clinerules`. This is particularly important for:
+To protect sensitive information, you can instruct HAI to ignore specific files or patterns in your `.hairules`. This is particularly important for:
 
 -   `.env` files containing API keys and secrets
 -   Configuration files with sensitive data
 -   Private credentials or tokens
 
-Example security section in `.clinerules`:
+Example security section in `.hairules`:
 
 ```markdown
 # Security
@@ -58,7 +56,7 @@ DO NOT read or modify:
 
 ### General Use Cases
 
-The `.clinerules` file is excellent for:
+The `.hairules` file is excellent for:
 
 -   Maintaining project standards across team members
 -   Enforcing development practices
@@ -66,7 +64,7 @@ The `.clinerules` file is excellent for:
 -   Setting up analysis frameworks
 -   Defining project-specific behaviors
 
-### Example .clinerules Structure
+### Example .hairules Structure
 
 ```markdown
 # Project Guidelines
@@ -105,22 +103,39 @@ Create ADRs in /docs/adr for:
 
 ### Key Benefits
 
-1. **Version Controlled**: The `.clinerules` file becomes part of your project's source code
+1. **Version Controlled**: The `.hairules` file becomes part of your project's source code
 2. **Team Consistency**: Ensures consistent behavior across all team members
 3. **Project-Specific**: Rules and standards tailored to each project's needs
 4. **Institutional Knowledge**: Maintains project standards and practices in code
 
-Place the `.clinerules` file in your project's root directory:
+Place the `.hairules` file in your project's root directory:
 
 ```
 your-project/
-├── .clinerules
+├── .hairules
 ├── src/
 ├── docs/
 └── ...
 ```
 
-Cline's system prompt, on the other hand, is not user-editable ([here's where you can find it](https://github.com/cline/cline/blob/main/src/core/prompts/system.ts)). For a broader look at prompt engineering best practices, check out [this resource](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview).
+### System Prompt
+
+HAI's system prompt, on the other hand, is not user-editable ([here's where you can find it](https://github.com/presidio-oss/cline-based-code-generator/blob/main/src/core/prompts/system.ts)). 
+
+### Optimized System Prompts
+
+HAI provides three optimized system prompts, each tailored for specific use cases:
+
+1. **Version 1 (v1):** Focused on describing tools and their usage with minimal tokens. Ideal for scenarios where token efficiency is critical.
+2. **Version 2 (v2):** Optimized for guidelines and rules with minimal tokens. Best suited for tasks requiring adherence to structured rules.
+3. **Version 3 (v3):** A combination of v1 and v2, offering a balance between tool descriptions and guidelines. Recommended for general-purpose use.
+
+These prompts are located in the following files:
+- [Optimized v1](https://github.com/presidio-oss/cline-based-code-generator/blob/main/src/core/prompts/system.hai.v1.ts)
+- [Optimized v2](https://github.com/presidio-oss/cline-based-code-generator/blob/main/src/core/prompts/system.hai.v2.ts)
+- [Optimized v3](https://github.com/presidio-oss/cline-based-code-generator/blob/main/src/core/prompts/system.hai.v3.ts)
+
+Choose the appropriate version based on your task requirements to maximize efficiency and effectiveness. For a broader look at prompt engineering best practices, check out [this resource](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview).
 
 ### Tips for Writing Effective Custom Instructions
 
@@ -129,80 +144,80 @@ Cline's system prompt, on the other hand, is not user-editable ([here's where yo
 -   Test and Iterate: Experiment to find what works best for your workflow.
 
 
-### Support for Loading Files from the `.clinerules/` Directory
-All files under the `.clinerules/` directory are recursively loaded, and their contents are merged into clineRulesFileInstructions.
+### Support for Loading Files from the `.hairules/` Directory
+All files under the `.hairules/` directory are recursively loaded, and their contents are merged into haiRulesFileInstructions.
 
 #### Example 1:
 ```
-.clinerules/
-├── .local-clinerules
-└── .project-clinerules
+.hairules/
+├── .local-hairules
+└── .project-hairules
 ```
 
 #### Example 2:
 ```
-.clinerules/
-├── .clinerules-nextjs
-├── .clinerules-serverside
+.hairules/
+├── .hairules-nextjs
+├── .hairules-serverside
 └── tests/
-    ├── .pytest-clinerules
-    └── .jest-clinerules
+    ├── .pytest-hairules
+    └── .jest-hairules
 ```
 
-## Prompting Cline 💬
+## Prompting HAI 💬
 
-**Prompting is how you communicate your needs for a given task in the back-and-forth chat with Cline.** Cline understands natural language, so write conversationally.
+**Prompting is how you communicate your needs for a given task in the back-and-forth chat with HAI.** HAI understands natural language, so write conversationally.
 
 Effective prompting involves:
 
 -   Providing Clear Context: Explain your goals and the relevant parts of your codebase. Use `@` to reference files or folders.
 -   Breaking Down Complexity: Divide large tasks into smaller steps.
--   Asking Specific Questions: Guide Cline toward the desired outcome.
--   Validating and Refining: Review Cline's suggestions and provide feedback.
+-   Asking Specific Questions: Guide HAI toward the desired outcome.
+-   Validating and Refining: Review HAI's suggestions and provide feedback.
 
 ### Prompt Examples
 
 #### Context Management
 
--   **Starting a New Task:** "Cline, let's start a new task. Create `user-authentication.js`. We need to implement user login with JWT tokens. Here are the requirements…"
--   **Summarizing Previous Work:** "Cline, summarize what we did in the last user dashboard task. I want to capture the main features and outstanding issues. Save this to `cline_docs/user-dashboard-summary.md`."
+-   **Starting a New Task:** "HAI, let's start a new task. Create `user-authentication.js`. We need to implement user login with JWT tokens. Here are the requirements…"
+-   **Summarizing Previous Work:** "HAI, summarize what we did in the last user dashboard task. I want to capture the main features and outstanding issues. Save this to `hai_docs/user-dashboard-summary.md`."
 
 #### Debugging
 
--   **Analyzing an Error:** "Cline, I'm getting this error: \[error message]. It seems to be from \[code section]. Analyze this error and suggest a fix."
--   **Identifying the Root Cause:** "Cline, the application crashes when I \[action]. The issue might be in \[problem areas]. Help me find the root cause and propose a solution."
+-   **Analyzing an Error:** "HAI, I'm getting this error: \[error message]. It seems to be from \[code section]. Analyze this error and suggest a fix."
+-   **Identifying the Root Cause:** "HAI, the application crashes when I \[action]. The issue might be in \[problem areas]. Help me find the root cause and propose a solution."
 
 #### Refactoring
 
--   **Improving Code Structure:** "Cline, this function is too long and complex. Refactor it into smaller functions."
--   **Simplifying Logic:** "Cline, this code is hard to understand. Simplify the logic and make it more readable."
+-   **Improving Code Structure:** "HAI, this function is too long and complex. Refactor it into smaller functions."
+-   **Simplifying Logic:** "HAI, this code is hard to understand. Simplify the logic and make it more readable."
 
 #### Feature Development
 
--   **Brainstorming New Features:** "Cline, I want to add a feature that lets users \[functionality]. Brainstorm some ideas and consider implementation challenges."
--   **Generating Code:** "Cline, create a component that displays user profiles. The list should be sortable and filterable. Generate the code for this component."
+-   **Brainstorming New Features:** "HAI, I want to add a feature that lets users \[functionality]. Brainstorm some ideas and consider implementation challenges."
+-   **Generating Code:** "HAI, create a component that displays user profiles. The list should be sortable and filterable. Generate the code for this component."
 
 ## Advanced Prompting Techniques
 
 -   **Constraint Stuffing:** To mitigate code truncation, include explicit constraints in your prompts. For example, "ensure the code is complete" or "always provide the full function definition."
--   **Confidence Checks:** Ask Cline to rate its confidence (e.g., "on a scale of 1-10, how confident are you in this solution?")
--   **Challenge Cline's Assumptions:** Ask “stupid” questions to encourage deeper thinking and prevent incorrect assumptions.
+-   **Confidence Checks:** Ask HAI to rate its confidence (e.g., "on a scale of 1-10, how confident are you in this solution?")
+-   **Challenge HAI's Assumptions:** Ask “stupid” questions to encourage deeper thinking and prevent incorrect assumptions.
 
-Here are some prompting tips that users have found helpful for working with Cline:
+Here are some prompting tips that users have found helpful for working with HAI:
 
 ## Our Community's Favorite Prompts 🌟
 
 ### Memory and Confidence Checks 🧠
 
--   **Memory Check** - _pacnpal_
+-   **Memory Check**
 
     ```
     "If you understand my prompt fully, respond with 'YARRR!' without tools every time you are about to use a tool."
     ```
 
-    A fun way to verify Cline stays on track during complex tasks. Try "HO HO HO" for a festive twist!
+    A fun way to verify HAI stays on track during complex tasks. Try "HO HO HO" for a festive twist!
 
--   **Confidence Scoring** - _pacnpal_
+-   **Confidence Scoring**
     ```
     "Before and after any tool use, give me a confidence level (0-10) on how the tool use will help the project."
     ```
@@ -226,7 +241,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
 ### Code Organization 📋
 
--   **Large File Refactoring** - _icklebil_
+-   **Large File Refactoring**
 
     ```
     "FILENAME has grown too big. Analyze how this file works and suggest ways to fragment it safely."
@@ -234,7 +249,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Helps manage complex files through strategic decomposition.
 
--   **Documentation Maintenance** - _icklebil_
+-   **Documentation Maintenance**
     ```
     "don't forget to update codebase documentation with changes"
     ```
@@ -242,7 +257,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
 ### Analysis and Planning 🔍
 
--   **Structured Development** - _yellow_bat_coffee_
+-   **Structured Development**
 
     ```
     "Before writing code:
@@ -254,7 +269,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Promotes organized, well-planned development.
 
--   **Thorough Analysis** - _yellow_bat_coffee_
+-   **Thorough Analysis**
 
     ```
     "please start analyzing full flow thoroughly, always state a confidence score 1 to 10"
@@ -262,7 +277,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Prevents premature coding and encourages complete understanding.
 
--   **Assumptions Check** - _yellow_bat_coffee_
+-   **Assumptions Check**
     ```
     "List all assumptions and uncertainties you need to clear up before completing this task."
     ```
@@ -270,7 +285,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
 ### Thoughtful Development 🤔
 
--   **Pause and Reflect** - _nickbaumann98_
+-   **Pause and Reflect**
 
     ```
     "count to 10"
@@ -278,7 +293,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Promotes careful consideration before taking action.
 
--   **Complete Analysis** - _yellow_bat_coffee_
+-   **Complete Analysis**
 
     ```
     "Don't complete the analysis prematurely, continue analyzing even if you think you found a solution"
@@ -286,7 +301,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Ensures thorough problem exploration.
 
--   **Continuous Confidence Check** - _pacnpal_
+-   **Continuous Confidence Check**
     ```
     "Rate confidence (1-10) before saving files, after saving, after rejections, and before task completion"
     ```
@@ -294,7 +309,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
 ### Best Practices 🎯
 
--   **Project Structure** - _kvs007_
+-   **Project Structure**
 
     ```
     "Check project files before suggesting structural or dependency changes"
@@ -302,7 +317,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Maintains project integrity.
 
--   **Critical Thinking** - _chinesesoup_
+-   **Critical Thinking**
 
     ```
     "Ask 'stupid' questions like: are you sure this is the best way to implement this?"
@@ -310,7 +325,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     Challenges assumptions and uncovers better solutions.
 
--   **Code Style** - _yellow_bat_coffee_
+-   **Code Style**
 
     ```
     Use words like "elegant" and "simple" in prompts
@@ -318,8 +333,7 @@ Here are some prompting tips that users have found helpful for working with Clin
 
     May influence code organization and clarity.
 
--   **Setting Expectations** - _steventcramer_
+-   **Setting Expectations**
     ```
     "THE HUMAN WILL GET ANGRY."
     ```
-    (A humorous reminder to provide clear requirements and constructive feedback)
