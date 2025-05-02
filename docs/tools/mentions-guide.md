@@ -1,10 +1,10 @@
-# Cline Mentions Feature Guide
+# HAI Mentions Feature Guide
 
 ## Overview
 
-The mentions feature is a powerful capability that allows you to reference various resources in your conversations with Cline using the "@" symbol. This includes file contents, directory structures, webpage URLs, VSCode diagnostic information, terminal output, Git change status, and more - all easily incorporated into your conversations.
+The mentions feature is a powerful capability that allows you to reference various resources in your conversations with HAI using the "@" symbol. This includes file contents, directory structures, webpage URLs, VSCode diagnostic information, terminal output, Git change status, and more - all easily incorporated into your conversations.
 
-By using this feature, Cline can gain more accurate context and provide more relevant assistance for your tasks.
+By using this feature, HAI can gain more accurate context and provide more relevant assistance for your tasks.
 
 ## Basic Syntax
 
@@ -14,7 +14,7 @@ Mentions always start with the "@" symbol, followed by the path or identifier of
 @resource_identifier
 ```
 
-You can place mentions anywhere in your user messages, and Cline will automatically retrieve the referenced content.
+You can place mentions anywhere in your user messages, and HAI will automatically retrieve the referenced content.
 
 ## Supported Mention Types
 
@@ -31,7 +31,7 @@ To reference file contents, use `@/` followed by the relative path within your p
 Please analyze the implementation in @/src/components/Button.tsx
 ```
 
-In this example, Cline automatically retrieves the contents of Button.tsx and uses it to perform the analysis.
+In this example, HAI automatically retrieves the contents of Button.tsx and uses it to perform the analysis.
 
 ### 2. Directory References
 
@@ -46,7 +46,7 @@ To reference directory contents, use `@/` followed by the relative path of the d
 What components are available in the @/src/components/ directory?
 ```
 
-In this example, Cline retrieves a listing of the components directory and its contents.
+In this example, HAI retrieves a listing of the components directory and its contents.
 
 ### 3. URL References
 
@@ -61,7 +61,7 @@ To reference web page contents, use `@` followed by the URL:
 Please parse the JSON response from @https://api.github.com/users/octocat
 ```
 
-In this example, Cline fetches the response from the GitHub API and analyzes the JSON.
+In this example, HAI fetches the response from the GitHub API and analyzes the JSON.
 
 ### 4. Diagnostic References
 
@@ -76,7 +76,7 @@ To reference VSCode diagnostic information (errors and warnings) in the current 
 Check @problems and tell me which errors I should prioritize fixing
 ```
 
-In this example, Cline retrieves the current errors and warnings from your workspace and identifies high-priority issues.
+In this example, HAI retrieves the current errors and warnings from your workspace and identifies high-priority issues.
 
 ### 5. Terminal Output References
 
@@ -91,7 +91,7 @@ To reference the latest terminal output, use `@terminal`:
 Please identify the cause of the error in the @terminal output
 ```
 
-In this example, Cline examines the latest terminal output and analyzes the error's cause.
+In this example, HAI examines the latest terminal output and analyzes the error's cause.
 
 ### 6. Git Working Directory References
 
@@ -106,7 +106,7 @@ To reference the current Git working directory change status, use `@git-changes`
 Review the @git-changes and summarize the important changes that should be committed
 ```
 
-In this example, Cline retrieves the list of changed files in the current Git working directory and identifies candidates for commit.
+In this example, HAI retrieves the list of changed files in the current Git working directory and identifies candidates for commit.
 
 ### 7. Git Commit References
 
@@ -121,7 +121,7 @@ To reference information about a specific Git commit, use `@` followed by the co
 Analyze the commit @abcd123 and explain what changes were made
 ```
 
-In this example, Cline retrieves information about the specified commit hash and analyzes the changes made in that commit.
+In this example, HAI retrieves information about the specified commit hash and analyzes the changes made in that commit.
 
 ## Usage Scenarios
 
@@ -202,4 +202,4 @@ If mention processing is slow:
 
 ## Conclusion
 
-Mastering the mentions feature makes your communication with Cline more efficient. By providing appropriate context, Cline can deliver more accurate assistance, significantly improving your development workflow.
+Mastering the mentions feature makes your communication with HAI more efficient. By providing appropriate context, HAI can deliver more accurate assistance, significantly improving your development workflow.
