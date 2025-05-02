@@ -168,21 +168,6 @@ All files under the `.hairules/` directory are recursively loaded, and their con
 
 **Prompting is how you communicate your needs for a given task in the back-and-forth chat with HAI.** HAI understands natural language, so write conversationally.
 
-### Optimized System Prompts
-
-HAI provides three optimized system prompts, each tailored for specific use cases:
-
-1. **Version 1 (v1):** Focused on describing tools and their usage with minimal tokens. Ideal for scenarios where token efficiency is critical.
-2. **Version 2 (v2):** Optimized for guidelines and rules with minimal tokens. Best suited for tasks requiring adherence to structured rules.
-3. **Version 3 (v3):** A combination of v1 and v2, offering a balance between tool descriptions and guidelines. Recommended for general-purpose use.
-
-These prompts are located in the following files:
-- `src/core/prompts/system.hai.v1.ts`
-- `src/core/prompts/system.hai.v2.ts`
-- `src/core/prompts/system.hai.v3.ts`
-
-Choose the appropriate version based on your task requirements to maximize efficiency and effectiveness.
-
 Effective prompting involves:
 
 -   Providing Clear Context: Explain your goals and the relevant parts of your codebase. Use `@` to reference files or folders.
