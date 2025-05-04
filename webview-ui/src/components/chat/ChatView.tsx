@@ -103,9 +103,7 @@ const ChatView = ({
 
 	useEffect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
-		selectedHaiTask &&
-			selectedHaiTask?.id &&
-			setInputValue(`Task: ${selectedHaiTask.list} ${selectedHaiTask.acceptance} ${selectedHaiTask.context}`)
+		selectedHaiTask && setInputValue(`Task: ${selectedHaiTask.list} ${selectedHaiTask.acceptance} ${selectedHaiTask.context}`)
 	}, [selectedHaiTask])
 
 	useDeepCompareEffect(() => {
