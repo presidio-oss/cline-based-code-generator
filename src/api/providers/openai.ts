@@ -15,7 +15,7 @@ export class OpenAiHandler implements ApiHandler {
 	constructor(options: ApiHandlerOptions) {
 		this.options = options
 		// Azure API shape slightly differs from the core API shape: https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
-		if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com")) {
+		if (this.options.openAiBaseUrl?.toLowerCase().includes("azure")) {
 			this.client = new AzureOpenAI({
 				endpoint: this.options.openAiBaseUrl,
 				deployment: this.options.openAiModelId,
@@ -107,7 +107,7 @@ export class OpenAiHandler implements ApiHandler {
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com") && !this.options.openAiModelId) {
+			if (this.options.openAiBaseUrl?.toLowerCase().includes("azure") && !this.options.openAiModelId) {
 				return false
 			}
 
