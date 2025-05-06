@@ -30,8 +30,9 @@ export const customCapabilitiesPrompt = (enabled: boolean) =>
 	!enabled
 		? ""
 		: `
-- The initial list of of all filepaths given to you inside environment_details is not-exhaustive; it may not include all possible files or directories. So when the user initially gives you a task, you should consider using the \`find_relevant_files\` tool to locate the relevant files, so the probability of finding the most relevant files apart from the initial list of filepaths provided is higher since the initial list may not cover all possibilities.
-- You should always use the \`find_relevant_files\` tool when the user initially provide the task. Even though the initial list of filepaths given inside the environment_details may sufficient to get the tak done, you should prioritize finding the most relevant files for the task at hand before using any other tools. This ensures that you are working with the most accurate and up-to-date information available, which can lead to better outcomes for the user's task. If \`find_relevant_files\` the tool returns an empty list of files, you can ignore the result and continue with the task.
+- The initial list of all filepaths given to you inside environment_details is not-exhaustive; it may not include all possible files or directories. When the user presents a code-related task that requires file access or understanding existing code, consider using the \`find_relevant_files\` tool to locate the relevant files.
+- Only use the \`find_relevant_files\` tool when the user's request is specifically related to code, development, file operations, or understanding the codebase. For general questions, conversational queries, or non-code-related requests, avoid using this tool.
+- If \`find_relevant_files\` the tool returns an empty list of files, you can ignore the result and continue with the task.
 - You should always use the \`code_security_scan\` tool before whenever you use the tool \`attempt_completion\` to ensure the generated code is secure and free from vulnerabilities, don't assume that the code is free from vulnerabilities you should prioritize security scan before attempting to complete the task. If there any vulnerabilities found, you must address them before completing the task. Before fixing the vulnerabilities, you should always get the user's approval before proceeding with the fixing process.
 - Always ensure that the code you generate adheres to best practices and security standards to minimize risks and vulnerabilities.
 `
@@ -40,7 +41,13 @@ export const customRulesPrompt = (enabled: boolean) =>
 	!enabled
 		? ""
 		: `
-- The first tool you use when the user gives the task must be \`find_relevant_files\` to locate the most relevant files for the task.Failure to do so may result in incomplete or inaccurate information being used for the task. Always prioritize finding the most relevant files to ensure the best results. If \`find_relevant_files\` the tool returns an empty list of files, you can ignore the result and continue with the task.
+- For code-related tasks that involve modifying, creating, or understanding files in the codebase, use \`find_relevant_files\` first to identify the most relevant context. Do NOT use this tool for general questions, explanations, or non-code-related queries.
+- When determining if a query requires the \`find_relevant_files\` tool, consider:
+  * Does the query require knowledge about specific files in the codebase?
+  * Is the user asking about implementing, modifying, or debugging code?
+  * Does the user mention specific files, directories, or code components?
+  * Is file context necessary to provide an appropriate response?
+  If the answer is no to these questions, skip using the tool and respond directly.
 - You should always use the \`code_security_scan\` tool before attempting to complete any code-related tasks to ensure security and compliance with best practices. Failure to perform a security scan may expose the code to vulnerabilities and security risks. Always prioritize security and compliance with best practices. If any issue or vulnerabilities are found, address them before proceeding with the task.
 - While fixing the vulnerabilities do not remove any of the working code only replace the implementation that is affected with the vulnerabilities, if you require anymore information or course correction, consult with the user before proceeding to apply any of the change. Always show the plan before fixing the security vulnerabilities. Before fixing the vulnerabilities, you should always get the user's approval before proceeding with the fixing process.
 `
