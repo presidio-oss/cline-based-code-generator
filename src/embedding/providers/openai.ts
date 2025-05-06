@@ -8,7 +8,7 @@ export class OpenAiEmbeddingHandler implements EmbeddingHandler {
 
 	constructor(options: EmbeddingHandlerOptions) {
 		this.options = options
-		if (this.options.openAiBaseUrl?.toLowerCase().includes("azure.com")) {
+		if (this.options.openAiBaseUrl?.toLowerCase().includes("azure")) {
 			const originalURL = new URL(this.options.openAiBaseUrl)
 			const baseURL = originalURL.origin
 
