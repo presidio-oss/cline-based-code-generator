@@ -1,17 +1,15 @@
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
-import { memo, useCallback, useEffect, useState } from "react"
-import { validateApiConfiguration, validateModelId } from "../../utils/validate"
+import { memo, useEffect, useState } from "react"
+import { validateApiConfiguration, validateEmbeddingConfiguration, validateModelId } from "../../utils/validate"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import SettingsButton from "../common/SettingsButton"
-import { useDebounce, useDeepCompareEffect } from "react-use"
+import { useDeepCompareEffect } from "react-use"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 import { TabButton } from "../mcp/McpView"
-import { useEvent } from "react-use"
-import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -65,21 +63,25 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-	useDebounce(
-		() => {
-			vscode.postMessage({ type: "customInstructions", text: customInstructions || "" })
-		},
-		500,
-		[customInstructions],
-	)
+	const handleSubmit = () => {
+		const apiValidationResult = validateApiConfiguration(apiConfiguration)
+		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
+		const embeddingValidationResult = validateEmbeddingConfiguration(embeddingConfiguration)
 
-	useEffect(() => {
-		vscode.postMessage({ type: "telemetrySetting", telemetrySetting })
-	}, [telemetrySetting])
+		if (!apiValidationResult && !modelIdValidationResult) {
+			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
+			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
+			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+			onDone()
+		}
 
-	useEffect(() => {
-		vscode.postMessage({ type: "updateSettings", planActSeparateModelsSetting })
-	}, [planActSeparateModelsSetting])
+		vscode.postMessage({
+			type: "updateSettings",
+			planActSeparateModelsSetting,
+			customInstructionsSetting: customInstructions,
+			telemetrySetting,
+		})
+	}
 
 	useEffect(() => {
 		if (pendingTabChange) {
@@ -125,6 +127,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					paddingRight: 17,
 				}}>
 				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
+				<VSCodeButton onClick={handleSubmit}>Done</VSCodeButton>
 			</div>
 			<div
 				style={{
