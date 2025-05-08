@@ -688,7 +688,7 @@ const ApiOptions = ({ showModelOptions, showModelError = true, isPopup, onValid 
 						{selectedModelInfo.supportsPromptCache && (
 							<>
 								<VSCodeCheckbox
-									checked={apiConfiguration?.awsBedrockUsePromptCache ?? true}
+									checked={apiConfiguration?.awsBedrockUsePromptCache || false}
 									onChange={(e: any) => {
 										const isChecked = e.target.checked === true
 										setApiConfiguration({
