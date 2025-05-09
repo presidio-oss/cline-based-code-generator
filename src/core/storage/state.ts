@@ -46,6 +46,7 @@ export function isCustomGlobalKey(key: string): boolean {
 		"embeddingAzureOpenAIApiVersion",
 		"embeddingOllamaBaseUrl",
 		"embeddingOllamaModelId",
+		"telemetrySetting",
 	]
 	return customGlobalKeys.includes(key)
 }
@@ -275,7 +276,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "previousModeThinkingBudgetTokens") as Promise<number | undefined>,
 		customGetState(context, "qwenApiLine") as Promise<string | undefined>,
 		customGetSecret(context, "liteLlmApiKey", workspaceId) as Promise<string | undefined>,
-		customGetState(context, "telemetrySetting") as Promise<TelemetrySetting | undefined>,
+		getGlobalState(context, "telemetrySetting") as Promise<TelemetrySetting | undefined>,
 		customGetSecret(context, "asksageApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "asksageApiUrl") as Promise<string | undefined>,
 		customGetSecret(context, "xaiApiKey", workspaceId) as Promise<string | undefined>,
@@ -599,7 +600,6 @@ export async function updateEmbeddingConfiguration(
 	await customUpdateState(context, "embeddingOllamaModelId", ollamaModelId)
 	// Update Secrets
 	await customStoreSecret(context, "embeddingAwsAccessKey", workspaceId, awsAccessKey, true)
-	await customStoreSecret(context, "embeddingAwsSecretKey", workspaceId, awsSecretKey, true)
 	await customStoreSecret(context, "embeddingAwsSecretKey", workspaceId, awsSecretKey, true)
 	await customStoreSecret(context, "embeddingAwsSessionToken", workspaceId, awsSessionToken, true)
 	await customStoreSecret(context, "embeddingOpenAiApiKey", workspaceId, openAiApiKey, true)
