@@ -7,7 +7,6 @@ import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import SettingsButton from "../common/SettingsButton"
-import { useDeepCompareEffect } from "react-use"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 import { TabButton } from "../mcp/McpView"
 
@@ -63,16 +62,14 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-	const handleSubmit = () => {
+	const handleSubmit = (withoutDone: boolean = false) => {
 		const apiValidationResult = validateApiConfiguration(apiConfiguration)
 		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
-		const embeddingValidationResult = validateEmbeddingConfiguration(embeddingConfiguration)
 
 		if (!apiValidationResult && !modelIdValidationResult) {
 			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
 			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
 			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
-			onDone()
 		}
 
 		vscode.postMessage({
@@ -81,6 +78,10 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			customInstructionsSetting: customInstructions,
 			telemetrySetting,
 		})
+
+		if (!withoutDone) {
+			onDone()
+		}
 	}
 
 	useEffect(() => {
@@ -94,15 +95,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}, [pendingTabChange])
 
-	useDeepCompareEffect(() => {
-		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
-	}, [buildContextOptions])
-
 	const handleTabChange = (tab: "plan" | "act") => {
 		if (tab === chatSettings.mode) {
 			return
 		}
 		setPendingTabChange(tab)
+		handleSubmit(true)
 	}
 
 	return (
@@ -127,7 +125,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					paddingRight: 17,
 				}}>
 				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
-				<VSCodeButton onClick={handleSubmit}>Done</VSCodeButton>
+				<VSCodeButton onClick={() => handleSubmit(false)}>Done</VSCodeButton>
 			</div>
 			<div
 				style={{
