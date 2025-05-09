@@ -67,11 +67,13 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.mcpButtonClicked", (webview: any) => {
-			const openMcp = (instance?: WebviewProvider) =>
+			const openMcp = (instance?: WebviewProvider) => {
+				instance?.controller.postStateToWebview()
 				instance?.controller.postMessageToWebview({
 					type: "action",
 					action: "mcpButtonClicked",
 				})
+			}
 			const isSidebar = !webview
 			if (isSidebar) {
 				openMcp(WebviewProvider.getSidebarInstance())
@@ -140,6 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.historyButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openHistory = async (instance?: WebviewProvider) => {
+					await instance?.controller.postStateToWebview()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "historyButtonClicked",
@@ -159,6 +162,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.accountButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openAccount = async (instance?: WebviewProvider) => {
+					await instance?.controller.postStateToWebview()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "accountButtonClicked",
@@ -178,6 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.expertsButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openExperts = async (instance?: WebviewProvider) => {
+					await instance?.controller.postStateToWebview()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "expertsButtonClicked",
@@ -267,6 +272,7 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openHaiTaskList = async (instance?: WebviewProvider) => {
+					await instance?.controller.postStateToWebview()
 					await instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "haiBuildTaskListClicked",
