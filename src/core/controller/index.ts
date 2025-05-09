@@ -2194,7 +2194,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.codeIndexAbortController.abort()
 			this.isCodeIndexInProgress = false
 		}
-		await resetExtensionState(this.context)
+		await resetExtensionState(this.context, this.workspaceId)
 		if (this.task) {
 			this.task.abortTask()
 			this.task = undefined

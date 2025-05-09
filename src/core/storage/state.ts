@@ -276,7 +276,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "previousModeThinkingBudgetTokens") as Promise<number | undefined>,
 		customGetState(context, "qwenApiLine") as Promise<string | undefined>,
 		customGetSecret(context, "liteLlmApiKey", workspaceId) as Promise<string | undefined>,
-		getGlobalState(context, "telemetrySetting") as Promise<TelemetrySetting | undefined>,
+		customGetState(context, "telemetrySetting") as Promise<TelemetrySetting | undefined>,
 		customGetSecret(context, "asksageApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "asksageApiUrl") as Promise<string | undefined>,
 		customGetSecret(context, "xaiApiKey", workspaceId) as Promise<string | undefined>,
@@ -607,7 +607,7 @@ export async function updateEmbeddingConfiguration(
 	await customStoreSecret(context, "embeddingAzureOpenAIApiKey", workspaceId, azureOpenAIApiKey, true)
 }
 
-export async function resetExtensionState(context: vscode.ExtensionContext) {
+export async function resetExtensionState(context: vscode.ExtensionContext, workspaceId: string) {
 	for (const key of context.workspaceState.keys()) {
 		await context.workspaceState.update(key, undefined)
 	}
@@ -641,6 +641,6 @@ export async function resetExtensionState(context: vscode.ExtensionContext) {
 		"embeddingAzureOpenAIApiKey",
 	]
 	for (const key of secretKeys) {
-		await storeSecret(context, key, undefined)
+		await customStoreSecret(context, key, workspaceId, undefined, true)
 	}
 }
