@@ -37,7 +37,7 @@ interface ChatViewProps {
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
 	showHistoryView: () => void
-	onTaskSelect: (task: IHaiClineTask) => void
+	onTaskSelect: (task: IHaiClineTask | null) => void
 	selectedHaiTask: IHaiClineTask | null
 	haiConfig: {
 		[x: string]: any
@@ -809,13 +809,7 @@ const ChatView = ({
 	)
 
 	const clearSelectedHaiTaskId = () => {
-		onTaskSelect({
-			acceptance: selectedHaiTask?.acceptance ?? "",
-			context: selectedHaiTask?.context ?? "",
-			id: "",
-			list: selectedHaiTask?.list ?? "",
-			status: selectedHaiTask?.status ?? "",
-		})
+		onTaskSelect(null)
 	}
 
 	return (
