@@ -12,6 +12,7 @@ import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 import { TabButton } from "../mcp/McpView"
 import { useEvent } from "react-use"
 import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
+import Guardrails from "./guardrails/Guardrails"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -270,6 +271,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						are sent for analytics.
 					</p>
 				</div>
+
+				<Guardrails />
 
 				{IS_DEV && (
 					<>

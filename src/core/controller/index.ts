@@ -68,6 +68,7 @@ import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { deleteFromContextDirectory } from "../../utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "../../utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
+import { Guardrails } from "../../integrations/guardrails"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -95,6 +96,7 @@ export class Controller {
 	private isSideBar: boolean
 	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
+	private guardrails: Guardrails
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -108,6 +110,7 @@ export class Controller {
 		this.workspaceTracker = new WorkspaceTracker(this)
 		this.mcpHub = new McpHub(this)
 		this.accountService = new ClineAccountService(this)
+		this.guardrails = new Guardrails()
 
 		// Clean up legacy checkpoints
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
@@ -828,6 +831,21 @@ export class Controller {
 				break
 			case "loadDefaultExperts":
 				await this.loadDefaultExperts()
+				break
+			case "loadGuards":
+				await this.loadGuards()
+				break
+			case "updateGuardThreshold":
+				if (message.guard) {
+					await this.guardrails.updateThreshold(message.guard.key as "injection" | "leakage", message.guard.threshold!)
+				}
+				await this.loadGuards()
+				break
+			case "updateGuardMode":
+				if (message.guard) {
+					await this.guardrails.updateMode(message.guard.key as "secret" | "pii", message.guard.mode!)
+				}
+				await this.loadGuards()
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
@@ -2622,6 +2640,14 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
+		})
+	}
+
+	async loadGuards() {
+		const guards = await this.guardrails.activeGuards
+		await this.postMessageToWebview({
+			type: "defaultGuards",
+			guards,
 		})
 	}
 

@@ -84,6 +84,8 @@ import { isCommandIncludedInSecretScanning, isSecretFile } from "../../integrati
 import { FindFilesToEditAgent } from "../../integrations/code-prep/FindFilesToEditAgent"
 import { buildTreeString } from "../../utils/customFs"
 import { CodeScanner } from "../../integrations/security/code-scan"
+import { LLMMessage } from "@presidio-dev/hai-guardrails"
+import { Guardrails } from "../../integrations/guardrails"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
 
@@ -142,6 +144,7 @@ export class Task {
 	expertPrompt?: string
 	buildContextOptions?: HaiBuildContextOptions
 	private task?: string
+	private guardrails: Guardrails
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
@@ -180,7 +183,7 @@ export class Task {
 		this.expertPrompt = expertPrompt
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
-
+		this.guardrails = new Guardrails()
 		// Initialize taskId first
 		if (historyItem) {
 			this.taskId = historyItem.id
@@ -1275,6 +1278,40 @@ export class Task {
 				preferredLanguageInstructions,
 			)
 		}
+
+		const messages = await this.formatClineMessagesForGuardrails()
+		const result = await this.guardrails.run(messages)
+		const failedGuards = result.messagesWithGuardResult.filter((guard) => guard.messages.some((msg) => msg.passed === false))
+		if (failedGuards.length > 0) {
+			this.didRejectTool = false
+			this.didAlreadyUseTool = false
+			this.didCompleteReadingStream = false
+			this.isWaitingForFirstChunk = false
+			const streamText = Guardrails.MESSAGE
+			yield {
+				type: "text",
+				text: streamText,
+			}
+			return
+		}
+
+		const secretGuardFindings = result.messagesWithGuardResult.filter((guard) => guard.guardId === "secret")
+		secretGuardFindings.forEach((finding) => {
+			finding.messages.forEach((message) => {
+				if (message.passed === true && message.modifiedMessage !== null) {
+					this.clineMessages.find((m) => {
+						console.log("-".repeat(50))
+						console.log("masking user message", m.text)
+						if (m.text?.toString() === message.message.content.toString()) {
+							console.log("masking user message text content", message.message?.content)
+							console.log("masking user message to replace", message.modifiedMessage?.content)
+							m.text = `${message.modifiedMessage?.content}`
+						}
+					})
+				}
+			})
+		})
+
 		const contextManagementMetadata = this.contextManager.getNewContextMessagesAndMetadata(
 			this.apiConversationHistory,
 			this.clineMessages,
@@ -3719,5 +3756,33 @@ export class Task {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Formats the conversation history messages for Guardrails.
+	 * This function filters the messages to include only those that are relevant for Guardrails,
+	 * specifically messages of type "say" and "ask".
+	 * It then maps the filtered messages to the format expected by Guardrails.
+	 * The resulting array of messages is returned.
+	 * @function formatClineMessagesForGuardrails
+	 * @returns {LLMMessage[]} - An array of LLMMessage objects formatted for Guardrails.
+	 */
+	async formatClineMessagesForGuardrails(): Promise<LLMMessage[]> {
+		return this.clineMessages
+			.filter((message) => {
+				const isValidSay = message.type === "say"
+				const isAsk = message.type === "ask"
+				if (!isValidSay && !isAsk) {
+					console.warn("Unknown message type, skipping leakage guard", message)
+				}
+				if ((isValidSay && !!message.text) || isAsk) {
+					console.log("allowed", message)
+				}
+				return (isValidSay && !!message.text) || isAsk
+			})
+			.map((message) => ({
+				role: message.type === "say" ? "user" : "system",
+				content: message.text!,
+			}))
 	}
 }
