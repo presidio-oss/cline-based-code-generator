@@ -899,9 +899,6 @@ export class Controller {
 			case "validateLLMConfig":
 				let isValid = false
 				if (message.apiConfiguration) {
-					// Save the LLM configuration in the state
-					await updateApiConfiguration(this.context, message.apiConfiguration, this.workspaceId)
-
 					// If no validation error is encountered, validate the LLM configuration by sending a test message.
 					if (!message.text) {
 						try {
@@ -924,9 +921,6 @@ export class Controller {
 			case "validateEmbeddingConfig":
 				let isEmbeddingValid = false
 				if (message.embeddingConfiguration) {
-					// Save the Embedding configuration in the state
-					await updateEmbeddingConfiguration(this.context, message.embeddingConfiguration, this.workspaceId)
-
 					// If no validation error is encountered, validate the Embedding configuration by sending a test message.
 					if (!message.text) {
 						try {
@@ -2218,7 +2212,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			this.codeIndexAbortController.abort()
 			this.isCodeIndexInProgress = false
 		}
-		await resetExtensionState(this.context)
+		await resetExtensionState(this.context, this.workspaceId)
 		if (this.task) {
 			this.task.abortTask()
 			this.task = undefined

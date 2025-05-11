@@ -1,17 +1,14 @@
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
-import { memo, useCallback, useEffect, useState } from "react"
-import { validateApiConfiguration, validateModelId } from "../../utils/validate"
+import { memo, useEffect, useState } from "react"
+import { validateApiConfiguration, validateEmbeddingConfiguration, validateModelId } from "../../utils/validate"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import SettingsButton from "../common/SettingsButton"
-import { useDebounce, useDeepCompareEffect } from "react-use"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 import { TabButton } from "../mcp/McpView"
-import { useEvent } from "react-use"
-import { ExtensionMessage } from "../../../../src/shared/ExtensionMessage"
 import Guardrails from "./guardrails/Guardrails"
 
 const IS_DEV = true // FIXME: use flags when packaging
@@ -66,21 +63,27 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-	useDebounce(
-		() => {
-			vscode.postMessage({ type: "customInstructions", text: customInstructions || "" })
-		},
-		500,
-		[customInstructions],
-	)
+	const handleSubmit = (withoutDone: boolean = false) => {
+		const apiValidationResult = validateApiConfiguration(apiConfiguration)
+		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
 
-	useEffect(() => {
-		vscode.postMessage({ type: "telemetrySetting", telemetrySetting })
-	}, [telemetrySetting])
+		if (!apiValidationResult && !modelIdValidationResult) {
+			vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
+			vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
+			vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+		}
 
-	useEffect(() => {
-		vscode.postMessage({ type: "updateSettings", planActSeparateModelsSetting })
-	}, [planActSeparateModelsSetting])
+		vscode.postMessage({
+			type: "updateSettings",
+			planActSeparateModelsSetting,
+			customInstructionsSetting: customInstructions,
+			telemetrySetting,
+		})
+
+		if (!withoutDone) {
+			onDone()
+		}
+	}
 
 	useEffect(() => {
 		if (pendingTabChange) {
@@ -93,15 +96,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}, [pendingTabChange])
 
-	useDeepCompareEffect(() => {
-		vscode.postMessage({ type: "buildContextOptions", buildContextOptions: buildContextOptions })
-	}, [buildContextOptions])
-
 	const handleTabChange = (tab: "plan" | "act") => {
 		if (tab === chatSettings.mode) {
 			return
 		}
 		setPendingTabChange(tab)
+		handleSubmit(true)
 	}
 
 	return (
@@ -126,6 +126,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					paddingRight: 17,
 				}}>
 				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
+				<VSCodeButton onClick={() => handleSubmit(false)}>Done</VSCodeButton>
 			</div>
 			<div
 				style={{
@@ -251,7 +252,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					<VSCodeCheckbox
 						style={{ marginBottom: "5px" }}
 						checked={telemetrySetting === "enabled"}
-						onChange={(e: any) => {
+						onClick={(e: any) => {
 							const checked = e.target.checked === true
 							setTelemetrySetting(checked ? "enabled" : "disabled")
 						}}>

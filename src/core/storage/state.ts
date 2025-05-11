@@ -46,6 +46,7 @@ export function isCustomGlobalKey(key: string): boolean {
 		"embeddingAzureOpenAIApiVersion",
 		"embeddingOllamaBaseUrl",
 		"embeddingOllamaModelId",
+		"telemetrySetting",
 	]
 	return customGlobalKeys.includes(key)
 }
@@ -361,7 +362,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			awsSessionToken,
 			awsRegion,
 			awsUseCrossRegionInference,
-			awsBedrockUsePromptCache: awsBedrockUsePromptCache ?? true,
+			awsBedrockUsePromptCache,
 			awsBedrockEndpoint,
 			awsProfile,
 			awsUseProfile,
@@ -600,14 +601,13 @@ export async function updateEmbeddingConfiguration(
 	// Update Secrets
 	await customStoreSecret(context, "embeddingAwsAccessKey", workspaceId, awsAccessKey, true)
 	await customStoreSecret(context, "embeddingAwsSecretKey", workspaceId, awsSecretKey, true)
-	await customStoreSecret(context, "embeddingAwsSecretKey", workspaceId, awsSecretKey, true)
 	await customStoreSecret(context, "embeddingAwsSessionToken", workspaceId, awsSessionToken, true)
 	await customStoreSecret(context, "embeddingOpenAiApiKey", workspaceId, openAiApiKey, true)
 	await customStoreSecret(context, "embeddingOpenAiNativeApiKey", workspaceId, openAiNativeApiKey, true)
 	await customStoreSecret(context, "embeddingAzureOpenAIApiKey", workspaceId, azureOpenAIApiKey, true)
 }
 
-export async function resetExtensionState(context: vscode.ExtensionContext) {
+export async function resetExtensionState(context: vscode.ExtensionContext, workspaceId: string) {
 	for (const key of context.workspaceState.keys()) {
 		await context.workspaceState.update(key, undefined)
 	}
@@ -641,6 +641,6 @@ export async function resetExtensionState(context: vscode.ExtensionContext) {
 		"embeddingAzureOpenAIApiKey",
 	]
 	for (const key of secretKeys) {
-		await storeSecret(context, key, undefined)
+		await customStoreSecret(context, key, workspaceId, undefined, true)
 	}
 }
