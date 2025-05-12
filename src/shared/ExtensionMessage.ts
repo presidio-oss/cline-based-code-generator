@@ -54,6 +54,7 @@ export interface ExtensionMessage {
 		| "defaultExpertsLoaded"
 		| "expertPrompt"
 		| "writeTaskStatus"
+		| "defaultGuards"
 	text?: string
 	bool?: boolean
 	action?:
@@ -102,6 +103,7 @@ export interface ExtensionMessage {
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
 	experts?: any[] // Expert data array
+	guards?: Guard[]
 	documentLinks?: any[] // Document links with status
 	expertName?: string // Expert name for document links status
 	addRemoteServerResult?: {
@@ -182,6 +184,7 @@ export type ClineAsk =
 	| "auto_approval_max_req_reached"
 	| "browser_action_launch"
 	| "use_mcp_server"
+	| "guardrails"
 
 export type ClineSay =
 	| "task"
@@ -208,6 +211,7 @@ export type ClineSay =
 	| "deleted_api_reqs"
 	| "clineignore_error"
 	| "checkpoint_created"
+	| "guardrails_filter"
 
 export interface ClineSayTool {
 	tool:
@@ -278,3 +282,11 @@ export interface ClineApiReqInfo {
 export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"
+
+export interface Guard {
+	key: string
+	name: string
+	hasThreshold: boolean
+	threshold?: number
+	mode?: string
+}

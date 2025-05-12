@@ -9,6 +9,7 @@ import EmbeddingOptions from "./EmbeddingOptions"
 import SettingsButton from "../common/SettingsButton"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
 import { TabButton } from "../mcp/McpView"
+import Guardrails from "./guardrails/Guardrails"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -271,6 +272,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						are sent for analytics.
 					</p>
 				</div>
+
+				<Guardrails />
 
 				{IS_DEV && (
 					<>
