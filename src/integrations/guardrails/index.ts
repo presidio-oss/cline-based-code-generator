@@ -9,8 +9,8 @@ import {
 } from "@presidio-dev/hai-guardrails"
 
 export class Guardrails extends GuardrailsEngine {
-	public static MESSAGE = "⚠️ Message blocked by Hai Guardrails filter."
-	private static _guardsConfig = {
+	public static MESSAGE = "Message blocked by Hai Guardrails filter."
+	public static _guardsConfig = {
 		injection: {
 			name: "Prompt Injection",
 			threshold: 0.75,
@@ -44,6 +44,15 @@ export class Guardrails extends GuardrailsEngine {
 			piiGuard({
 				selection: Guardrails._guardsConfig.pii.selection,
 				mode: "redact",
+				patterns: [
+					{
+						id: "Email-pattern",
+						name: "Email pattern",
+						description: "Redact email in all combinations of special characters",
+						regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+						replacement: "####",
+					},
+				],
 			}),
 			secretGuard({
 				selection: Guardrails._guardsConfig.secret.selection,
@@ -75,22 +84,24 @@ export class Guardrails extends GuardrailsEngine {
 	}
 
 	public async updateThreshold(guardKey: "injection" | "leakage", newThreshold: number): Promise<void> {
-		if (Guardrails._guardsConfig[guardKey]) {
-			Guardrails._guardsConfig[guardKey].threshold = newThreshold
-			console.log(`Threshold for ${guardKey} guard updated to ${newThreshold}`)
-		} else {
+		const guard = Guardrails._guardsConfig[guardKey]
+		if (!guard) {
 			console.error(`Guard ${guardKey} not found.`)
+			return
 		}
+		guard.threshold = newThreshold
+		console.log(`Threshold for ${guardKey} guard updated to ${newThreshold}`)
 		Guardrails.createGuards()
 	}
 
 	public async updateMode(guardKey: "secret" | "pii", mode: string): Promise<void> {
-		if (Guardrails._guardsConfig[guardKey]) {
-			Guardrails._guardsConfig[guardKey].mode = mode
-			console.log(`Mode for ${guardKey} guard updated to ${mode}`)
-		} else {
+		const guard = Guardrails._guardsConfig[guardKey]
+		if (!guard) {
 			console.error(`Guard ${guardKey} not found.`)
+			return
 		}
+		guard.mode = mode
+		console.log(`Mode for ${guardKey} guard updated to ${mode}`)
 		Guardrails.createGuards()
 	}
 }

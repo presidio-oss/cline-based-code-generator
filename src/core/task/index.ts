@@ -84,7 +84,7 @@ import { isCommandIncludedInSecretScanning, isSecretFile } from "../../integrati
 import { FindFilesToEditAgent } from "../../integrations/code-prep/FindFilesToEditAgent"
 import { buildTreeString } from "../../utils/customFs"
 import { CodeScanner } from "../../integrations/security/code-scan"
-import { LLMMessage } from "@presidio-dev/hai-guardrails"
+import { GuardResult, LLMMessage } from "@presidio-dev/hai-guardrails"
 import { Guardrails } from "../../integrations/guardrails"
 
 const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -148,6 +148,7 @@ export class Task {
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
+	private failedGuards: { guardId: string; guardName: string; messages: Omit<GuardResult, "guardId" | "guardName">[] }[] = []
 
 	constructor(
 		controller: Controller,
@@ -184,6 +185,7 @@ export class Task {
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
 		this.guardrails = new Guardrails()
+		this.failedGuards = []
 		// Initialize taskId first
 		if (historyItem) {
 			this.taskId = historyItem.id
@@ -972,6 +974,9 @@ export class Task {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 		while (!this.abort) {
+			if (this.failedGuards.length > 0) {
+				break // Exit the loop
+			}
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
 			includeFileDetails = false // we only need file details the first time
 
@@ -1278,39 +1283,46 @@ export class Task {
 				preferredLanguageInstructions,
 			)
 		}
-
 		const messages = await this.formatClineMessagesForGuardrails()
 		const result = await this.guardrails.run(messages)
-		const failedGuards = result.messagesWithGuardResult.filter((guard) => guard.messages.some((msg) => msg.passed === false))
-		if (failedGuards.length > 0) {
+		result.messagesWithGuardResult
+			.filter((guard) => ["secret", "pii"].includes(guard.guardId))
+			.flatMap((guard) => guard.messages)
+			.filter((message) => !message.passed && message.modifiedMessage)
+			.forEach((msg) => {
+				const isJson = msg.message.content.startsWith("REQUEST:::")
+				let msgContent = msg.message.content.toString()
+				if (isJson) {
+					msgContent = JSON.stringify({
+						request: `${msg.message.content}`.replace(/^(REQUEST:::)+/, ""),
+					})
+				}
+				const match = this.clineMessages.find((m) => m.text?.toString() === msgContent)
+				if (match) {
+					match.text = isJson ? JSON.stringify({ request: msg.modifiedMessage?.content }) : msg.modifiedMessage?.content
+				}
+			})
+		const guardsToApply = ["leakage", "injection"]
+		if (Guardrails._guardsConfig.secret.mode === "block") {
+			guardsToApply.push("secret")
+		}
+		if (Guardrails._guardsConfig.pii.mode === "block") {
+			guardsToApply.push("pii")
+		}
+		this.failedGuards = result.messagesWithGuardResult.filter(
+			(guard) => guardsToApply.includes(guard.guardId) && guard.messages.some((msg) => msg.passed === false),
+		)
+		if (this.failedGuards.length > 0) {
 			this.didRejectTool = false
 			this.didAlreadyUseTool = false
 			this.didCompleteReadingStream = false
 			this.isWaitingForFirstChunk = false
-			const streamText = Guardrails.MESSAGE
 			yield {
 				type: "text",
-				text: streamText,
+				text: Guardrails.MESSAGE,
 			}
 			return
 		}
-
-		const secretGuardFindings = result.messagesWithGuardResult.filter((guard) => guard.guardId === "secret")
-		secretGuardFindings.forEach((finding) => {
-			finding.messages.forEach((message) => {
-				if (message.passed === true && message.modifiedMessage !== null) {
-					this.clineMessages.find((m) => {
-						console.log("-".repeat(50))
-						console.log("masking user message", m.text)
-						if (m.text?.toString() === message.message.content.toString()) {
-							console.log("masking user message text content", message.message?.content)
-							console.log("masking user message to replace", message.modifiedMessage?.content)
-							m.text = `${message.modifiedMessage?.content}`
-						}
-					})
-				}
-			})
-		})
 
 		const contextManagementMetadata = this.contextManager.getNewContextMessagesAndMetadata(
 			this.apiConversationHistory,
@@ -3051,6 +3063,10 @@ export class Task {
 		if (this.abort) {
 			throw new Error("HAI instance aborted")
 		}
+		if (this.failedGuards && this.failedGuards.length > 0) {
+			await this.say("text", "Stopping task execution.")
+			return false // Exit the loop
+		}
 
 		if (this.consecutiveMistakeCount >= 3) {
 			if (this.autoApprovalSettings.enabled && this.autoApprovalSettings.enableNotifications) {
@@ -3414,7 +3430,6 @@ export class Task {
 
 				// if the model did not tool use, then we need to tell it to either use a tool or attempt_completion
 				const didToolUse = this.assistantMessageContent.some((block) => block.type === "tool_use")
-
 				if (!didToolUse) {
 					// normal request where tool use is required
 					this.userMessageContent.push({
@@ -3773,16 +3788,24 @@ export class Task {
 				const isValidSay = message.type === "say"
 				const isAsk = message.type === "ask"
 				if (!isValidSay && !isAsk) {
-					console.warn("Unknown message type, skipping leakage guard", message)
-				}
-				if ((isValidSay && !!message.text) || isAsk) {
-					console.log("allowed", message)
+					// Unknown message type, skipping leakage guard
 				}
 				return (isValidSay && !!message.text) || isAsk
 			})
-			.map((message) => ({
-				role: message.type === "say" ? "user" : "system",
-				content: message.text!,
-			}))
+			.map((message) => {
+				const role = message.type === "say" ? "user" : "system"
+				const shouldParse = ["api_req_started"].includes(message.say!)
+				try {
+					return {
+						role,
+						content: shouldParse ? `REQUEST:::${JSON.parse(message.text!).request}` : message.text!,
+					}
+				} catch (error) {
+					return {
+						role,
+						content: message.text!,
+					}
+				}
+			})
 	}
 }
