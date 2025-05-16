@@ -77,7 +77,7 @@ export class DoubaoHandler implements ApiHandler {
 			})
 			return true
 		} catch (error) {
-			console.error("Error validating Sambanova credentials: ", error)
+			console.error("Error validating Doubao credentials: ", error)
 			return false
 		}
 	}
