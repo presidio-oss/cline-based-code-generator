@@ -12,7 +12,7 @@ import {
 	getFileChanges,
 	calculateToolSuccessRate,
 } from "./GitHelper"
-import { getAllExtensionState, updateApiConfiguration, storeSecret, customUpdateState } from "@core/storage/state"
+import { getAllExtensionState, updateApiConfiguration, customUpdateState, customStoreSecret } from "@core/storage/state"
 import { ClineAsk, ExtensionMessage } from "@shared/ExtensionMessage"
 import { ApiProvider } from "@shared/api"
 import { WebviewMessage } from "@shared/WebviewMessage"
@@ -266,7 +266,7 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 						}
 
 						// Store the API key securely
-						await storeSecret(visibleWebview.controller.context, "clineApiKey", apiKey)
+						await customStoreSecret(visibleWebview.controller.context, "clineApiKey", workspaceId, apiKey, true)
 
 						// Update the API configuration
 						await updateApiConfiguration(visibleWebview.controller.context, updatedConfig, workspaceId)

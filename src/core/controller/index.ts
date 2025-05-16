@@ -35,15 +35,13 @@ import { getTotalTasksSize } from "@utils/storage"
 import { openMention } from "../mentions"
 import { ensureMcpServersDirectoryExists, ensureSettingsDirectoryExists, GlobalFileNames } from "../storage/disk"
 import {
+	customGetSecret,
 	customGetState,
 	customStoreSecret,
 	customUpdateState,
 	getAllExtensionState,
-	getGlobalState,
-	getSecret,
 	getWorkspaceState,
 	resetExtensionState,
-	storeSecret,
 	updateApiConfiguration,
 	updateEmbeddingConfiguration,
 	updateWorkspaceState,
@@ -525,7 +523,7 @@ export class Controller {
 				if (rulePath && typeof enabled === "boolean" && typeof isGlobal === "boolean") {
 					if (isGlobal) {
 						const toggles =
-							((await getGlobalState(this.context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
+							((await customGetState(this.context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
 						toggles[rulePath] = enabled
 						await customUpdateState(this.context, "globalClineRulesToggles", toggles)
 					} else {
@@ -1249,18 +1247,18 @@ export class Controller {
 	// Auth
 
 	public async validateAuthState(state: string | null): Promise<boolean> {
-		const storedNonce = await getSecret(this.context, "authNonce")
+		const storedNonce = await customGetSecret(this.context, "authNonce", this.workspaceId)
 		if (!state || state !== storedNonce) {
 			return false
 		}
-		await storeSecret(this.context, "authNonce", undefined) // Clear after use
+		await customStoreSecret(this.context, "authNonce", this.workspaceId, undefined, true) // Clear after use
 		return true
 	}
 
 	async handleAuthCallback(customToken: string, apiKey: string) {
 		try {
 			// Store API key for API calls
-			await customStoreSecret(this.context, "clineApiKey", this.workspaceId, apiKey)
+			await customStoreSecret(this.context, "clineApiKey", this.workspaceId, apiKey, true)
 
 			// Send custom token to webview for Firebase auth
 			await this.postMessageToWebview({
@@ -1552,7 +1550,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 
 		let models: Record<string, ModelInfo> = {}
 		try {
-			const apiKey = await getSecret(this.context, "requestyApiKey")
+			const apiKey = await customGetSecret(this.context, "requestyApiKey", this.workspaceId)
 			const headers = {
 				Authorization: `Bearer ${apiKey}`,
 			}
@@ -1764,7 +1762,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	async deleteNonFavoriteTaskHistory() {
 		await this.clearTask()
 
-		const taskHistory = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[]) || []
+		const taskHistory = ((await customGetState(this.context, "taskHistory")) as HistoryItem[]) || []
 		const favoritedTasks = taskHistory.filter((task) => task.isFavorited === true)
 
 		// If user has no favorited tasks, show a warning message
@@ -1967,7 +1965,7 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 	*/
 
 	// getApiConversationHistory(): Anthropic.MessageParam[] {
-	// 	// const history = (await this.getGlobalState(
+	// 	// const history = (await this.customGetState(
 	// 	// 	this.getApiConversationHistoryStateKey()
 	// 	// )) as Anthropic.MessageParam[]
 	// 	// return history || []

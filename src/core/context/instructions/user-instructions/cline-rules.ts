@@ -4,7 +4,7 @@ import { fileExistsAtPath, isDirectory, readDirectory } from "@utils/fs"
 import { formatResponse } from "@core/prompts/responses"
 import fs from "fs/promises"
 import { ClineRulesToggles } from "@shared/cline-rules"
-import { customUpdateState, getGlobalState, getWorkspaceState } from "@core/storage/state"
+import { customGetState, customUpdateState, getWorkspaceState } from "@core/storage/state"
 import * as vscode from "vscode"
 import { synchronizeRuleToggles, getRuleFilesTotalContent } from "@core/context/instructions/user-instructions/rule-helpers"
 
@@ -113,7 +113,7 @@ export async function refreshClineRulesToggles(
 	localToggles: ClineRulesToggles
 }> {
 	// Global toggles
-	const globalClineRulesToggles = ((await getGlobalState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
+	const globalClineRulesToggles = ((await customGetState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
 	const globalClineRulesFilePath = await ensureRulesDirectoryExists()
 	const updatedGlobalToggles = await synchronizeRuleToggles(globalClineRulesFilePath, globalClineRulesToggles)
 	await customUpdateState(context, "globalClineRulesToggles", updatedGlobalToggles)
@@ -186,7 +186,7 @@ export async function deleteRuleFile(
 
 		// Update the appropriate toggles
 		if (isGlobal) {
-			const toggles = ((await getGlobalState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
+			const toggles = ((await customGetState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
 			delete toggles[rulePath]
 			await customUpdateState(context, "globalClineRulesToggles", toggles)
 		} else {

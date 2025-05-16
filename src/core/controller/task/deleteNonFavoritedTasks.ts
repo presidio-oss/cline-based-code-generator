@@ -3,7 +3,7 @@ import fs from "fs/promises"
 import { Controller } from ".."
 import { EmptyRequest } from "@shared/proto/common"
 import { DeleteNonFavoritedTasksResults } from "@shared/proto/task"
-import { customUpdateState, getGlobalState } from "../../storage/state"
+import { customGetState, customUpdateState } from "../../storage/state"
 import { fileExistsAtPath } from "@utils/fs"
 
 /**
@@ -21,7 +21,7 @@ export async function deleteNonFavoritedTasks(
 		await controller.clearTask()
 
 		// Get existing task history
-		const taskHistory = ((await getGlobalState(controller.context, "taskHistory")) as any[]) || []
+		const taskHistory = ((await customGetState(controller.context, "taskHistory")) as any[]) || []
 
 		// Filter out non-favorited tasks
 		const favoritedTasks = taskHistory.filter((task) => task.isFavorited === true)

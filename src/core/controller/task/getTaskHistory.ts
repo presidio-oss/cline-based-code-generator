@@ -1,6 +1,6 @@
 import { Controller } from ".."
 import { GetTaskHistoryRequest, TaskHistoryArray } from "../../../shared/proto/task"
-import { getGlobalState } from "../../storage/state"
+import { customGetState } from "../../storage/state"
 
 /**
  * Gets filtered task history
@@ -13,7 +13,7 @@ export async function getTaskHistory(controller: Controller, request: GetTaskHis
 		const { favoritesOnly, searchQuery, sortBy } = request
 
 		// Get task history from global state
-		const taskHistory = ((await getGlobalState(controller.context, "taskHistory")) as any[]) || []
+		const taskHistory = ((await customGetState(controller.context, "taskHistory")) as any[]) || []
 
 		// Apply filters
 		let filteredTasks = taskHistory.filter((item) => {

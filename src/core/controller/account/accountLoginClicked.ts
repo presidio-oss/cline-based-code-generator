@@ -1,7 +1,8 @@
 import * as vscode from "vscode"
 import crypto from "crypto"
 import { Controller } from "../index"
-import { storeSecret } from "../../storage/state"
+import { customStoreSecret } from "../../storage/state"
+import { getWorkspaceID } from "@/utils/path"
 
 /**
  * Handles the user clicking the login link in the UI.
@@ -14,7 +15,8 @@ import { storeSecret } from "../../storage/state"
 export async function accountLoginClicked(controller: Controller): Promise<String> {
 	// Generate nonce for state validation
 	const nonce = crypto.randomBytes(32).toString("hex")
-	await storeSecret(controller.context, "authNonce", nonce)
+	const workspaceId = getWorkspaceID() || ""
+	await customStoreSecret(controller.context, "authNonce", workspaceId, nonce, true)
 
 	// Open browser for authentication with state param
 	console.log("Login button clicked in account page")
