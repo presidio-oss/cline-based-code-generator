@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite"
 import react from "@vitejs/plugin-react-swc"
 import { resolve } from "path"
 import { writeFileSync } from "node:fs"
+import svgr from "vite-plugin-svgr"
 
 // Custom plugin to write the server port to a file
 const writePortToFile = (): Plugin => {
@@ -27,7 +28,7 @@ const writePortToFile = (): Plugin => {
 }
 
 export default defineConfig({
-	plugins: [react(), tailwindcss(), writePortToFile()],
+	plugins: [svgr(), react(), tailwindcss(), writePortToFile()],
 	test: {
 		environment: "jsdom",
 		globals: true,

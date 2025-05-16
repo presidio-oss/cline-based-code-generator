@@ -2,7 +2,7 @@
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
 import { IHaiStory } from "../../webview-ui/src/interfaces/hai-task.interface"
 import { EmbeddingConfiguration } from "./embeddings"
-import { GitCommit } from "@utils/git"
+import { GitCommit } from "../utils/git"
 import { ApiConfiguration, ModelInfo } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"

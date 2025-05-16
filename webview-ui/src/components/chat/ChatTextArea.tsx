@@ -469,17 +469,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleMessage = useCallback((event: MessageEvent) => {
 			const message: ExtensionMessage = event.data
 			switch (message.type) {
-				case "commitSearchResults": {
-					const commits =
-						message.commits?.map((commit: any) => ({
-							type: ContextMenuOptionType.Git,
-							value: commit.hash,
-							label: commit.subject,
-							description: `${commit.shortHash} by ${commit.author} on ${commit.date}`,
-						})) || []
-					setGitCommits(commits)
-					break
-				}
 				case "expertsUpdated": {
 					if (message.experts) {
 						setCustomExperts(message.experts)

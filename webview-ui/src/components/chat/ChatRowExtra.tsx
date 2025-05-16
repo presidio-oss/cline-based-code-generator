@@ -32,7 +32,6 @@ const ChatRowExtra: React.FC<ChatRowExtraProps> = ({ headerStyle, toolIcon, mess
 								path={tool.path || ""}
 								language="markdown"
 								isExpanded={false}
-								showActionIcon={false}
 								onToggleExpand={onToggleExpand}
 							/>
 						</>
@@ -68,7 +67,6 @@ const ChatRowExtra: React.FC<ChatRowExtraProps> = ({ headerStyle, toolIcon, mess
 						language="markdown"
 						isExpanded={message.type === "ask" ? false : isExpanded}
 						onToggleExpand={onToggleExpand}
-						showActionIcon={message.type !== "ask"}
 					/>
 				</>
 			)
