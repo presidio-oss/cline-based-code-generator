@@ -121,7 +121,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// Show the activity bar and sidebar
 		"workbench.activityBar.visible": true,
 		"workbench.sideBar.visible": true,
-		"workbench.view.extension.presidio-inc.hai-ActivityBar.visible": true,
+		"workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar.visible": true,
 		"workbench.view.alwaysShowHeaderActions": true,
 		"workbench.editor.openSideBySideDirection": "right",
 
@@ -145,13 +145,13 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 	const keybindings = [
 		{
 			key: "alt+c",
-			command: "workbench.view.extension.presidio-inc.hai-ActivityBar",
-			when: "viewContainer.workbench.view.extension.presidio-inc.hai-ActivityBar.enabled",
+			command: "workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar",
+			when: "viewContainer.workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar.enabled",
 		},
 		{
 			key: "alt+shift+c",
 			command: "hai.openInNewTab",
-			when: "viewContainer.workbench.view.extension.presidio-inc.hai-ActivityBar.enabled",
+			when: "viewContainer.workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar.enabled",
 		},
 	]
 	fs.writeFileSync(keybindingsPath, JSON.stringify(keybindings, null, 2))
@@ -171,10 +171,10 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		workspacePath,
 		// Force the extension to be activated on startup
 		"--start-up-extension",
-		"presidio-inc.hai",
+		"presidio-inc.hai-build-code-generator",
 		// Run a command on startup to open Cline
 		"--command",
-		"workbench.view.extension.presidio-inc.hai-ActivityBar",
+		"workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar",
 		// Additional flags to help with extension activation
 		"--disable-gpu=false",
 		"--max-memory=4096",
@@ -186,7 +186,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// This script will be executed when VS Code starts
 		setTimeout(() => {
 			// Try to open HAI in the sidebar
-			require('vscode').commands.executeCommand('workbench.view.extension.presidio-inc.hai-ActivityBar');
+			require('vscode').commands.executeCommand('workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar');
 			
 			// Also try to open HAI in a tab as a fallback
 			setTimeout(() => {
@@ -283,7 +283,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 						
 						// Show the HAI sidebar
 						console.log('Opening HAI sidebar...');
-						await vscode.commands.executeCommand('workbench.view.extension.presidio-inc.hai-ActivityBar');
+						await vscode.commands.executeCommand('workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar');
 						
 						// Wait a moment for the sidebar to initialize
 						await new Promise(resolve => setTimeout(resolve, 2000));
