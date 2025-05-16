@@ -1,17 +1,18 @@
 import * as vscode from "vscode"
-import { DEFAULT_CHAT_SETTINGS } from "../../shared/ChatSettings"
-import { DEFAULT_BROWSER_SETTINGS } from "../../shared/BrowserSettings"
-import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "../../shared/AutoApprovalSettings"
+import { DEFAULT_CHAT_SETTINGS } from "@shared/ChatSettings"
+import { DEFAULT_BROWSER_SETTINGS } from "@shared/BrowserSettings"
+import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { GlobalStateKey, SecretKey } from "./state-keys"
-import { ApiConfiguration, ApiProvider, ModelInfo } from "../../shared/api"
-import { HistoryItem } from "../../shared/HistoryItem"
-import { AutoApprovalSettings } from "../../shared/AutoApprovalSettings"
-import { BrowserSettings } from "../../shared/BrowserSettings"
-import { ChatSettings } from "../../shared/ChatSettings"
-import { TelemetrySetting } from "../../shared/TelemetrySetting"
-import { UserInfo } from "../../shared/UserInfo"
-import { EmbeddingConfiguration, EmbeddingProvider } from "../../shared/embeddings"
-import { HaiBuildContextOptions, HaiBuildIndexProgress } from "../../shared/customApi"
+import { ApiConfiguration, ApiProvider, BedrockModelId, ModelInfo } from "@shared/api"
+import { HistoryItem } from "@shared/HistoryItem"
+import { AutoApprovalSettings } from "@shared/AutoApprovalSettings"
+import { BrowserSettings } from "@shared/BrowserSettings"
+import { ChatSettings } from "@shared/ChatSettings"
+import { TelemetrySetting } from "@shared/TelemetrySetting"
+import { UserInfo } from "@shared/UserInfo"
+import { EmbeddingConfiguration, EmbeddingProvider } from "@shared/embeddings"
+import { HaiBuildContextOptions, HaiBuildIndexProgress } from "@shared/customApi"
+import { ClineRulesToggles } from "@shared/cline-rules"
 /*
 	Storage
 	https://dev.to/kompotkot/how-to-use-secretstorage-in-your-vscode-extensions-2hco
@@ -146,12 +147,15 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		awsBedrockEndpoint,
 		awsProfile,
 		awsUseProfile,
+		awsBedrockCustomSelected,
+		awsBedrockCustomModelBaseId,
 		vertexProjectId,
 		vertexRegion,
 		openAiBaseUrl,
 		openAiApiKey,
 		openAiModelId,
 		openAiModelInfo,
+		openAiHeaders,
 		ollamaModelId,
 		ollamaBaseUrl,
 		ollamaApiOptionsCtxNum,
@@ -159,13 +163,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		lmStudioBaseUrl,
 		anthropicBaseUrl,
 		geminiApiKey,
+		geminiBaseUrl,
 		openAiNativeApiKey,
 		deepSeekApiKey,
 		requestyApiKey,
 		requestyModelId,
+		requestyModelInfo,
 		togetherApiKey,
 		togetherModelId,
 		qwenApiKey,
+		doubaoApiKey,
 		mistralApiKey,
 		azureApiVersion,
 		openRouterModelId,
@@ -181,12 +188,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		vsCodeLmModelSelector,
 		liteLlmBaseUrl,
 		liteLlmModelId,
+		liteLlmUsePromptCache,
 		userInfo,
 		previousModeApiProvider,
 		previousModeModelId,
 		previousModeModelInfo,
 		previousModeVsCodeLmModelSelector,
 		previousModeThinkingBudgetTokens,
+		previousModeReasoningEffort,
+		previousModeAwsBedrockCustomSelected,
+		previousModeAwsBedrockCustomModelBaseId,
 		qwenApiLine,
 		liteLlmApiKey,
 		telemetrySetting,
@@ -194,8 +205,13 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		asksageApiUrl,
 		xaiApiKey,
 		thinkingBudgetTokens,
+		reasoningEffort,
 		sambanovaApiKey,
 		planActSeparateModelsSettingRaw,
+		favoritedModelIds,
+		globalClineRulesToggles,
+		requestTimeoutMs,
+		shellIntegrationTimeout,
 		isHaiRulesPresent,
 		buildContextOptions,
 		buildIndexProgress,
@@ -233,12 +249,15 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "awsBedrockEndpoint") as Promise<string | undefined>,
 		customGetState(context, "awsProfile") as Promise<string | undefined>,
 		customGetState(context, "awsUseProfile") as Promise<boolean | undefined>,
+		customGetState(context, "awsBedrockCustomSelected") as Promise<boolean | undefined>,
+		customGetState(context, "awsBedrockCustomModelBaseId") as Promise<BedrockModelId | undefined>,
 		customGetState(context, "vertexProjectId") as Promise<string | undefined>,
 		customGetState(context, "vertexRegion") as Promise<string | undefined>,
 		customGetState(context, "openAiBaseUrl") as Promise<string | undefined>,
 		customGetSecret(context, "openAiApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "openAiModelId") as Promise<string | undefined>,
 		customGetState(context, "openAiModelInfo") as Promise<ModelInfo | undefined>,
+		customGetState(context, "openAiHeaders") as Promise<Record<string, string> | undefined>,
 		customGetState(context, "ollamaModelId") as Promise<string | undefined>,
 		customGetState(context, "ollamaBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "ollamaApiOptionsCtxNum") as Promise<string | undefined>,
@@ -246,13 +265,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "lmStudioBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "anthropicBaseUrl") as Promise<string | undefined>,
 		customGetSecret(context, "geminiApiKey", workspaceId) as Promise<string | undefined>,
+		customGetState(context, "geminiBaseUrl") as Promise<string | undefined>,
 		customGetSecret(context, "openAiNativeApiKey", workspaceId) as Promise<string | undefined>,
 		customGetSecret(context, "deepSeekApiKey", workspaceId) as Promise<string | undefined>,
 		customGetSecret(context, "requestyApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "requestyModelId") as Promise<string | undefined>,
+		customGetState(context, "requestyModelInfo") as Promise<ModelInfo | undefined>,
 		customGetSecret(context, "togetherApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "togetherModelId") as Promise<string | undefined>,
 		customGetSecret(context, "qwenApiKey", workspaceId) as Promise<string | undefined>,
+		customGetSecret(context, "doubaoApiKey", workspaceId) as Promise<string | undefined>,
 		customGetSecret(context, "mistralApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "azureApiVersion") as Promise<string | undefined>,
 		customGetState(context, "openRouterModelId") as Promise<string | undefined>,
@@ -268,12 +290,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "vsCodeLmModelSelector") as Promise<vscode.LanguageModelChatSelector | undefined>,
 		customGetState(context, "liteLlmBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "liteLlmModelId") as Promise<string | undefined>,
+		customGetState(context, "liteLlmUsePromptCache") as Promise<boolean | undefined>,
 		customGetState(context, "userInfo") as Promise<UserInfo | undefined>,
 		customGetState(context, "previousModeApiProvider") as Promise<ApiProvider | undefined>,
 		customGetState(context, "previousModeModelId") as Promise<string | undefined>,
 		customGetState(context, "previousModeModelInfo") as Promise<ModelInfo | undefined>,
 		customGetState(context, "previousModeVsCodeLmModelSelector") as Promise<vscode.LanguageModelChatSelector | undefined>,
 		customGetState(context, "previousModeThinkingBudgetTokens") as Promise<number | undefined>,
+		customGetState(context, "previousModeReasoningEffort") as Promise<string | undefined>,
+		customGetState(context, "previousModeAwsBedrockCustomSelected") as Promise<boolean | undefined>,
+		customGetState(context, "previousModeAwsBedrockCustomModelBaseId") as Promise<BedrockModelId | undefined>,
 		customGetState(context, "qwenApiLine") as Promise<string | undefined>,
 		customGetSecret(context, "liteLlmApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "telemetrySetting") as Promise<TelemetrySetting | undefined>,
@@ -281,8 +307,13 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "asksageApiUrl") as Promise<string | undefined>,
 		customGetSecret(context, "xaiApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "thinkingBudgetTokens") as Promise<number | undefined>,
+		customGetState(context, "reasoningEffort") as Promise<string | undefined>,
 		customGetSecret(context, "sambanovaApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "planActSeparateModelsSetting") as Promise<boolean | undefined>,
+		customGetState(context, "favoritedModelIds") as Promise<string[] | undefined>,
+		customGetState(context, "globalClineRulesToggles") as Promise<ClineRulesToggles | undefined>,
+		customGetState(context, "requestTimeoutMs") as Promise<number | undefined>,
+		customGetState(context, "shellIntegrationTimeout") as Promise<number | undefined>,
 		customGetState(context, "isHaiRulesPresent") as Promise<boolean | undefined>,
 		customGetState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		customGetState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
@@ -328,6 +359,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		embeddingProvider = "openai-native"
 	}
 
+	const localClineRulesToggles = (await getWorkspaceState(context, "localClineRulesToggles")) as ClineRulesToggles
+
 	const o3MiniReasoningEffort = vscode.workspace.getConfiguration("hai.modelSettings.o3Mini").get("reasoningEffort", "medium")
 
 	const mcpMarketplaceEnabled = vscode.workspace.getConfiguration("hai").get<boolean>("mcpMarketplace.enabled", true)
@@ -366,12 +399,15 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			awsBedrockEndpoint,
 			awsProfile,
 			awsUseProfile,
+			awsBedrockCustomSelected,
+			awsBedrockCustomModelBaseId,
 			vertexProjectId,
 			vertexRegion,
 			openAiBaseUrl,
 			openAiApiKey,
 			openAiModelId,
 			openAiModelInfo,
+			openAiHeaders: openAiHeaders || {},
 			ollamaModelId,
 			ollamaBaseUrl,
 			ollamaApiOptionsCtxNum,
@@ -379,14 +415,17 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			lmStudioBaseUrl,
 			anthropicBaseUrl,
 			geminiApiKey,
+			geminiBaseUrl,
 			openAiNativeApiKey,
 			deepSeekApiKey,
 			requestyApiKey,
 			requestyModelId,
+			requestyModelInfo,
 			togetherApiKey,
 			togetherModelId,
 			qwenApiKey,
 			qwenApiLine,
+			doubaoApiKey,
 			mistralApiKey,
 			azureApiVersion,
 			openRouterModelId,
@@ -395,14 +434,18 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			vsCodeLmModelSelector,
 			o3MiniReasoningEffort,
 			thinkingBudgetTokens,
+			reasoningEffort,
 			liteLlmBaseUrl,
 			liteLlmModelId,
 			liteLlmApiKey,
+			liteLlmUsePromptCache,
 			asksageApiKey,
 			asksageApiUrl,
 			xaiApiKey,
 			sambanovaApiKey,
 			isApiConfigurationValid,
+			favoritedModelIds,
+			requestTimeoutMs,
 		},
 		embeddingConfiguration: {
 			provider: embeddingProvider,
@@ -442,7 +485,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 				},
 		buildIndexProgress: buildIndexProgress,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
-		browserSettings: browserSettings || DEFAULT_BROWSER_SETTINGS,
+		globalClineRulesToggles: globalClineRulesToggles || {},
+		localClineRulesToggles: localClineRulesToggles || {},
+		browserSettings: { ...DEFAULT_BROWSER_SETTINGS, ...browserSettings }, // this will ensure that older versions of browserSettings (e.g. before remoteBrowserEnabled was added) are merged with the default values (false for remoteBrowserEnabled)
 		chatSettings: chatSettings || DEFAULT_CHAT_SETTINGS,
 		userInfo,
 		previousModeApiProvider,
@@ -450,9 +495,13 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		previousModeModelInfo,
 		previousModeVsCodeLmModelSelector,
 		previousModeThinkingBudgetTokens,
+		previousModeReasoningEffort,
+		previousModeAwsBedrockCustomSelected,
+		previousModeAwsBedrockCustomModelBaseId,
 		mcpMarketplaceEnabled,
 		telemetrySetting: telemetrySetting || "unset",
 		planActSeparateModelsSetting,
+		shellIntegrationTimeout: shellIntegrationTimeout || 4000,
 	}
 }
 
@@ -475,12 +524,15 @@ export async function updateApiConfiguration(
 		awsBedrockEndpoint,
 		awsProfile,
 		awsUseProfile,
+		awsBedrockCustomSelected,
+		awsBedrockCustomModelBaseId,
 		vertexProjectId,
 		vertexRegion,
 		openAiBaseUrl,
 		openAiApiKey,
 		openAiModelId,
 		openAiModelInfo,
+		openAiHeaders,
 		ollamaModelId,
 		ollamaBaseUrl,
 		ollamaApiOptionsCtxNum,
@@ -488,13 +540,16 @@ export async function updateApiConfiguration(
 		lmStudioBaseUrl,
 		anthropicBaseUrl,
 		geminiApiKey,
+		geminiBaseUrl,
 		openAiNativeApiKey,
 		deepSeekApiKey,
 		requestyApiKey,
 		requestyModelId,
+		requestyModelInfo,
 		togetherApiKey,
 		togetherModelId,
 		qwenApiKey,
+		doubaoApiKey,
 		mistralApiKey,
 		azureApiVersion,
 		openRouterModelId,
@@ -504,13 +559,16 @@ export async function updateApiConfiguration(
 		liteLlmBaseUrl,
 		liteLlmModelId,
 		liteLlmApiKey,
+		liteLlmUsePromptCache,
 		qwenApiLine,
 		asksageApiKey,
 		asksageApiUrl,
 		xaiApiKey,
 		thinkingBudgetTokens,
+		reasoningEffort,
 		clineApiKey,
 		sambanovaApiKey,
+		favoritedModelIds,
 	} = apiConfiguration
 	await customUpdateState(context, "apiProvider", apiProvider)
 	await customUpdateState(context, "apiModelId", apiModelId)
@@ -525,12 +583,15 @@ export async function updateApiConfiguration(
 	await customUpdateState(context, "awsBedrockEndpoint", awsBedrockEndpoint)
 	await customUpdateState(context, "awsProfile", awsProfile)
 	await customUpdateState(context, "awsUseProfile", awsUseProfile)
+	await customUpdateState(context, "awsBedrockCustomSelected", awsBedrockCustomSelected)
+	await customUpdateState(context, "awsBedrockCustomModelBaseId", awsBedrockCustomModelBaseId)
 	await customUpdateState(context, "vertexProjectId", vertexProjectId)
 	await customUpdateState(context, "vertexRegion", vertexRegion)
 	await customUpdateState(context, "openAiBaseUrl", openAiBaseUrl)
 	await customStoreSecret(context, "openAiApiKey", workspaceId, openAiApiKey, true)
 	await customUpdateState(context, "openAiModelId", openAiModelId)
 	await customUpdateState(context, "openAiModelInfo", openAiModelInfo)
+	await customUpdateState(context, "openAiHeaders", openAiHeaders || {})
 	await customUpdateState(context, "ollamaModelId", ollamaModelId)
 	await customUpdateState(context, "ollamaBaseUrl", ollamaBaseUrl)
 	await customUpdateState(context, "ollamaApiOptionsCtxNum", ollamaApiOptionsCtxNum)
@@ -538,11 +599,13 @@ export async function updateApiConfiguration(
 	await customUpdateState(context, "lmStudioBaseUrl", lmStudioBaseUrl)
 	await customUpdateState(context, "anthropicBaseUrl", anthropicBaseUrl)
 	await customStoreSecret(context, "geminiApiKey", workspaceId, geminiApiKey, true)
+	await customUpdateState(context, "geminiBaseUrl", geminiBaseUrl)
 	await customStoreSecret(context, "openAiNativeApiKey", workspaceId, openAiNativeApiKey, true)
 	await customStoreSecret(context, "deepSeekApiKey", workspaceId, deepSeekApiKey, true)
 	await customStoreSecret(context, "requestyApiKey", workspaceId, requestyApiKey, true)
 	await customStoreSecret(context, "togetherApiKey", workspaceId, togetherApiKey, true)
 	await customStoreSecret(context, "qwenApiKey", workspaceId, qwenApiKey, true)
+	await customStoreSecret(context, "doubaoApiKey", workspaceId, doubaoApiKey, true)
 	await customStoreSecret(context, "mistralApiKey", workspaceId, mistralApiKey, true)
 	await customStoreSecret(context, "liteLlmApiKey", workspaceId, liteLlmApiKey, true)
 	await customStoreSecret(context, "xaiApiKey", workspaceId, xaiApiKey, true)
@@ -553,14 +616,19 @@ export async function updateApiConfiguration(
 	await customUpdateState(context, "vsCodeLmModelSelector", vsCodeLmModelSelector)
 	await customUpdateState(context, "liteLlmBaseUrl", liteLlmBaseUrl)
 	await customUpdateState(context, "liteLlmModelId", liteLlmModelId)
+	await customUpdateState(context, "liteLlmUsePromptCache", liteLlmUsePromptCache)
 	await customUpdateState(context, "qwenApiLine", qwenApiLine)
 	await customUpdateState(context, "requestyModelId", requestyModelId)
+	await customUpdateState(context, "requestyModelInfo", requestyModelInfo)
 	await customUpdateState(context, "togetherModelId", togetherModelId)
 	await customStoreSecret(context, "asksageApiKey", workspaceId, asksageApiKey, true)
 	await customUpdateState(context, "asksageApiUrl", asksageApiUrl)
 	await customUpdateState(context, "thinkingBudgetTokens", thinkingBudgetTokens)
+	await customUpdateState(context, "reasoningEffort", reasoningEffort)
 	await customStoreSecret(context, "clineApiKey", workspaceId, clineApiKey, true)
 	await customStoreSecret(context, "sambanovaApiKey", workspaceId, sambanovaApiKey, true)
+	await customUpdateState(context, "favoritedModelIds", favoritedModelIds)
+	await customUpdateState(context, "requestTimeoutMs", apiConfiguration.requestTimeoutMs)
 }
 
 export async function updateEmbeddingConfiguration(
@@ -616,7 +684,6 @@ export async function resetExtensionState(context: vscode.ExtensionContext, work
 	}
 	const secretKeys: SecretKey[] = [
 		"apiKey",
-		"clineApiKey",
 		"openRouterApiKey",
 		"awsAccessKey",
 		"awsSecretKey",
@@ -628,7 +695,9 @@ export async function resetExtensionState(context: vscode.ExtensionContext, work
 		"requestyApiKey",
 		"togetherApiKey",
 		"qwenApiKey",
+		"doubaoApiKey",
 		"mistralApiKey",
+		"clineApiKey",
 		"liteLlmApiKey",
 		"asksageApiKey",
 		"xaiApiKey",

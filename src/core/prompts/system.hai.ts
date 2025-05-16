@@ -7,7 +7,7 @@ import { SYSTEM_PROMPT as haiDefaultSystemPrompt } from "./system"
 
 export const haiSystemPrompt = (
 	cwd: string,
-	supportsComputerUse: boolean,
+	supportsBrowserUse: boolean,
 	supportsCodeIndex: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
@@ -16,12 +16,12 @@ export const haiSystemPrompt = (
 ) => {
 	switch (version) {
 		case "v1":
-			return haiSystemPromptV1(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiSystemPromptV1(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		case "v2":
-			return haiSystemPromptV2(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiSystemPromptV2(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		case "v3":
-			return haiSystemPromptV3(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiSystemPromptV3(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		default:
-			return haiDefaultSystemPrompt(cwd, supportsComputerUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiDefaultSystemPrompt(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 	}
 }

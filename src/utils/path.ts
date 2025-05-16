@@ -101,6 +101,34 @@ export function getReadablePath(cwd: string, relPath?: string): string {
 	}
 }
 
+export const getWorkspacePath = (defaultCwdPath = "") => {
+	const cwdPath = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) || defaultCwdPath
+	const currentFileUri = vscode.window.activeTextEditor?.document.uri
+	if (currentFileUri) {
+		const workspaceFolder = vscode.workspace.getWorkspaceFolder(currentFileUri)
+		return workspaceFolder?.uri.fsPath || cwdPath
+	}
+	return cwdPath
+}
+
+export const isLocatedInWorkspace = (pathToCheck: string = ""): boolean => {
+	const workspacePath = getWorkspacePath()
+
+	// Handle long paths in Windows
+	if (pathToCheck.startsWith("\\\\?\\") || workspacePath.startsWith("\\\\?\\")) {
+		return pathToCheck.startsWith(workspacePath)
+	}
+
+	// Normalize paths without resolving symlinks
+	const normalizedWorkspace = path.normalize(workspacePath)
+	const normalizedPath = path.normalize(path.resolve(workspacePath, pathToCheck))
+
+	// Use path.relative to check if the path is within the workspace
+	const relativePath = path.relative(normalizedWorkspace, normalizedPath)
+
+	return !relativePath.startsWith("..") && !path.isAbsolute(relativePath)
+}
+
 export const getWorkspaceURI = () => {
 	const workspaceFolders = vscode.workspace.workspaceFolders
 	if (!workspaceFolders || workspaceFolders.length === 0) {
@@ -108,15 +136,6 @@ export const getWorkspaceURI = () => {
 	}
 	const workspaceFolder = workspaceFolders[0]
 	return workspaceFolder.uri
-}
-
-export const getWorkspacePath = () => {
-	const workspaceURI = getWorkspaceURI()
-	if (!workspaceURI) {
-		return
-	}
-
-	return workspaceURI.fsPath
 }
 
 export const getWorkspaceID = () => {

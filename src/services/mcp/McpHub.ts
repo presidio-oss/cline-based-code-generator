@@ -14,7 +14,6 @@ import * as fs from "fs/promises"
 import * as path from "path"
 import * as vscode from "vscode"
 import { z } from "zod"
-import { Controller } from "../../core/controller"
 import {
 	DEFAULT_MCP_TIMEOUT_SECONDS,
 	McpMode,
@@ -25,12 +24,13 @@ import {
 	McpTool,
 	McpToolCallResponse,
 	MIN_MCP_TIMEOUT_SECONDS,
-} from "../../shared/mcp"
-import { fileExistsAtPath } from "../../utils/fs"
-import { arePathsEqual } from "../../utils/path"
-import { secondsToMs } from "../../utils/time"
-import { GlobalFileNames } from "../../core/storage/disk"
+} from "@shared/mcp"
+import { fileExistsAtPath } from "@utils/fs"
+import { arePathsEqual } from "@utils/path"
+import { secondsToMs } from "@utils/time"
+import { GlobalFileNames } from "@core/storage/disk"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
+import { ExtensionMessage } from "@shared/ExtensionMessage"
 
 // Default timeout for internal MCP data requests in milliseconds; is not the same as the user facing timeout stored as DEFAULT_MCP_TIMEOUT_SECONDS
 const DEFAULT_REQUEST_TIMEOUT_MS = 5000
@@ -76,15 +76,27 @@ const McpSettingsSchema = z.object({
 })
 
 export class McpHub {
-	private controllerRef: WeakRef<Controller>
+	getMcpServersPath: () => Promise<string>
+	private getSettingsDirectoryPath: () => Promise<string>
+	private postMessageToWebview: (message: ExtensionMessage) => Promise<void>
+	private clientVersion: string
+
 	private disposables: vscode.Disposable[] = []
 	private settingsWatcher?: vscode.FileSystemWatcher
 	private fileWatchers: Map<string, FSWatcher> = new Map()
 	connections: McpConnection[] = []
 	isConnecting: boolean = false
 
-	constructor(controller: Controller) {
-		this.controllerRef = new WeakRef(controller)
+	constructor(
+		getMcpServersPath: () => Promise<string>,
+		getSettingsDirectoryPath: () => Promise<string>,
+		postMessageToWebview: (message: ExtensionMessage) => Promise<void>,
+		clientVersion: string,
+	) {
+		this.getMcpServersPath = getMcpServersPath
+		this.getSettingsDirectoryPath = getSettingsDirectoryPath
+		this.postMessageToWebview = postMessageToWebview
+		this.clientVersion = clientVersion
 		this.watchMcpSettingsFile()
 		this.initializeMcpServers()
 	}
@@ -94,25 +106,8 @@ export class McpHub {
 		return this.connections.filter((conn) => !conn.server.disabled).map((conn) => conn.server)
 	}
 
-	getMode(): McpMode {
-		return vscode.workspace.getConfiguration("hai.mcp").get<McpMode>("mode", "full")
-	}
-
-	async getMcpServersPath(): Promise<string> {
-		const provider = this.controllerRef.deref()
-		if (!provider) {
-			throw new Error("Provider not available")
-		}
-		const mcpServersPath = await provider.ensureMcpServersDirectoryExists()
-		return mcpServersPath
-	}
-
 	async getMcpSettingsFilePath(): Promise<string> {
-		const provider = this.controllerRef.deref()
-		if (!provider) {
-			throw new Error("Provider not available")
-		}
-		const mcpSettingsFilePath = path.join(await provider.ensureSettingsDirectoryExists(), GlobalFileNames.mcpSettings)
+		const mcpSettingsFilePath = path.join(await this.getSettingsDirectoryPath(), GlobalFileNames.mcpSettings)
 		const fileExists = await fileExistsAtPath(mcpSettingsFilePath)
 		if (!fileExists) {
 			await fs.writeFile(
@@ -197,7 +192,7 @@ export class McpHub {
 			const client = new Client(
 				{
 					name: "HAI",
-					version: this.controllerRef.deref()?.context.extension?.packageJSON?.version ?? "1.0.0",
+					version: this.clientVersion,
 				},
 				{
 					capabilities: {},
@@ -260,7 +255,7 @@ export class McpHub {
 					stderrStream.on("data", async (data: Buffer) => {
 						const output = data.toString()
 						// Check if output contains INFO level log
-						const isInfoLog = /^\s*INFO\b/.test(output)
+						const isInfoLog = !/\berror\b/i.test(output)
 
 						if (isInfoLog) {
 							// Log normal informational messages
@@ -334,10 +329,9 @@ export class McpHub {
 				autoApprove: autoApproveConfig.includes(tool.name),
 			}))
 
-			// console.log(`[MCP] Fetched tools for ${serverName}:`, tools)
 			return tools
 		} catch (error) {
-			// console.error(`Failed to fetch tools for ${serverName}:`, error)
+			console.error(`Failed to fetch tools for ${serverName}:`, error)
 			return []
 		}
 	}
@@ -380,6 +374,53 @@ export class McpHub {
 			}
 			this.connections = this.connections.filter((conn) => conn.server.name !== name)
 		}
+	}
+
+	async updateServerConnectionsRPC(newServers: Record<string, McpServerConfig>): Promise<void> {
+		this.isConnecting = true
+		this.removeAllFileWatchers()
+		const currentNames = new Set(this.connections.map((conn) => conn.server.name))
+		const newNames = new Set(Object.keys(newServers))
+
+		// Delete removed servers
+		for (const name of currentNames) {
+			if (!newNames.has(name)) {
+				await this.deleteConnection(name)
+				console.log(`Deleted MCP server: ${name}`)
+			}
+		}
+
+		// Update or add servers
+		for (const [name, config] of Object.entries(newServers)) {
+			const currentConnection = this.connections.find((conn) => conn.server.name === name)
+
+			if (!currentConnection) {
+				// New server
+				try {
+					if (config.transportType === "stdio") {
+						this.setupFileWatcher(name, config)
+					}
+					await this.connectToServer(name, config)
+				} catch (error) {
+					console.error(`Failed to connect to new MCP server ${name}:`, error)
+				}
+			} else if (!deepEqual(JSON.parse(currentConnection.server.config), config)) {
+				// Existing server with changed config
+				try {
+					if (config.transportType === "stdio") {
+						this.setupFileWatcher(name, config)
+					}
+					await this.deleteConnection(name)
+					await this.connectToServer(name, config)
+					console.log(`Reconnected MCP server with updated config: ${name}`)
+				} catch (error) {
+					console.error(`Failed to reconnect MCP server ${name}:`, error)
+				}
+			}
+			// If server exists with same config, do nothing
+		}
+
+		this.isConnecting = false
 	}
 
 	async updateServerConnections(newServers: Record<string, McpServerConfig>): Promise<void> {
@@ -429,7 +470,7 @@ export class McpHub {
 		this.isConnecting = false
 	}
 
-	private setupFileWatcher(name: string, config: any) {
+	private setupFileWatcher(name: string, config: Extract<McpServerConfig, { transportType: "stdio" }>) {
 		const filePath = config.args?.find((arg: string) => arg.includes("build/index.js"))
 		if (filePath) {
 			// we use chokidar instead of onDidSaveTextDocument because it doesn't require the file to be open in the editor. The settings config is better suited for onDidSave since that will be manually updated by the user or Cline (and we want to detect save events, not every file change)
@@ -455,10 +496,6 @@ export class McpHub {
 
 	async restartConnection(serverName: string): Promise<void> {
 		this.isConnecting = true
-		const provider = this.controllerRef.deref()
-		if (!provider) {
-			return
-		}
 
 		// Get existing connection and update its status
 		const connection = this.connections.find((conn) => conn.server.name === serverName)
@@ -484,21 +521,30 @@ export class McpHub {
 		this.isConnecting = false
 	}
 
+	/**
+	 * Gets sorted MCP servers based on the order defined in settings
+	 * @param serverOrder Array of server names in the order they appear in settings
+	 * @returns Array of McpServer objects sorted according to settings order
+	 */
+	private getSortedMcpServers(serverOrder: string[]): McpServer[] {
+		return [...this.connections]
+			.sort((a, b) => {
+				const indexA = serverOrder.indexOf(a.server.name)
+				const indexB = serverOrder.indexOf(b.server.name)
+				return indexA - indexB
+			})
+			.map((connection) => connection.server)
+	}
+
 	private async notifyWebviewOfServerChanges(): Promise<void> {
 		// servers should always be sorted in the order they are defined in the settings file
 		const settingsPath = await this.getMcpSettingsFilePath()
 		const content = await fs.readFile(settingsPath, "utf-8")
 		const config = JSON.parse(content)
 		const serverOrder = Object.keys(config.mcpServers || {})
-		await this.controllerRef.deref()?.postMessageToWebview({
+		await this.postMessageToWebview({
 			type: "mcpServers",
-			mcpServers: [...this.connections]
-				.sort((a, b) => {
-					const indexA = serverOrder.indexOf(a.server.name)
-					const indexB = serverOrder.indexOf(b.server.name)
-					return indexA - indexB
-				})
-				.map((connection) => connection.server),
+			mcpServers: this.getSortedMcpServers(serverOrder),
 		})
 	}
 
@@ -510,7 +556,7 @@ export class McpHub {
 
 	// Public methods for server management
 
-	public async toggleServerDisabled(serverName: string, disabled: boolean): Promise<void> {
+	public async toggleServerDisabledRPC(serverName: string, disabled: boolean): Promise<McpServer[]> {
 		try {
 			const config = await this.readAndValidateMcpSettingsFile()
 			if (!config) {
@@ -528,8 +574,11 @@ export class McpHub {
 					connection.server.disabled = disabled
 				}
 
-				await this.notifyWebviewOfServerChanges()
+				const serverOrder = Object.keys(config.mcpServers || {})
+				return this.getSortedMcpServers(serverOrder)
 			}
+			console.error(`Server "${serverName}" not found in MCP configuration`)
+			throw new Error(`Server "${serverName}" not found in MCP configuration`)
 		} catch (error) {
 			console.error("Failed to update server disabled state:", error)
 			if (error instanceof Error) {
@@ -626,7 +675,12 @@ export class McpHub {
 
 			// Update the tools list to reflect the change
 			const connection = this.connections.find((conn) => conn.server.name === serverName)
-			if (connection) {
+			if (connection && connection.server.tools) {
+				// Update the autoApprove property of each tool in the in-memory server object
+				connection.server.tools = connection.server.tools.map((tool) => ({
+					...tool,
+					autoApprove: autoApprove.includes(tool.name),
+				}))
 				await this.notifyWebviewOfServerChanges()
 			}
 		} catch (error) {
@@ -636,7 +690,7 @@ export class McpHub {
 		}
 	}
 
-	public async addRemoteServer(serverName: string, serverUrl: string) {
+	public async addRemoteServer(serverName: string, serverUrl: string): Promise<McpServer[]> {
 		try {
 			const settings = await this.readAndValidateMcpSettingsFile()
 			if (!settings) {
@@ -673,12 +727,12 @@ export class McpHub {
 				JSON.stringify({ mcpServers: { ...settings.mcpServers, [serverName]: serverConfig } }, null, 2),
 			)
 
-			await this.updateServerConnections(settings.mcpServers)
+			await this.updateServerConnectionsRPC(settings.mcpServers)
 
-			vscode.window.showInformationMessage(`Added ${serverName} MCP server`)
+			const serverOrder = Object.keys(settings.mcpServers || {})
+			return this.getSortedMcpServers(serverOrder)
 		} catch (error) {
 			console.error("Failed to add remote MCP server:", error)
-
 			throw error
 		}
 	}
@@ -710,7 +764,7 @@ export class McpHub {
 		}
 	}
 
-	public async updateServerTimeout(serverName: string, timeout: number): Promise<void> {
+	public async updateServerTimeoutRPC(serverName: string, timeout: number): Promise<McpServer[]> {
 		try {
 			// Validate timeout against schema
 			const setConfigResult = BaseConfigSchema.shape.timeout.safeParse(timeout)
@@ -733,7 +787,10 @@ export class McpHub {
 
 			await fs.writeFile(settingsPath, JSON.stringify(config, null, 2))
 
-			await this.updateServerConnections(config.mcpServers)
+			await this.updateServerConnectionsRPC(config.mcpServers)
+
+			const serverOrder = Object.keys(config.mcpServers || {})
+			return this.getSortedMcpServers(serverOrder)
 		} catch (error) {
 			console.error("Failed to update server timeout:", error)
 			if (error instanceof Error) {

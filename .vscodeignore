@@ -30,13 +30,15 @@ webview-ui/package.json
 webview-ui/package-lock.json
 webview-ui/node_modules/**
 webview-ui/.npm/**
-**/.gitignore
+
 
 .cache/**
 .npm/**
 assets/docs/**
 commitlint.config.js
 .husky/**
+
+**/.gitignore
 
 # Ignore docs
 docs/**
@@ -47,6 +49,9 @@ docs/**
 
 #Include default experts folder
 !src/experts
+# Include KaTeX CSS and fonts for LaTeX rendering
+!webview-ui/node_modules/katex/dist/katex.min.css
+!webview-ui/node_modules/katex/dist/fonts/**
 
 # Include default themes JSON files used in getTheme
 !src/integrations/theme/default-themes/**

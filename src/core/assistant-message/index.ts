@@ -24,6 +24,11 @@ export const toolUseNames = [
 	"ask_followup_question",
 	"plan_mode_respond",
 	"attempt_completion",
+	"load_mcp_documentation",
+	"new_task",
+	"condense",
+	"report_bug",
+	"new_rule",
 	...customToolUseNames,
 ] as const
 
@@ -51,6 +56,12 @@ export const toolParamNames = [
 	"options",
 	"response",
 	"result",
+	"context",
+	"title",
+	"what_happened",
+	"steps_to_reproduce",
+	"api_request_output",
+	"additional_context",
 	...customToolParamNames,
 ] as const
 

@@ -1,13 +1,12 @@
 import { memo, useMemo } from "react"
-import { getLanguageFromPath } from "../../utils/getLanguageFromPath"
-import CodeBlock, { CODE_BLOCK_BG_COLOR } from "./CodeBlock"
+import { getLanguageFromPath } from "@/utils/getLanguageFromPath"
+import CodeBlock, { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
 
 interface CodeAccordianProps {
 	code?: string
 	diff?: string
 	language?: string | undefined
 	path?: string
-	showActionIcon?: boolean
 	isFeedback?: boolean
 	isConsoleLogs?: boolean
 	isExpanded: boolean
@@ -29,7 +28,6 @@ const CodeAccordian = ({
 	language,
 	path,
 	isFeedback,
-	showActionIcon = true,
 	isConsoleLogs,
 	isExpanded,
 	onToggleExpand,
@@ -39,6 +37,13 @@ const CodeAccordian = ({
 		() => code && (language ?? (path ? getLanguageFromPath(path) : undefined)),
 		[path, language, code],
 	)
+
+	const numberOfEdits = useMemo(() => {
+		if (code) {
+			return (code.match(/>>>>>>> REPLACE/g) || []).length || undefined
+		}
+		return undefined
+	}, [code])
 
 	return (
 		<div
@@ -55,7 +60,7 @@ const CodeAccordian = ({
 						display: "flex",
 						alignItems: "center",
 						padding: "9px 10px",
-						cursor: showActionIcon ? (isLoading ? "wait" : "pointer") : "default",
+						cursor: isLoading ? "wait" : "pointer",
 						opacity: isLoading ? 0.7 : 1,
 						// pointerEvents: isLoading ? "none" : "auto",
 						userSelect: "none",
@@ -63,16 +68,12 @@ const CodeAccordian = ({
 						MozUserSelect: "none",
 						msUserSelect: "none",
 					}}
-					onClick={isLoading && !showActionIcon ? undefined : onToggleExpand}>
+					onClick={isLoading ? undefined : onToggleExpand}>
 					{isFeedback || isConsoleLogs ? (
 						<div style={{ display: "flex", alignItems: "center" }}>
-							{showActionIcon ? (
-								<span
-									className={`codicon codicon-${isFeedback ? "feedback" : "output"}`}
-									style={{ marginRight: "6px" }}></span>
-							) : (
-								""
-							)}
+							<span
+								className={`codicon codicon-${isFeedback ? "feedback" : "output"}`}
+								style={{ marginRight: "6px" }}></span>
 							<span
 								style={{
 									whiteSpace: "nowrap",
@@ -101,7 +102,19 @@ const CodeAccordian = ({
 						</>
 					)}
 					<div style={{ flexGrow: 1 }}></div>
-					{showActionIcon ? <span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span> : ""}
+					{numberOfEdits !== undefined && (
+						<div
+							style={{
+								display: "flex",
+								alignItems: "center",
+								marginRight: "8px",
+								color: "var(--vscode-descriptionForeground)",
+							}}>
+							<span className="codicon codicon-diff-single" style={{ marginRight: "4px" }}></span>
+							<span>{numberOfEdits}</span>
+						</div>
+					)}
+					<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
 				</div>
 			)}
 			{(!(path || isFeedback || isConsoleLogs) || isExpanded) && (
