@@ -1,7 +1,7 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { ApiHandler } from "../"
-import { ApiHandlerOptions, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "../../shared/api"
+import { ApiHandlerOptions, ModelInfo, openRouterDefaultModelId, openRouterDefaultModelInfo } from "@shared/api"
 import { createOpenRouterStream } from "../transform/openrouter-stream"
 import { ApiStream, ApiStreamUsageChunk } from "../transform/stream"
 import axios from "axios"
@@ -22,6 +22,7 @@ export class ClineHandler implements ApiHandler {
 				"X-Title": "Cline", // Optional. Shows in rankings on cline.bot.
 				"X-Task-ID": this.options.taskId || "", // Include the task ID in the request headers
 			},
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
@@ -74,6 +75,8 @@ export class ClineHandler implements ApiHandler {
 			if (!didOutputUsage && chunk.usage) {
 				yield {
 					type: "usage",
+					cacheWriteTokens: 0,
+					cacheReadTokens: chunk.usage.prompt_tokens_details?.cached_tokens || 0,
 					inputTokens: chunk.usage.prompt_tokens || 0,
 					outputTokens: chunk.usage.completion_tokens || 0,
 					// @ts-ignore-next-line
@@ -105,6 +108,8 @@ export class ClineHandler implements ApiHandler {
 				const generation = response.data
 				return {
 					type: "usage",
+					cacheWriteTokens: 0,
+					cacheReadTokens: generation?.native_tokens_cached || 0,
 					inputTokens: generation?.native_tokens_prompt || 0,
 					outputTokens: generation?.native_tokens_completion || 0,
 					totalCost: generation?.total_cost || 0,

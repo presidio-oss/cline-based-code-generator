@@ -1,6 +1,6 @@
 import { memo } from "react"
 import { vscode } from "../../utils/vscode"
-import { IHaiClineTask } from "../../interfaces/hai-task.interface"
+import { IHaiClineTask } from "@shared/hai-task"
 import { FEATURE_TILES, MAIN_CARDS } from "../../utils/constants"
 import QuickActionTile from "./QuickActionTile"
 

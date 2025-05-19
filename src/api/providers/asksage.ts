@@ -7,7 +7,7 @@ import {
 	askSageModels,
 	askSageDefaultModelId,
 	askSageDefaultURL,
-} from "../../shared/api"
+} from "@shared/api"
 import { ApiStream } from "../transform/stream"
 
 type AskSageRequest = {
@@ -113,8 +113,21 @@ export class AskSageHandler implements ApiHandler {
 		}
 	}
 
-	// TODO: Implement API key validation
-	async validateAPIKey() {
-		return true
+	async validateAPIKey(): Promise<boolean> {
+		let output = false
+		try {
+			const stream = this.createMessage(
+				'You are a helpful AI. The user will send a test message — please reply with "OK"',
+				[{ role: "user", content: "Test" }],
+			)
+
+			for await (const _ of stream) {
+				output = true
+				break
+			}
+		} catch (error) {
+			console.error("Error validating Asksage credentials: ", error)
+		}
+		return output
 	}
 }

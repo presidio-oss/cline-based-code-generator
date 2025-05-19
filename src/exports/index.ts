@@ -1,7 +1,7 @@
 import * as vscode from "vscode"
-import { Controller } from "../core/controller"
+import { Controller } from "@core/controller"
 import { HaiAPI } from "./hai"
-import { customGetState } from "../core/storage/state"
+import { customGetState } from "@core/storage/state"
 
 export function createHaiAPI(outputChannel: vscode.OutputChannel, sidebarController: Controller): HaiAPI {
 	const api: HaiAPI = {

@@ -58,6 +58,11 @@ export type McpToolCallResponse = {
 				mimeType: string
 		  }
 		| {
+				type: "audio"
+				data: string
+				mimeType: string
+		  }
+		| {
 				type: "resource"
 				resource: {
 					uri: string
@@ -106,3 +111,5 @@ export interface McpDownloadResponse {
 	llmsInstallationContent: string
 	requiresApiKey: boolean
 }
+
+export type McpViewTab = "marketplace" | "addRemote" | "installed"

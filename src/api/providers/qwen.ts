@@ -10,7 +10,7 @@ import {
 	internationalQwenDefaultModelId,
 	MainlandQwenModelId,
 	InternationalQwenModelId,
-} from "../../shared/api"
+} from "@shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
@@ -27,6 +27,7 @@ export class QwenHandler implements ApiHandler {
 					? "https://dashscope.aliyuncs.com/compatible-mode/v1"
 					: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
 			apiKey: this.options.qwenApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

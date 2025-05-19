@@ -1,14 +1,19 @@
 import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
-import { memo, useEffect, useState } from "react"
-import { validateApiConfiguration, validateEmbeddingConfiguration, validateModelId } from "../../utils/validate"
-import { useExtensionState } from "../../context/ExtensionStateContext"
-import { vscode } from "../../utils/vscode"
-import ApiOptions from "./ApiOptions"
 import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
-import SettingsButton from "../common/SettingsButton"
-import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "../../utils/constants"
-import { TabButton } from "../mcp/McpView"
+import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "@utils/constants"
+import { memo, useCallback, useEffect, useState } from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { validateApiConfiguration, validateModelId } from "@/utils/validate"
+import { vscode } from "@/utils/vscode"
+import SettingsButton from "@/components/common/SettingsButton"
+import ApiOptions from "./ApiOptions"
+import { TabButton } from "../mcp/configuration/McpConfigurationView"
+import { useEvent } from "react-use"
+import { ExtensionMessage } from "@shared/ExtensionMessage"
+import BrowserSettingsSection from "./BrowserSettingsSection"
+import TerminalSettingsSection from "./TerminalSettingsSection"
+import { FEATURE_FLAGS } from "@shared/services/feature-flags/feature-flags"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -37,10 +42,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	} = useExtensionState()
 	const [showCopied, setShowCopied] = useState(false)
 	const [pendingTabChange, setPendingTabChange] = useState<"plan" | "act" | null>(null)
-
-	const handleResetState = () => {
-		vscode.postMessage({ type: "resetState" })
-	}
 
 	const handleCopy = () => {
 		navigator.clipboard.writeText(
@@ -95,6 +96,63 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}, [pendingTabChange])
 
+	// validate as soon as the component is mounted
+	/*
+	useEffect will use stale values of variables if they are not included in the dependency array. 
+	so trying to use useEffect with a dependency array of only one value for example will use any 
+	other variables' old values. In most cases you don't want this, and should opt to use react-use 
+	hooks.
+    
+		// uses someVar and anotherVar
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [someVar])
+	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
+	*/
+
+	const handleMessage = useCallback(
+		(event: MessageEvent) => {
+			const message: ExtensionMessage = event.data
+			switch (message.type) {
+				case "didUpdateSettings":
+					if (pendingTabChange) {
+						vscode.postMessage({
+							type: "togglePlanActMode",
+							chatSettings: {
+								mode: pendingTabChange,
+							},
+						})
+						setPendingTabChange(null)
+					}
+					break
+				case "scrollToSettings":
+					setTimeout(() => {
+						const elementId = message.text
+						if (elementId) {
+							const element = document.getElementById(elementId)
+							if (element) {
+								element.scrollIntoView({ behavior: "smooth" })
+
+								element.style.transition = "background-color 0.5s ease"
+								element.style.backgroundColor = "var(--vscode-textPreformat-background)"
+
+								setTimeout(() => {
+									element.style.backgroundColor = "transparent"
+								}, 1200)
+							}
+						}
+					}, 300)
+					break
+			}
+		},
+		[pendingTabChange],
+	)
+
+	useEvent("message", handleMessage)
+
+	const handleResetState = () => {
+		vscode.postMessage({ type: "resetState" })
+	}
+
 	const handleTabChange = (tab: "plan" | "act") => {
 		if (tab === chatSettings.mode) {
 			return
@@ -104,55 +162,16 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 	}
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				padding: "10px 0px 0px 20px",
-				display: "flex",
-				flexDirection: "column",
-				overflow: "hidden",
-			}}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					marginBottom: "13px",
-					paddingRight: 17,
-				}}>
-				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
-				<VSCodeButton onClick={() => handleSubmit(false)}>Done</VSCodeButton>
+		<div className="fixed top-0 left-0 right-0 bottom-0 pt-[10px] pr-0 pb-0 pl-5 flex flex-col overflow-hidden">
+			<div className="flex justify-between items-center mb-[13px] pr-[17px]">
+				<h3 className="text-[var(--vscode-foreground)] m-0">Settings</h3>
+				<VSCodeButton onClick={() => handleSubmit(false)}>Save</VSCodeButton>
 			</div>
-			<div
-				style={{
-					flexGrow: 1,
-					overflowY: "scroll",
-					paddingRight: 8,
-					display: "flex",
-					flexDirection: "column",
-				}}>
+			<div className="grow overflow-y-scroll pr-2 flex flex-col">
 				{/* Tabs container */}
 				{planActSeparateModelsSetting ? (
-					<div
-						style={{
-							border: "1px solid var(--vscode-panel-border)",
-							borderRadius: "4px",
-							padding: "10px",
-							marginBottom: "10px",
-							background: "var(--vscode-panel-background)",
-						}}>
-						<div
-							style={{
-								display: "flex",
-								gap: "1px",
-								marginBottom: "10px",
-								marginTop: -8,
-								borderBottom: "1px solid var(--vscode-panel-border)",
-							}}>
+					<div className="border border-solid border-[var(--vscode-panel-border)] rounded-md p-[10px] mb-5 bg-[var(--vscode-panel-background)]">
+						<div className="flex gap-[1px] mb-[10px] -mt-2 border-0 border-b border-solid border-[var(--vscode-panel-border)]">
 							<TabButton isActive={chatSettings.mode === "plan"} onClick={() => handleTabChange("plan")}>
 								Plan Mode
 							</TabButton>
@@ -181,42 +200,20 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					<EmbeddingOptions showModelOptions={true} />
 				</div>
 
-				<div style={{ marginBottom: 5 }}>
+				<div className="mb-[5px]">
 					<VSCodeTextArea
 						value={customInstructions ?? ""}
-						style={{ width: "100%", marginTop: 15 }}
+						className="w-full"
 						resize="vertical"
 						rows={4}
 						placeholder={'e.g. "Run unit tests at the end", "Use TypeScript with async/await", "Speak in Spanish"'}
 						onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}
 						disabled={!vscodeWorkspacePath}>
-						<span style={{ fontWeight: "500" }}>Custom Instructions</span>
+						<span className="font-medium">Custom Instructions</span>
 					</VSCodeTextArea>
-					<p
-						style={{
-							fontSize: "12px",
-							marginTop: "5px",
-							color: "var(--vscode-descriptionForeground)",
-						}}>
-						These instructions are appended to the end of the system prompt sent with every request. You can also use
-						.hairules at the root of your workspace to define custom instructions.
+					<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
+						These instructions are appended to the end of the system prompt sent with every request.
 					</p>
-					<VSCodeButton
-						style={{
-							width: "100%",
-							marginTop: "10px",
-							marginBottom: "10px",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-						onClick={() => handleHaiRules(isHaiRulesPresent ? "edit" : "create")}
-						disabled={!vscodeWorkspacePath}>
-						<span
-							className={"codicon codicon-" + (isHaiRulesPresent ? "link-external" : "add")}
-							style={{ marginRight: "5px" }}></span>
-						{isHaiRulesPresent ? "Edit" : "Create"} .hairules
-					</VSCodeButton>
 				</div>
 
 				<SettingsViewExtra
@@ -226,9 +223,9 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					buildIndexProgress={buildIndexProgress}
 				/>
 
-				<div style={{ marginBottom: 5 }}>
+				<div className="mb-[5px]">
 					<VSCodeCheckbox
-						style={{ marginBottom: "5px" }}
+						className="mb-[5px]"
 						checked={planActSeparateModelsSetting}
 						onChange={(e: any) => {
 							const checked = e.target.checked === true
@@ -236,22 +233,17 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						}}>
 						Use different models for Plan and Act modes
 					</VSCodeCheckbox>
-					<p
-						style={{
-							fontSize: "12px",
-							marginTop: "5px",
-							color: "var(--vscode-descriptionForeground)",
-						}}>
+					<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
 						Switching between Plan and Act mode will persist the API and model used in the previous mode. This may be
 						helpful e.g. when using a strong reasoning model to architect a plan for a cheaper coding model to act on.
 					</p>
 				</div>
 
-				<div style={{ marginBottom: 5 }}>
+				<div className="mb-[5px]">
 					<VSCodeCheckbox
-						style={{ marginBottom: "5px" }}
+						className="mb-[5px]"
 						checked={telemetrySetting === "enabled"}
-						onClick={(e: any) => {
+						onChange={(e: any) => {
 							const checked = e.target.checked === true
 							setTelemetrySetting(checked ? "enabled" : "disabled")
 						}}>
@@ -271,6 +263,12 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						are sent for analytics.
 					</p>
 				</div>
+
+				{/* Browser Settings Section */}
+				<BrowserSettingsSection />
+
+				{/* Terminal Settings Section */}
+				<TerminalSettingsSection />
 
 				{IS_DEV && (
 					<>
@@ -320,36 +318,16 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 					</>
 				)}
 
-				<div
-					style={{
-						marginTop: "auto",
-						paddingRight: 8,
-						display: "flex",
-						justifyContent: "center",
-					}}>
+				<div className="mt-auto pr-2 flex justify-center">
 					<SettingsButton
 						onClick={() => vscode.postMessage({ type: "openExtensionSettings" })}
-						style={{
-							margin: "0 0 16px 0",
-						}}>
+						className="mt-0 mr-0 mb-4 ml-0">
 						<i className="codicon codicon-settings-gear" />
 						Advanced Settings
 					</SettingsButton>
 				</div>
-				<div
-					style={{
-						textAlign: "center",
-						color: "var(--vscode-descriptionForeground)",
-						fontSize: "12px",
-						lineHeight: "1.2",
-						padding: "0 8px 15px 0",
-					}}>
-					<p
-						style={{
-							wordWrap: "break-word",
-							margin: 0,
-							padding: 0,
-						}}>
+				<div className="text-center text-[var(--vscode-descriptionForeground)] text-xs leading-[1.2] px-0 py-0 pr-2 pb-[15px] mt-auto">
+					<p className="break-words m-0 p-0">
 						If you have any questions or feedback, feel free to open an issue at{" "}
 						<VSCodeLink
 							href="https://github.com/presidio-oss/cline-based-code-generator"
@@ -357,14 +335,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 							https://github.com/presidio-oss/cline-based-code-generator
 						</VSCodeLink>
 					</p>
-					<p
-						style={{
-							fontStyle: "italic",
-							margin: "10px 0 0 0",
-							padding: 0,
-						}}>
-						v{version}
-					</p>
+					<p className="italic mt-[10px] mb-0 p-0">v{version}</p>
 				</div>
 			</div>
 		</div>

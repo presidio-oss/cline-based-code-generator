@@ -177,9 +177,6 @@ Usage:
 		: ""
 }
 
-${
-	mcpHub.getMode() !== "off"
-		? `
 ## use_mcp_tool
 Description: Request to use a tool provided by a connected MCP server. Each MCP server can provide multiple tools with different capabilities. Tools have defined input schemas that specify required and optional parameters.
 Parameters:
@@ -208,9 +205,7 @@ Usage:
 <server_name>server name here</server_name>
 <uri>resource URI here</uri>
 </access_mcp_resource>
-`
-		: ""
-}
+
 
 ## ask_followup_question
 Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively.
@@ -309,9 +304,6 @@ return (
 >>>>>>> REPLACE
 </diff>
 </replace_in_file>
-${
-	mcpHub.getMode() !== "off"
-		? `
 
 ## Example 4: Requesting to use an MCP tool
 
@@ -348,9 +340,7 @@ ${
   "assignees": ["octocat"]
 }
 </arguments>
-</use_mcp_tool>`
-		: ""
-}
+</use_mcp_tool>
 
 # Tool Use Guidelines
 
@@ -369,9 +359,6 @@ ${customToolUseGuidelinePrompt(supportsCodeIndex)}
 
 By waiting for and carefully considering the user's response after each tool use, you can react accordingly and make informed decisions about how to proceed with the task. This iterative process helps ensure the overall success and accuracy of your work.
 
-${
-	mcpHub.getMode() !== "off"
-		? `
 ====
 
 MCP SERVERS
@@ -418,8 +405,6 @@ ${
 				})
 				.join("\n\n")}`
 		: "(No MCP servers currently connected)"
-}`
-		: ""
 }
 
 
@@ -523,13 +508,7 @@ ${
 		: ""
 }
 ${customCapabilitiesPrompt(supportsCodeIndex)}
-${
-	mcpHub.getMode() !== "off"
-		? `
 - You have access to MCP servers that may provide additional tools and resources. Each server may provide different capabilities that you can use to accomplish tasks more effectively.
-`
-		: ""
-}
 
 ====
 
@@ -569,13 +548,7 @@ RULES
   - Analyze images for meaningful insights when provided.  
   - \`environment_details\` provides context but does not replace user requests. Use it for guidance, not assumptions.  
 ${customRulesPrompt(supportsCodeIndex)}
-${
-	mcpHub.getMode() !== "off"
-		? `
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
-`
-		: ""
-}
 
 ====
 

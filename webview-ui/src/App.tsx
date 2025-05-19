@@ -1,35 +1,50 @@
 import { useCallback, useEffect, useState } from "react"
 import { useEvent } from "react-use"
-import { ExtensionMessage } from "../../src/shared/ExtensionMessage"
+import { ExtensionMessage } from "@shared/ExtensionMessage"
 import ChatView from "./components/chat/ChatView"
 import HistoryView from "./components/history/HistoryView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import AccountView from "./components/account/AccountView"
 import ExpertsView from "./components/experts/ExpertsView"
-import { ExtensionStateContextProvider, useExtensionState } from "./context/ExtensionStateContext"
-import { FirebaseAuthProvider } from "./context/FirebaseAuthContext"
+import { useExtensionState } from "./context/ExtensionStateContext"
 import { vscode } from "./utils/vscode"
 import { HaiTasksList } from "./components/hai/hai-tasks-list"
-import { IHaiClineTask, IHaiStory, IHaiTask } from "./interfaces/hai-task.interface"
+import { IHaiClineTask, IHaiStory, IHaiTask } from "@shared/hai-task"
 import DetailedView from "./components/hai/DetailedView"
-import McpView from "./components/mcp/McpView"
+import McpView from "./components/mcp/configuration/McpConfigurationView"
+import { Providers } from "./Providers"
 
 const AppContent = () => {
-	const { didHydrateState, showWelcome, shouldShowAnnouncement, telemetrySetting, vscMachineId, setHaiConfig, haiConfig } =
-		useExtensionState()
+	const {
+		didHydrateState,
+		showWelcome,
+		shouldShowAnnouncement,
+		showMcp,
+		mcpTab,
+		telemetrySetting,
+		vscMachineId,
+		setHaiConfig,
+		haiConfig,
+	} = useExtensionState()
 	const [showSettings, setShowSettings] = useState(false)
+	const hideSettings = useCallback(() => setShowSettings(false), [])
 	const [showHistory, setShowHistory] = useState(false)
-	const [showMcp, setShowMcp] = useState(false)
 	const [showAccount, setShowAccount] = useState(false)
 	const [showExperts, setShowExperts] = useState(false)
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
+	const { setShowMcp, setMcpTab } = useExtensionState()
 	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
 	const [taskList, setTaskList] = useState<IHaiStory[]>([])
 	const [taskLastUpdatedTs, setTaskLastUpdatedTs] = useState<string>("")
 	const [selectedTask, setSelectedTask] = useState<IHaiClineTask | null>(null)
 	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
 	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
+
+	const closeMcpView = useCallback(() => {
+		setShowMcp(false)
+		setMcpTab(undefined)
+	}, [setShowMcp, setMcpTab])
 
 	const handleMessage = useCallback((e: MessageEvent) => {
 		const message: ExtensionMessage = e.data
@@ -39,6 +54,7 @@ const AppContent = () => {
 					case "settingsButtonClicked":
 						setShowSettings(true)
 						setShowHistory(false)
+						closeMcpView()
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -49,6 +65,7 @@ const AppContent = () => {
 					case "historyButtonClicked":
 						setShowSettings(false)
 						setShowHistory(true)
+						closeMcpView()
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -59,6 +76,9 @@ const AppContent = () => {
 					case "mcpButtonClicked":
 						setShowSettings(false)
 						setShowHistory(false)
+						if (message.tab) {
+							setMcpTab(message.tab)
+						}
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -69,6 +89,7 @@ const AppContent = () => {
 					case "accountButtonClicked":
 						setShowSettings(false)
 						setShowHistory(false)
+						closeMcpView()
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -79,6 +100,7 @@ const AppContent = () => {
 					case "chatButtonClicked":
 						setShowSettings(false)
 						setShowHistory(false)
+						closeMcpView()
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -89,6 +111,7 @@ const AppContent = () => {
 					case "haiBuildTaskListClicked":
 						setShowSettings(false)
 						setShowHistory(false)
+						closeMcpView()
 						setShowHaiTaskList(true)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -99,6 +122,7 @@ const AppContent = () => {
 					case "expertsButtonClicked":
 						setShowSettings(false)
 						setShowHistory(false)
+						closeMcpView()
 						setShowHaiTaskList(false)
 						setDetailedStory(null)
 						setDetailedTask(null)
@@ -218,9 +242,9 @@ const AppContent = () => {
 									onStoryClick={handleStoryClick}
 								/>
 							)}
-							{showSettings && <SettingsView onDone={() => setShowSettings(false)} />}
+							{showSettings && <SettingsView onDone={hideSettings} />}
 							{showHistory && <HistoryView onDone={() => setShowHistory(false)} />}
-							{showMcp && <McpView onDone={() => setShowMcp(false)} />}
+							{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
 							{showAccount && <AccountView onDone={() => setShowAccount(false)} />}
 							{showExperts && <ExpertsView onDone={() => setShowExperts(false)} />}
 							{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
@@ -230,6 +254,7 @@ const AppContent = () => {
 								}}
 								showHistoryView={() => {
 									setShowSettings(false)
+									closeMcpView()
 									setShowMcp(false)
 									setShowHistory(true)
 									setShowHaiTaskList(false)
@@ -253,11 +278,9 @@ const AppContent = () => {
 
 const App = () => {
 	return (
-		<ExtensionStateContextProvider>
-			<FirebaseAuthProvider>
-				<AppContent />
-			</FirebaseAuthProvider>
-		</ExtensionStateContextProvider>
+		<Providers>
+			<AppContent />
+		</Providers>
 	)
 }
 

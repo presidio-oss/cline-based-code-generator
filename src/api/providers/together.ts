@@ -1,11 +1,11 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { withRetry } from "../retry"
-import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "../../shared/api"
+import { ApiHandlerOptions, ModelInfo, openAiModelInfoSaneDefaults } from "@shared/api"
 import { ApiHandler } from "../index"
-import { convertToOpenAiMessages } from "../transform/openai-format"
-import { ApiStream } from "../transform/stream"
-import { convertToR1Format } from "../transform/r1-format"
+import { convertToOpenAiMessages } from "@api/transform/openai-format"
+import { ApiStream } from "@api/transform/stream"
+import { convertToR1Format } from "@api/transform/r1-format"
 
 export class TogetherHandler implements ApiHandler {
 	private options: ApiHandlerOptions
@@ -16,6 +16,7 @@ export class TogetherHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: "https://api.together.xyz/v1",
 			apiKey: this.options.togetherApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

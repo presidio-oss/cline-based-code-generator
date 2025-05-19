@@ -7,6 +7,7 @@ import { ChatSettings } from "./ChatSettings"
 import { UserInfo } from "./UserInfo"
 import { ChatContent } from "./ChatContent"
 import { TelemetrySetting } from "./TelemetrySetting"
+import { McpViewTab } from "./mcp"
 
 export interface WebviewMessage {
 	type:
@@ -16,6 +17,8 @@ export interface WebviewMessage {
 		| "expertPrompt"
 		| "webviewDidLaunch"
 		| "newTask"
+		| "condense"
+		| "reportBug"
 		| "askResponse"
 		| "clearTask"
 		| "didShowAnnouncement"
@@ -38,6 +41,9 @@ export interface WebviewMessage {
 		| "openInBrowser"
 		| "openFile"
 		| "openMention"
+		| "showChatView"
+		| "refreshRequestyModels"
+		| "refreshClineRules"
 		| "cancelTask"
 		| "refreshOpenRouterModels"
 		| "refreshOpenAiModels"
@@ -46,6 +52,7 @@ export interface WebviewMessage {
 		| "deleteMcpServer"
 		| "autoApprovalSettings"
 		| "browserSettings"
+		| "browserRelaunchResult"
 		| "togglePlanActMode"
 		| "checkpointDiff"
 		| "checkpointRestore"
@@ -91,8 +98,22 @@ export interface WebviewMessage {
 		| "fetchUserCreditsData"
 		| "optionsResponse"
 		| "requestTotalTasksSize"
+		| "relaunchChromeDebugMode"
 		| "taskFeedback"
 		| "writeTaskStatus"
+		| "scrollToSettings"
+		| "searchFiles"
+		| "toggleFavoriteModel"
+		| "grpc_request"
+		| "grpc_request_cancel"
+		| "toggleClineRule"
+		| "toggleCursorRule"
+		| "toggleWindsurfRule"
+		| "deleteClineRule"
+		| "copyToClipboard"
+		| "updateTerminalConnectionTimeout"
+		| "setActiveQuote"
+
 	// | "relaunchChromeDebugMode"
 	text?: string
 	expert?: string
@@ -119,6 +140,7 @@ export interface WebviewMessage {
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
 
+	tab?: McpViewTab
 	// For toggleToolAutoApprove
 	serverName?: string
 	serverUrl?: string
@@ -133,9 +155,30 @@ export interface WebviewMessage {
 	planActSeparateModelsSetting?: boolean
 	telemetrySetting?: TelemetrySetting
 	customInstructionsSetting?: string
-
 	// For task feedback
 	feedbackType?: TaskFeedbackType
+	mentionsRequestId?: string
+	query?: string
+	// For toggleFavoriteModel
+	modelId?: string
+	grpc_request?: {
+		service: string
+		method: string
+		message: any // JSON serialized protobuf message
+		request_id: string // For correlating requests and responses
+		is_streaming?: boolean // Whether this is a streaming request
+	}
+	grpc_request_cancel?: {
+		request_id: string // ID of the request to cancel
+	}
+	// For cline rules
+	isGlobal?: boolean
+	rulePath?: string
+	enabled?: boolean
+	filename?: string
+
+	offset?: number
+	shellIntegrationTimeout?: number
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

@@ -1,3 +1,5 @@
+import prettyBytes from "pretty-bytes"
+
 export function formatLargeNumber(num: number): string {
 	if (num >= 1e9) {
 		return (num / 1e9).toFixed(1) + "b"
@@ -37,4 +39,12 @@ export function formatTimestamp(timestamp: string): string {
 
 export function capitalizeFirstLetter(str: string) {
 	return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function formatSize(bytes?: number) {
+	if (bytes === undefined) {
+		return "--kb"
+	}
+
+	return prettyBytes(bytes)
 }

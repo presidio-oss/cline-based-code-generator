@@ -5,12 +5,17 @@ import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { InlineEditingProvider } from "./integrations/inline-editing"
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import * as vscode from "vscode"
+import pWaitFor from "p-wait-for"
 import { Logger } from "./services/logging/Logger"
 import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import assert from "node:assert"
-import { telemetryService } from "./services/telemetry/TelemetryService"
+import { posthogClientProvider } from "./services/posthog/PostHogClientProvider"
+import { telemetryService } from "./services/posthog/telemetry/TelemetryService"
 import { WebviewProvider } from "./core/webview"
+import { Controller } from "./core/controller"
+import { ErrorService } from "./services/error/ErrorService"
+import { initializeTestMode, cleanupTestMode } from "./services/test/TestMode"
 import { getAllExtensionState } from "./core/storage/state"
 import { getWorkspaceID } from "./utils/path"
 
@@ -33,10 +38,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 	let haiTaskList: string
 
+	ErrorService.initialize()
 	Logger.initialize(outputChannel)
 	Logger.log("HAI extension activated")
 
 	const sidebarWebview = new WebviewProvider(context, outputChannel)
+
+	// Initialize test mode and add disposables to context
+	context.subscriptions.push(...initializeTestMode(context, sidebarWebview))
 
 	vscode.commands.executeCommand("setContext", "hai.isDevMode", IS_DEV && IS_DEV === "true")
 
@@ -301,7 +310,7 @@ export function activate(context: vscode.ExtensionContext) {
 			.then((module) => {
 				const devTaskCommands = module.registerTaskCommands(context, sidebarWebview.controller)
 				context.subscriptions.push(...devTaskCommands)
-				Logger.log("Cline dev task commands registered")
+				Logger.log("HAI dev task commands registered")
 			})
 			.catch((error) => {
 				Logger.log("Failed to register dev task commands: " + error)
@@ -439,7 +448,11 @@ export function activate(context: vscode.ExtensionContext) {
 
 	// Register the command handler
 	context.subscriptions.push(
-		vscode.commands.registerCommand("hai.fixWithHAI", async (range: vscode.Range, diagnostics: any[]) => {
+		vscode.commands.registerCommand("hai.fixWithHAI", async (range: vscode.Range, diagnostics: vscode.Diagnostic[]) => {
+			// Add this line to focus the chat input first
+			await vscode.commands.executeCommand("hai.focusChatInput")
+			// Wait for a webview instance to become visible after focusing
+			await pWaitFor(() => !!WebviewProvider.getVisibleInstance())
 			const editor = vscode.window.activeTextEditor
 			if (!editor) {
 				return
@@ -455,13 +468,45 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
-	return createHaiAPI(outputChannel, sidebarWebview.controller)
-}
+	// Register the focusChatInput command handler
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.focusChatInput", () => {
+			let visibleWebview = WebviewProvider.getVisibleInstance()
+			if (!visibleWebview) {
+				vscode.commands.executeCommand("hai.SidebarProvider.focus")
+				visibleWebview = WebviewProvider.getSidebarInstance()
+				// showing the extension will call didBecomeVisible which focuses it already
+				// but it doesn't focus if a tab is selected which focusChatInput accounts for
+			}
 
-// This method is called when your extension is deactivated
-export function deactivate() {
-	telemetryService.shutdown()
-	Logger.log("HAI extension deactivated")
+			visibleWebview?.controller.postMessageToWebview({
+				type: "action",
+				action: "focusChatInput",
+			})
+		}),
+	)
+
+	// Register the generateGitCommitMessage command handler
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.generateGitCommitMessage", async () => {
+			// Get the controller from any instance, without activating the view
+			const controller = WebviewProvider.getAllInstances()[0]?.controller
+
+			if (controller) {
+				// Call the controller method to generate commit message
+				await controller.generateGitCommitMessage()
+			} else {
+				// Create a temporary controller just for this operation
+				const outputChannel = vscode.window.createOutputChannel("HAI Commit Generator")
+				const tempController = new Controller(context, outputChannel, () => Promise.resolve(true))
+
+				await tempController.generateGitCommitMessage()
+				outputChannel.dispose()
+			}
+		}),
+	)
+
+	return createHaiAPI(outputChannel, sidebarWebview.controller)
 }
 
 // TODO: Find a solution for automatically removing DEV related content from production builds.
@@ -472,6 +517,17 @@ export function deactivate() {
 // since vscode doesn't support hot reload for extensions
 const { IS_DEV, DEV_WORKSPACE_FOLDER } = process.env
 
+// This method is called when your extension is deactivated
+export async function deactivate() {
+	await telemetryService.sendCollectedEvents()
+
+	// Clean up test mode
+	cleanupTestMode()
+	await posthogClientProvider.shutdown()
+	Logger.log("HAI extension deactivated")
+}
+
+// Set up development mode file watcher
 if (IS_DEV && IS_DEV !== "false") {
 	assert(DEV_WORKSPACE_FOLDER, "DEV_WORKSPACE_FOLDER must be set in development")
 	const watcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(DEV_WORKSPACE_FOLDER, "src/**/*"))
