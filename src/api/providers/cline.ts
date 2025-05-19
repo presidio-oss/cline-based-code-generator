@@ -22,6 +22,7 @@ export class ClineHandler implements ApiHandler {
 				"X-Title": "Cline", // Optional. Shows in rankings on cline.bot.
 				"X-Task-ID": this.options.taskId || "", // Include the task ID in the request headers
 			},
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

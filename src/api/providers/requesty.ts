@@ -20,6 +20,7 @@ export class RequestyHandler implements ApiHandler {
 				"HTTP-Referer": "https://cline.bot",
 				"X-Title": "Cline",
 			},
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

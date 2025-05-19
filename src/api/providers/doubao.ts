@@ -13,6 +13,7 @@ export class DoubaoHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: "https://ark.cn-beijing.volces.com/api/v3/",
 			apiKey: this.options.doubaoApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

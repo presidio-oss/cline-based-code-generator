@@ -27,6 +27,7 @@ export class QwenHandler implements ApiHandler {
 					? "https://dashscope.aliyuncs.com/compatible-mode/v1"
 					: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
 			apiKey: this.options.qwenApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

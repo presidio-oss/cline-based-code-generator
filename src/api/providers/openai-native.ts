@@ -16,6 +16,7 @@ export class OpenAiNativeHandler implements ApiHandler {
 		this.options = options
 		this.client = new OpenAI({
 			apiKey: this.options.openAiNativeApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

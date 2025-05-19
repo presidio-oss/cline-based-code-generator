@@ -864,7 +864,7 @@ export class Controller {
 					// If no validation error is encountered, validate the LLM configuration by sending a test message.
 					if (!message.text) {
 						try {
-							const apiHandler = buildApiHandler({ ...message.apiConfiguration, requestTimeoutMs: 0 })
+							const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
 							isValid = await apiHandler.validateAPIKey()
 						} catch (error) {
 							vscode.window.showErrorMessage(`LLM validation failed: ${error}`)

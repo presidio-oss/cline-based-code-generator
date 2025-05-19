@@ -15,6 +15,7 @@ export class XAIHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: "https://api.x.ai/v1",
 			apiKey: this.options.xaiApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

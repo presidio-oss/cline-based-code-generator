@@ -14,6 +14,7 @@ export class LiteLlmHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: this.options.liteLlmBaseUrl || "http://localhost:4000",
 			apiKey: this.options.liteLlmApiKey || "noop",
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

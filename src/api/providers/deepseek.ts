@@ -17,6 +17,7 @@ export class DeepSeekHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: "https://api.deepseek.com/v1",
 			apiKey: this.options.deepSeekApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

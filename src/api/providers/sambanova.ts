@@ -16,6 +16,7 @@ export class SambanovaHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: "https://api.sambanova.ai/v1",
 			apiKey: this.options.sambanovaApiKey,
+			maxRetries: this.options.maxRetries,
 		})
 	}
 

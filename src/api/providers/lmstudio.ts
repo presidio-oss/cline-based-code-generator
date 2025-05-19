@@ -14,6 +14,7 @@ export class LmStudioHandler implements ApiHandler {
 		this.client = new OpenAI({
 			baseURL: (this.options.lmStudioBaseUrl || "http://localhost:1234") + "/v1",
 			apiKey: "noop",
+			maxRetries: this.options.maxRetries,
 		})
 	}
 
