@@ -1,6 +1,6 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
-import { IHaiStory } from "../../webview-ui/src/interfaces/hai-task.interface"
+import { IHaiStory } from "./hai-task"
 import { EmbeddingConfiguration } from "./embeddings"
 import { GitCommit } from "../utils/git"
 import { ApiConfiguration, ModelInfo } from "./api"

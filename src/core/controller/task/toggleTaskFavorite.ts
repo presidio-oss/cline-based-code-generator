@@ -1,6 +1,8 @@
+import { customGetState, customUpdateState } from "@/core/storage/state"
 import { Controller } from "../"
 import { Empty } from "../../../shared/proto/common"
 import { TaskFavoriteRequest } from "../../../shared/proto/task"
+import { HistoryItem } from "@/shared/HistoryItem"
 
 export async function toggleTaskFavorite(controller: Controller, request: TaskFavoriteRequest): Promise<Empty> {
 	if (!request.taskId || request.isFavorited === undefined) {
@@ -12,7 +14,7 @@ export async function toggleTaskFavorite(controller: Controller, request: TaskFa
 	try {
 		// Update in-memory state only
 		try {
-			const history = ((await controller.context.globalState.get("taskHistory")) as any[]) || []
+			const history = ((await customGetState(controller.context, "taskHistory")) as HistoryItem[] | undefined) || []
 
 			const taskIndex = history.findIndex((item) => item.id === request.taskId)
 
@@ -28,7 +30,7 @@ export async function toggleTaskFavorite(controller: Controller, request: TaskFa
 
 				// Update global state and wait for it to complete
 				try {
-					await controller.context.globalState.update("taskHistory", updatedHistory)
+					await customUpdateState(controller.context, "taskHistory", updatedHistory)
 				} catch (stateErr) {
 					console.error("Error updating global state:", stateErr)
 				}

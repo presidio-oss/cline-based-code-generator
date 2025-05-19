@@ -1,3 +1,4 @@
+import { customGetState } from "@/core/storage/state"
 import { Controller } from ".."
 import { StringRequest } from "@shared/proto/common"
 import { TaskResponse } from "@shared/proto/task"
@@ -13,7 +14,7 @@ export async function showTaskWithId(controller: Controller, request: StringRequ
 		const id = request.value
 
 		// First check if task exists in global state for faster access
-		const taskHistory = ((await controller.context.globalState.get("taskHistory")) as any[]) || []
+		const taskHistory = ((await customGetState(controller.context, "taskHistory")) as any[]) || []
 		const historyItem = taskHistory.find((item) => item.id === id)
 
 		// We need to initialize the task before returning data

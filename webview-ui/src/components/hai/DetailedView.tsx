@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react"
 import Fuse from "fuse.js"
-import { IHaiTask, IHaiStory, IHaiClineTask } from "../../interfaces/hai-task.interface"
+import { IHaiTask, IHaiStory, IHaiClineTask } from "@shared/hai-task"
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { addHighlighting } from "../../utils/add-highlighting"
 import CopyClipboard from "../common/CopyClipboard"

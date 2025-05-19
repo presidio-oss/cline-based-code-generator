@@ -1,5 +1,5 @@
 import React from "react"
-import { IHaiClineTask, IHaiTask } from "../../interfaces/hai-task.interface"
+import { IHaiClineTask, IHaiTask } from "@shared/hai-task"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import CopyClipboard from "../common/CopyClipboard"
 

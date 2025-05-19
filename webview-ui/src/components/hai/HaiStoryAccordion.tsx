@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { IHaiClineTask, IHaiTask, IHaiStory } from "../../interfaces/hai-task.interface"
+import { IHaiClineTask, IHaiTask, IHaiStory } from "@shared/hai-task"
 import HaiTaskComponent from "./HaiTaskComponent"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 

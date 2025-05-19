@@ -1,4 +1,4 @@
-import { IHaiClineTask, IHaiStory, IHaiTask } from "../../interfaces/hai-task.interface"
+import { IHaiClineTask, IHaiStory, IHaiTask } from "@shared/hai-task"
 import { VSCodeButton, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { HaiStoryAccordion } from "./HaiStoryAccordion"
 import { useMemo, useState } from "react"

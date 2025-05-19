@@ -212,25 +212,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						<span className="font-medium">Custom Instructions</span>
 					</VSCodeTextArea>
 					<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-						These instructions are appended to the end of the system prompt sent with every request. You can also use
-						.hairules at the root of your workspace to define custom instructions.
+						These instructions are appended to the end of the system prompt sent with every request.
 					</p>
-					<VSCodeButton
-						style={{
-							width: "100%",
-							marginTop: "10px",
-							marginBottom: "10px",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-						}}
-						onClick={() => handleHaiRules(isHaiRulesPresent ? "edit" : "create")}
-						disabled={!vscodeWorkspacePath}>
-						<span
-							className={"codicon codicon-" + (isHaiRulesPresent ? "link-external" : "add")}
-							style={{ marginRight: "5px" }}></span>
-						{isHaiRulesPresent ? "Edit" : "Create"} .hairules
-					</VSCodeButton>
 				</div>
 
 				<SettingsViewExtra

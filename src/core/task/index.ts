@@ -3325,7 +3325,12 @@ export class Task {
 
 										// Use our utility function to create and open the GitHub issue URL
 										// This bypasses VS Code's URI handling issues with special characters
-										await createAndOpenGitHubIssue("hai", "hai", "bug_report.yml", params)
+										await createAndOpenGitHubIssue(
+											"presidio-oss",
+											"cline-based-code-generator",
+											"bug_report.yml",
+											params,
+										)
 									} catch (error) {
 										console.error(`An error occurred while attempting to report the bug: ${error}`)
 									}
