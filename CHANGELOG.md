@@ -1,16 +1,22 @@
 # Changelog
 
+## [3.5.0]
+
+### Added
+
+-   Merged changes from Cline 3.15.1 (see [changelog](https://github.com/cline/cline/blob/main/CHANGELOG.md#3151)).
+
 ## [3.4.3]
 
 ### Fixed
 
--  Updated AzureOpenAI (OpenAI-Compatible) to support URLs with domains other than .com.
--  Resolved an issue where chat-related quick action tiles failed to populate the message input with the intended task. The input field now accurately reflects the selected chat action.
--  Refined the usage behavior of the find_relevant_files tool to avoid triggering on general queries.
--  Replaced the AutoSave feature in settings with a clear 'Done' button to explicitly save configuration changes, providing better user clarity and control.
--  Fixed an issue where the welcome view was not displayed when resetting the application state.
--  Disabled the prompt cache by default.
--  Changed anonymous usage report permission to be set globally instead of at the workspace level.
+-   Updated AzureOpenAI (OpenAI-Compatible) to support URLs with domains other than .com.
+-   Resolved an issue where chat-related quick action tiles failed to populate the message input with the intended task. The input field now accurately reflects the selected chat action.
+-   Refined the usage behavior of the find_relevant_files tool to avoid triggering on general queries.
+-   Replaced the AutoSave feature in settings with a clear 'Done' button to explicitly save configuration changes, providing better user clarity and control.
+-   Fixed an issue where the welcome view was not displayed when resetting the application state.
+-   Disabled the prompt cache by default.
+-   Changed anonymous usage report permission to be set globally instead of at the workspace level.
 
 ## [3.4.2]
 
