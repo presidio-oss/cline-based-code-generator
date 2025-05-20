@@ -1,0 +1,91 @@
+---
+title: "Experts"
+description: "Learn how Experts help tailor the HAI Code Generator with domain-specific context for smarter, more accurate code generation."
+---
+
+### 🤔 1. What are Experts?
+
+Experts are like smart guides for the code generator—they help it focus on specific tech stacks or domain-specific knowledge the LLM may not know on its own.
+
+### 💡 2. Why do you need an Expert?
+
+Imagine this: you’ve got custom UI components or internal libraries with secret documentation.
+
+The LLM? It’s smart, but it doesn’t know your internal playbook.
+
+Experts bring that knowledge into the loop, so your code gen becomes context-aware and more accurate.
+
+### 🛠️ 3. Built-in Experts
+
+We’ve bundled in 4 ready-to-go experts:
+
+-   ✅ .NET
+-   ✅ Terraform
+-   ✅ Node.js
+-   ✅ Go
+
+Each comes with predefined best practices & usage guidelines.
+
+> 📚 **Note:** These are currently read-only.
+
+### ✍️ 4. Can I create my own Expert?
+
+Yes, you can! 🙌
+
+Here’s how it works:
+
+-   📝 Define your own custom guidelines
+-   🔗 Add up to 3 document links as references
+-   📥 We scrape those URLs and convert the content to markdown
+-   🧠 LLM uses both the guidelines + docs for code generation
+
+> ✅ **Result?** A highly tailored, smart assistant.
+
+### ⚙️ 5. How does it work under the hood?
+
+When you select an Expert, the system sends:
+
+-   The guidelines
+-   The scraped doc content
+
+...to the LLM, giving it the context it needs to generate better code.
+
+### 🚧 6. Current Limitations
+
+-   📄 Only 3 documents can be uploaded right now
+-   🌐 Large URLs may not be fully processed
+
+### 🔍 7. Are we solving this?
+
+Yes! We're actively exploring:
+
+-   Smarter ways to index and chunk content
+-   Reducing noise while keeping the useful stuff
+
+### 🧪 8. How we handle doc content?
+
+We tested two approaches:
+
+#### 📄 Raw Scraped Content
+
+**Pros:**
+
+-   Full fidelity
+
+**Cons:**
+
+-   Too much info = LLM overwhelm
+-   Higher chance of hitting token limits
+
+#### ✂️ Summarized via LLM (Current Approach)
+
+**Pros:**
+
+-   Clean, focused content
+-   Smaller token usage
+
+**Cons:**
+
+-   Might skip minor details
+
+> ⚖️ **Trade-off:** Better performance with most important info kept intact.
