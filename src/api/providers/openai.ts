@@ -23,7 +23,7 @@ export class OpenAiHandler implements ApiHandler {
 				!this.options.openAiModelId?.toLowerCase().includes("deepseek"))
 		) {
 			this.client = new AzureOpenAI({
-				baseURL: this.options.openAiBaseUrl,
+				endpoint: this.options.openAiBaseUrl,
 				apiKey: this.options.openAiApiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: this.options.openAiHeaders,
