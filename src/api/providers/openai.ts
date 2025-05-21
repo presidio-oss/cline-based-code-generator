@@ -24,7 +24,6 @@ export class OpenAiHandler implements ApiHandler {
 		) {
 			this.client = new AzureOpenAI({
 				endpoint: this.options.openAiBaseUrl,
-				deployment: this.options.openAiModelId,
 				apiKey: this.options.openAiApiKey,
 				apiVersion: this.options.azureApiVersion || azureOpenAiDefaultApiVersion,
 				defaultHeaders: this.options.openAiHeaders,
