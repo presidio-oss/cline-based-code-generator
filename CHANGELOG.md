@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.5.1]
+
+### Fixed
+
+-   Replaced `baseUrl` with `endpoint` for AzureOpenAI to eliminate the need to manually append `/openai` to the URL.
+
 ## [3.5.0]
 
 ### Added
