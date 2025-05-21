@@ -1,0 +1,247 @@
+---
+title: "Expert Instruction Meta-Guide"
+description: "A meta-guide to help contributors write high-quality, role-based expert instruction files for building LLM personas or system instructions."
+---
+
+> ✅ **Purpose**  
+> This document is a meta-guide to help contributors craft high-quality, role-based expert instruction files. These serve as ground truth for building LLM personas, system instructions, or engineering knowledge bases.
+>
+> If you're not sure what an expert is or why we need one, please take a moment to read this document: [Experts](../../experts.mdx)
+
+> 📌 **Guiding Philosophy**  
+> An expert guidelines document isn't just a cheat sheet—it's a codified persona of excellence. It should:
+>
+> -   Establish authority in the domain.
+> -   Provide principles and practice—not just instructions.
+> -   Be structured, consistent, and extensible.
+> -   Serve both humans and LLMs—making it chunkable, parseable, and RAG-ready.
+
+---
+
+### 🧩 1. Structure of an Expert File
+
+Here's a canonical format:
+
+```markdown
+## You are HAI, a specialized expert in [DOMAIN] with deep knowledge of [TOOLING/SUBDOMAINS].
+
+## [DOMAIN]-Specific Guidelines
+
+### 1. [Thematic Group Title]
+
+Content, code blocks, rationale, and rules here.
+
+### 2. [Next Area of Concern]
+
+Repeat with clarity.
+...
+
+### X. [CI/CD | Security | Best Practices]
+
+Close with extensibility and enforcement sections.
+```
+
+✅ **Keep it consistent across personas:**
+
+-   Always start with a role declaration
+-   Always follow with a domain-specific guidelines heading
+-   Break content into clearly scoped thematic sections
+-   Use markdown + code fences to support syntax highlighting
+-   Highlight both "How" and "Why"
+
+---
+
+## 🏗️ 2. Before You Begin
+
+**Ask These Questions:**
+
+| Question                                        | Purpose                                   |
+| ----------------------------------------------- | ----------------------------------------- |
+| What persona am I writing as?                   | DevOps expert, React guru, etc.           |
+| Who is the target reader?                       | Beginner? Intermediate? Contributor? LLM? |
+| What are the core pillars of this domain?       | Structure, testing, versioning, etc.      |
+| What tools or frameworks dominate this space?   | e.g., Next.js, Terraform, Playwright      |
+| What is considered bad practice in this domain? | Helps define the edges of expertise       |
+| How can I include reusable code patterns?       | Makes doc practical and referenceable     |
+
+---
+
+## 🧠 3. What Makes It Expert-Level
+
+| Trait                | Description                                                 |
+| -------------------- | ----------------------------------------------------------- |
+| Opinionated          | Don’t be afraid to prescribe best practices. Experts guide. |
+| Battle-Tested Advice | Include guidance reflecting real-world scenarios.           |
+| Code-First           | Add idiomatic examples with syntax and patterns.            |
+| Explains Trade-offs  | Prefer “X over Y because…” vs simply “use X”.               |
+| Modular              | Sections should be pluggable, referenceable, and swappable. |
+| LLM-Friendly         | Structured, token-efficient, chunkable.                     |
+
+---
+
+## ✍️ 4. Writing Checklist
+
+Use this as a repeatable checklist:
+
+✅ **Role Setup**
+
+-   Name the expert clearly.
+-   Define the domain explicitly.
+-   Mention specializations.
+
+✅ **Core Sections (pick and tailor)**
+
+-   Project Structure
+-   Setup & Initialization
+-   Configuration Management
+-   CI/CD Integration
+-   Security Guidelines
+-   Testing Methodologies
+-   Environment Handling (Dev/Staging/Prod)
+-   Versioning & Upgrade Strategies
+-   Deployment or Scaling Patterns
+-   Common Pitfalls / Anti-Patterns
+-   Performance Best Practices
+-   Observability & Logging
+
+✅ **Content Style**
+
+-   Context or explanation for every code block.
+-   Instructions with action verbs.
+-   Consistent terminology.
+-   Links to RFCs, standards, or docs.
+
+---
+
+## ⚙️ 5. Format Guidelines
+
+| Element        | Usage                                              |
+| -------------- | -------------------------------------------------- |
+| ##             | Top-level role or section headers                  |
+| ###            | Subsections by theme                               |
+| ```language    | Always use language tags (e.g., lua, go, ts, bash) |
+| ✅ / ⚠️ / ❌   | Use emojis sparingly for clarity                   |
+| Tables         | For comparisons, options, trade-offs               |
+| Bullet Lists   | When ordering is irrelevant                        |
+| Numbered Lists | When process/order matters                         |
+
+---
+
+## 🧬 6. Reusability for LLMs & Knowledge Graphs
+
+To make the docs ready for automation:
+
+-   Ensure each section is self-contained
+-   Use consistent headings for chunking
+-   Minimize overly verbose narrative — clarity wins
+-   Prefer `term: definition` format for glossary-type items
+-   Group example-first where possible
+
+---
+
+## 🧪 7. Example Meta Templates
+
+Example role primers:
+
+```markdown
+## You are HAI, a DevOps Reliability Expert specializing in Kubernetes-based microservice deployments at scale on AWS and GCP.
+
+## DevOps-Specific Guidelines
+
+### 1. Cluster Configuration
+
+...
+
+### 2. Autoscaling & Cost Controls
+
+...
+```
+
+```markdown
+## You are HAI, an LLM Product Engineer focused on Retrieval-Augmented Generation pipelines using LangChain, Weaviate, and OpenAI APIs.
+
+## LLM Engineering Guidelines
+
+### 1. Chunking & Indexing Strategies
+
+...
+
+### 2. Prompt Engineering Principles
+
+...
+```
+
+---
+
+## 🧭 8. Final Tips
+
+-   Start with a skeleton using the checklist above
+-   Avoid repeating generalities — focus on sharp, unique knowledge
+-   Think of each section as a “tile” of expertise — someone should be able to take just one tile and apply it
+-   Think in terms of portable intelligence, not just documentation
+
+Now that you know how to write an expert, why not contribute? Please refer to the below guide to contribute to HAI.
+
+---
+
+## 🤝 How to Contribute Experts to the GitHub Repository
+
+**1. Clone the Repository**
+
+Start by cloning the repository to your local machine:
+
+```bash
+git clone https://github.com/presidio-oss/cline-based-code-generator
+```
+
+**2. Navigate to the Experts Directory**
+
+Once you've cloned the repository, navigate to the src/experts directory:
+
+```bash
+cd src/experts
+```
+
+**3. Create Your Own Expert Folder**
+
+Each expert should have its own dedicated folder. The folder name should match the name of the expert. For example, if you're contributing a Golang expert, create a folder called golang.
+
+Inside this folder, create two files:
+
+-   prompt.md: The content file that will contain the instructions or prompt for the expert.
+
+-   icon.svg: The SVG icon that represents the expert. Make sure to keep the icon file small and optimized for use in the UI.
+
+Example folder structure:
+
+```plaintext
+src/experts/
+ ├── golang/
+ │    ├── prompt.md
+ │    └── icon.svg
+ └── ...
+```
+
+**4. Create an Issue**
+
+Before submitting your contribution, create an issue to track the addition of the new expert. The issue format should be as follows:
+
+-   Format: `[Expert]: Expert Name`
+-   Example: `[Expert]: Golang`
+
+Make sure to tag the issue with the Expert label for easy identification.
+
+**5. Raise a Pull Request**
+
+After you've made your changes, raise a pull request (PR) to merge your contributions into the main repository.
+
+When creating the pull request, please follow these standards:
+
+-   Pull Request Title Format: `[Experts]: Expert Name expert`
+-   Example: `[Experts]: Golang expert`
+-   Link the Pull Request with the Issue: Make sure to link the pull request to the issue you created earlier. This helps in tracking the progress of the contribution and ensures the expert is properly documented and tracked.
+
+**6. Review and Merge**  
+Once your PR is raised, we will review your contribution. If everything is in order, it will be merged into the repository. If there are any issues, we will provide feedback to help you get your contribution ready for merging.
+
+**Thank You!**
