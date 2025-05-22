@@ -234,7 +234,7 @@ export class Task {
 		this.expertPrompt = expertPrompt
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
-		this.guardrails = new Guardrails()
+		this.guardrails = new Guardrails(this.context)
 		this.failedGuards = []
 
 		// Initialize taskId first
@@ -1568,10 +1568,10 @@ export class Task {
 				}
 			})
 		const guardsToApply = ["leakage", "injection"]
-		if (Guardrails._guardsConfig.secret.mode === "block") {
+		if (this.guardrails.guardsConfig?.secret?.mode === "block") {
 			guardsToApply.push("secret")
 		}
-		if (Guardrails._guardsConfig.pii.mode === "block") {
+		if (this.guardrails.guardsConfig?.pii?.mode === "block") {
 			guardsToApply.push("pii")
 		}
 		this.failedGuards = result.messagesWithGuardResult.filter(

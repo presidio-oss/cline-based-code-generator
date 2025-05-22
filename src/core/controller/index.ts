@@ -125,7 +125,7 @@ export class Controller {
 				return apiConfiguration?.clineApiKey
 			},
 		)
-		this.guardrails = new Guardrails()
+		this.guardrails = new Guardrails(this.context)
 
 		// Clean up legacy checkpoints
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {

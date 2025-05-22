@@ -95,5 +95,6 @@ export type GlobalStateKey =
 	| "favoritedModelIds"
 	| "requestTimeoutMs"
 	| "shellIntegrationTimeout"
+	| "guardrailsConfig"
 
 export type LocalStateKey = "localClineRulesToggles"

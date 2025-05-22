@@ -2,15 +2,45 @@ import {
 	GuardrailsEngine,
 	injectionGuard,
 	leakageGuard,
+	MessageType,
 	Pattern,
 	piiGuard,
 	secretGuard,
 	SelectionType,
 } from "@presidio-dev/hai-guardrails"
+import * as vscode from "vscode"
+import { customGetState, customUpdateState } from "../../core/storage/state"
+
+// Define a type for our guardrails configuration
+export interface GuardrailsConfig {
+	injection: {
+		name: string
+		threshold: number
+	}
+	pii: {
+		name: string
+		selection: SelectionType
+		mode: string
+	}
+	secret: {
+		name: string
+		selection: SelectionType
+		mode: string
+	}
+	leakage: {
+		name: string
+		roles: MessageType[]
+		threshold: number
+	}
+}
 
 export class Guardrails extends GuardrailsEngine {
 	public static MESSAGE = "Message blocked by Hai Guardrails filter."
-	public static _guardsConfig = {
+	private context: vscode.ExtensionContext
+	public guardsConfig: GuardrailsConfig
+
+	// Default configuration that will be used if no config is found in state
+	public static DEFAULT_GUARDS_CONFIG: GuardrailsConfig = {
 		injection: {
 			name: "Prompt Injection",
 			threshold: 0.75,
@@ -32,18 +62,45 @@ export class Guardrails extends GuardrailsEngine {
 		},
 	}
 
-	constructor() {
-		const guards = Guardrails.createGuards()
+	constructor(context: vscode.ExtensionContext) {
+		// Initially create with default guards, will be updated after loading config
+		const guards = Guardrails.createGuards(Guardrails.DEFAULT_GUARDS_CONFIG)
 		super({ guards })
+
+		this.context = context
+		this.guardsConfig = Guardrails.DEFAULT_GUARDS_CONFIG
+
+		// Load configuration asynchronously
+		this.loadGuardsConfig().then(() => {
+			// Update guards after loading config
+			this.updateGuards()
+		})
 	}
 
-	private static createGuards() {
-		// Since GUARDS_CONFIG is static, it's valid to access here
+	private async loadGuardsConfig(): Promise<void> {
+		const storedConfig = (await customGetState(this.context, "guardrailsConfig")) as GuardrailsConfig | undefined
+		if (storedConfig) {
+			this.guardsConfig = storedConfig
+		} else {
+			// If no config exists in storage, save the default one
+			await this.saveGuardsConfig()
+		}
+	}
+
+	private async saveGuardsConfig(): Promise<void> {
+		await customUpdateState(this.context, "guardrailsConfig", this.guardsConfig)
+	}
+
+	private updateGuards(): void {
+		Guardrails.createGuards(this.guardsConfig)
+	}
+
+	private static createGuards(config: GuardrailsConfig) {
 		return [
-			injectionGuard({ roles: ["user"] }, { mode: "heuristic", threshold: Guardrails._guardsConfig.injection.threshold }),
+			injectionGuard({ roles: ["user"] }, { mode: "heuristic", threshold: config.injection.threshold }),
 			piiGuard({
-				selection: Guardrails._guardsConfig.pii.selection,
-				mode: "redact",
+				selection: config.pii.selection,
+				mode: config.pii.mode as "redact" | "block",
 				patterns: [
 					{
 						id: "Email-pattern",
@@ -55,24 +112,24 @@ export class Guardrails extends GuardrailsEngine {
 				],
 			}),
 			secretGuard({
-				selection: Guardrails._guardsConfig.secret.selection,
-				mode: "block",
+				selection: config.secret.selection,
+				mode: config.secret.mode as "redact" | "block",
 			}),
-			leakageGuard({ roles: ["user"] }, { mode: "heuristic", threshold: Guardrails._guardsConfig.leakage.threshold }),
+			leakageGuard({ roles: config.leakage.roles }, { mode: "heuristic", threshold: config.leakage.threshold }),
 		]
 	}
 
 	get activeGuards() {
-		const guards = Object.keys(Guardrails._guardsConfig).map((key) => {
-			const config = Guardrails._guardsConfig[key as keyof typeof Guardrails._guardsConfig]
+		const guards = Object.keys(this.guardsConfig).map((key) => {
+			const config = this.guardsConfig[key as keyof GuardrailsConfig]
 			const hasThreshold = "threshold" in config
 			const hasMode = "mode" in config
 			return {
 				key: key,
 				name: config.name,
 				hasThreshold: hasThreshold,
-				threshold: hasThreshold ? config.threshold : undefined,
-				mode: hasMode ? config.mode : undefined,
+				threshold: hasThreshold ? (config as any).threshold : undefined,
+				mode: hasMode ? (config as any).mode : undefined,
 			}
 		})
 
@@ -84,24 +141,31 @@ export class Guardrails extends GuardrailsEngine {
 	}
 
 	public async updateThreshold(guardKey: "injection" | "leakage", newThreshold: number): Promise<void> {
-		const guard = Guardrails._guardsConfig[guardKey]
+		const guard = this.guardsConfig[guardKey]
 		if (!guard) {
 			console.error(`Guard ${guardKey} not found.`)
 			return
 		}
-		guard.threshold = newThreshold
-		console.log(`Threshold for ${guardKey} guard updated to ${newThreshold}`)
-		Guardrails.createGuards()
-	}
 
+		if ("threshold" in guard) {
+			guard.threshold = newThreshold
+			await this.saveGuardsConfig()
+			this.updateGuards()
+			console.log(`Threshold for ${guardKey} guard updated to ${newThreshold}`)
+		}
+	}
 	public async updateMode(guardKey: "secret" | "pii", mode: string): Promise<void> {
-		const guard = Guardrails._guardsConfig[guardKey]
+		const guard = this.guardsConfig[guardKey]
 		if (!guard) {
 			console.error(`Guard ${guardKey} not found.`)
 			return
 		}
-		guard.mode = mode
-		console.log(`Mode for ${guardKey} guard updated to ${mode}`)
-		Guardrails.createGuards()
+
+		if ("mode" in guard) {
+			guard.mode = mode
+			await this.saveGuardsConfig()
+			this.updateGuards()
+			console.log(`Mode for ${guardKey} guard updated to ${mode}`)
+		}
 	}
 }
