@@ -56,6 +56,7 @@ export interface ExtensionMessage {
 		| "defaultExpertsLoaded"
 		| "expertPrompt"
 		| "writeTaskStatus"
+		| "defaultGuards"
 		| "browserConnectionResult"
 		| "scrollToSettings"
 		| "browserRelaunchResult"
@@ -111,6 +112,7 @@ export interface ExtensionMessage {
 	userCreditsUsage?: UsageTransaction[]
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
+	guards?: Guard[]
 	experts?: any[] // Expert data array
 	documentLinks?: any[] // Document links with status
 	expertName?: string // Expert name for document links status
@@ -222,6 +224,7 @@ export type ClineAsk =
 	| "new_task"
 	| "condense"
 	| "report_bug"
+	| "guardrails"
 
 export type ClineSay =
 	| "task"
@@ -249,6 +252,7 @@ export type ClineSay =
 	| "clineignore_error"
 	| "checkpoint_created"
 	| "load_mcp_documentation"
+	| "guardrails_filter"
 
 export interface ClineSayTool {
 	tool:
@@ -324,3 +328,10 @@ export interface ClineApiReqInfo {
 export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"
+export interface Guard {
+	key: string
+	name: string
+	hasThreshold: boolean
+	threshold?: number
+	mode?: string
+}

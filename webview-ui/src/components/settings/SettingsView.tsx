@@ -14,6 +14,7 @@ import { ExtensionMessage } from "@shared/ExtensionMessage"
 import BrowserSettingsSection from "./BrowserSettingsSection"
 import TerminalSettingsSection from "./TerminalSettingsSection"
 import { FEATURE_FLAGS } from "@shared/services/feature-flags/feature-flags"
+import Guardrails from "./guardrails/Guardrails"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -269,6 +270,9 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 				{/* Terminal Settings Section */}
 				<TerminalSettingsSection />
+
+				{/* Guardrails */}
+				<Guardrails />
 
 				{IS_DEV && (
 					<>

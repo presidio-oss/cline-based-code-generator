@@ -106,6 +106,8 @@ import { parseSlashCommands } from "@core/slash-commands"
 import WorkspaceTracker from "@integrations/workspace/WorkspaceTracker"
 import { McpHub } from "@services/mcp/McpHub"
 import { isInTestMode } from "../../services/test/TestMode"
+import { GuardResult, LLMMessage } from "@presidio-dev/hai-guardrails"
+import { Guardrails } from "../../integrations/guardrails"
 
 export const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -182,6 +184,8 @@ export class Task {
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
+	private guardrails: Guardrails
+	private failedGuards: { guardId: string; guardName: string; messages: Omit<GuardResult, "guardId" | "guardName">[] }[] = []
 
 	constructor(
 		context: vscode.ExtensionContext,
@@ -230,6 +234,8 @@ export class Task {
 		this.expertPrompt = expertPrompt
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
+		this.guardrails = new Guardrails()
+		this.failedGuards = []
 
 		// Initialize taskId first
 		if (historyItem) {
@@ -1063,6 +1069,9 @@ export class Task {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 		while (!this.abort) {
+			if (this.failedGuards.length > 0) {
+				break // Exit the loop
+			}
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
 			includeFileDetails = false // we only need file details the first time
 
@@ -1538,6 +1547,48 @@ export class Task {
 			)
 			systemPrompt += userInstructions
 		}
+
+		const messages = await this.formatClineMessagesForGuardrails()
+		const result = await this.guardrails.run(messages)
+		result.messagesWithGuardResult
+			.filter((guard) => ["secret", "pii"].includes(guard.guardId))
+			.flatMap((guard) => guard.messages)
+			.filter((message) => !message.passed && message.modifiedMessage)
+			.forEach((msg) => {
+				const isJson = msg.message.content.startsWith("REQUEST:::")
+				let msgContent = msg.message.content.toString()
+				if (isJson) {
+					msgContent = JSON.stringify({
+						request: `${msg.message.content}`.replace(/^(REQUEST:::)+/, ""),
+					})
+				}
+				const match = this.clineMessages.find((m) => m.text?.toString() === msgContent)
+				if (match) {
+					match.text = isJson ? JSON.stringify({ request: msg.modifiedMessage?.content }) : msg.modifiedMessage?.content
+				}
+			})
+		const guardsToApply = ["leakage", "injection"]
+		if (Guardrails._guardsConfig.secret.mode === "block") {
+			guardsToApply.push("secret")
+		}
+		if (Guardrails._guardsConfig.pii.mode === "block") {
+			guardsToApply.push("pii")
+		}
+		this.failedGuards = result.messagesWithGuardResult.filter(
+			(guard) => guardsToApply.includes(guard.guardId) && guard.messages.some((msg) => msg.passed === false),
+		)
+		if (this.failedGuards.length > 0) {
+			this.didRejectTool = false
+			this.didAlreadyUseTool = false
+			this.didCompleteReadingStream = false
+			this.isWaitingForFirstChunk = false
+			yield {
+				type: "text",
+				text: Guardrails.MESSAGE,
+			}
+			return
+		}
+
 		const contextManagementMetadata = await this.contextManager.getNewContextMessagesAndMetadata(
 			this.apiConversationHistory,
 			this.clineMessages,
@@ -3650,6 +3701,11 @@ export class Task {
 			throw new Error("HAI instance aborted")
 		}
 
+		if (this.failedGuards && this.failedGuards.length > 0) {
+			await this.say("text", "Stopping task execution.")
+			return false // Exit the loop
+		}
+
 		// Used to know what models were used in the task if user wants to export metadata for error reporting purposes
 		const currentProviderId = (await customGetState(this.getContext(), "apiProvider")) as string
 		if (currentProviderId && this.api.getModel().id) {
@@ -4454,5 +4510,41 @@ export class Task {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Formats the conversation history messages for Guardrails.
+	 * This function filters the messages to include only those that are relevant for Guardrails,
+	 * specifically messages of type "say" and "ask".
+	 * It then maps the filtered messages to the format expected by Guardrails.
+	 * The resulting array of messages is returned.
+	 * @function formatClineMessagesForGuardrails
+	 * @returns {LLMMessage[]} - An array of LLMMessage objects formatted for Guardrails.
+	 */
+	async formatClineMessagesForGuardrails(): Promise<LLMMessage[]> {
+		return this.clineMessages
+			.filter((message) => {
+				const isValidSay = message.type === "say"
+				const isAsk = message.type === "ask"
+				if (!isValidSay && !isAsk) {
+					// Unknown message type, skipping leakage guard
+				}
+				return (isValidSay && !!message.text) || isAsk
+			})
+			.map((message) => {
+				const role = message.type === "say" ? "user" : "system"
+				const shouldParse = ["api_req_started"].includes(message.say!)
+				try {
+					return {
+						role,
+						content: shouldParse ? `REQUEST:::${JSON.parse(message.text!).request}` : message.text!,
+					}
+				} catch (error) {
+					return {
+						role,
+						content: message.text!,
+					}
+				}
+			})
 	}
 }

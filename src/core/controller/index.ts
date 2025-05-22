@@ -71,6 +71,7 @@ import { deleteFromContextDirectory } from "@utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
+import { Guardrails } from "@integrations/guardrails"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -99,6 +100,7 @@ export class Controller {
 	private isSideBar: boolean
 	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
+	private guardrails: Guardrails
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -123,6 +125,7 @@ export class Controller {
 				return apiConfiguration?.clineApiKey
 			},
 		)
+		this.guardrails = new Guardrails()
 
 		// Clean up legacy checkpoints
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
@@ -808,6 +811,21 @@ export class Controller {
 				break
 			case "loadDefaultExperts":
 				await this.loadDefaultExperts()
+				break
+			case "loadGuards":
+				await this.loadGuards()
+				break
+			case "updateGuardThreshold":
+				if (message.guard) {
+					await this.guardrails.updateThreshold(message.guard.key as "injection" | "leakage", message.guard.threshold!)
+				}
+				await this.loadGuards()
+				break
+			case "updateGuardMode":
+				if (message.guard) {
+					await this.guardrails.updateMode(message.guard.key as "secret" | "pii", message.guard.mode!)
+				}
+				await this.loadGuards()
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
@@ -2567,6 +2585,14 @@ Commit message:`
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
+		})
+	}
+
+	async loadGuards() {
+		const guards = this.guardrails.activeGuards
+		await this.postMessageToWebview({
+			type: "defaultGuards",
+			guards,
 		})
 	}
 
