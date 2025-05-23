@@ -71,6 +71,7 @@ import { deleteFromContextDirectory } from "@utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
+import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -263,7 +264,6 @@ export class Controller {
 				await this.postStateToWebview()
 				break
 			case "webviewDidLaunch":
-				await this.updateHaiRulesState()
 				this.postStateToWebview()
 				this.workspaceTracker?.populateFilePaths() // don't await
 				getTheme().then((theme) =>
@@ -741,9 +741,6 @@ export class Controller {
 					type: "ollamaEmbeddingModels",
 					ollamaEmbeddingModels,
 				})
-				break
-			case "checkHaiRules":
-				await this.updateHaiRulesState(true)
 				break
 			case "showToast":
 				switch (message.toast?.toastType) {
@@ -1877,7 +1874,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			lastShownAnnouncementId,
 			customInstructions,
 			expertPrompt,
-			isHaiRulesPresent,
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
@@ -1907,7 +1903,6 @@ Here is the project's README to help you get started:\n\n${mcpDetails.readmeCont
 			apiConfiguration,
 			customInstructions,
 			expertPrompt,
-			isHaiRulesPresent,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskItem: this.task?.taskId ? (taskHistory || []).find((item) => item.id === this.task?.taskId) : undefined,
 			checkpointTrackerErrorMessage: this.task?.checkpointTrackerErrorMessage,
@@ -2512,19 +2507,13 @@ Commit message:`
 		}
 	}
 
-	async updateHaiRulesState(postToWebview: boolean = false) {
-		const workspaceFolder = getWorkspacePath()
-		if (!workspaceFolder) {
-			return
-		}
-		const haiRulesPath = path.join(workspaceFolder, GlobalFileNames.clineRules)
-		const isHaiRulePresent = await fileExistsAtPath(haiRulesPath)
+	async updateTelemetryConfig() {
+		// Create new posthost client
+		posthogClientProvider.initPostHogClient()
 
-		await customUpdateState(this.context, "isHaiRulesPresent", isHaiRulePresent)
-
-		if (postToWebview) {
-			await this.postStateToWebview()
-		}
+		// Update langfuse and posthog instance in telemetry
+		telemetryService.initPostHogClient()
+		telemetryService.initLangfuseClient()
 	}
 
 	async updateExpertPrompt(prompt?: string, expertName?: string) {

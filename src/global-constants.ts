@@ -7,4 +7,5 @@ export const GlobalFileNames = {
 	clineRules: ".hairules",
 	experts: ".hai-experts",
 	defaultExperts: "src/experts",
+	haiConfig: ".hai.config",
 }

@@ -27,7 +27,6 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		version,
 		customInstructions,
 		setCustomInstructions,
-		isHaiRulesPresent,
 		buildContextOptions,
 		setBuildContextOptions,
 		buildIndexProgress,
