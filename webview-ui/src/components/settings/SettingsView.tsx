@@ -14,6 +14,7 @@ import { ExtensionMessage } from "@shared/ExtensionMessage"
 import BrowserSettingsSection from "./BrowserSettingsSection"
 import TerminalSettingsSection from "./TerminalSettingsSection"
 import { FEATURE_FLAGS } from "@shared/services/feature-flags/feature-flags"
+import Guardrails from "./guardrails/Guardrails"
 
 const IS_DEV = true // FIXME: use flags when packaging
 
@@ -39,6 +40,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		chatSettings,
 		planActSeparateModelsSetting,
 		setPlanActSeparateModelsSetting,
+		guards,
 	} = useExtensionState()
 	const [showCopied, setShowCopied] = useState(false)
 	const [pendingTabChange, setPendingTabChange] = useState<"plan" | "act" | null>(null)
@@ -78,6 +80,11 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			planActSeparateModelsSetting,
 			customInstructionsSetting: customInstructions,
 			telemetrySetting,
+		})
+
+		vscode.postMessage({
+			type: "updateGuards",
+			guards,
 		})
 
 		if (!withoutDone) {
@@ -269,6 +276,9 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 
 				{/* Terminal Settings Section */}
 				<TerminalSettingsSection />
+
+				{/* Guardrails */}
+				<Guardrails />
 
 				{IS_DEV && (
 					<>
