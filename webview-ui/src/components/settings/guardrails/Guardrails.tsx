@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from "react"
 import { vscode } from "../../../utils/vscode"
 import "./Guardrails.css"
 import { VSCodeButton, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
 
 interface Guard {
 	key: string
@@ -12,7 +13,7 @@ interface Guard {
 }
 
 const Guardrails = () => {
-	const [guards, setGuards] = useState<Guard[]>([])
+	const { guards, setGuards } = useExtensionState()
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -37,30 +38,17 @@ const Guardrails = () => {
 	}, [])
 
 	const handleGuardThresholdChange = (guard: Guard, newThreshold: number) => {
-		setGuards((prevGuards) => prevGuards.map((g) => (g.key === guard.key ? { ...g, threshold: newThreshold } : g)))
-		vscode.postMessage({
-			type: "updateGuardThreshold",
-			guard: {
-				key: guard.key,
-				name: guard.name,
-				hasThreshold: guard.hasThreshold,
-				threshold: newThreshold,
-				mode: guard.mode,
-			},
-		})
+		if (guards) {
+			const updatedGuards = guards.map((g) => (g.key === guard.key ? { ...g, threshold: newThreshold } : g))
+			setGuards(updatedGuards)
+		}
 	}
 
 	const handleGuardModeChange = (guard: Guard, mode: string) => {
-		setGuards((prevGuards) => prevGuards.map((g) => (g.key === guard.key ? { ...g, mode: mode } : g)))
-		vscode.postMessage({
-			type: "updateGuardMode",
-			guard: {
-				key: guard.key,
-				name: guard.name,
-				hasThreshold: guard.hasThreshold,
-				mode: mode,
-			},
-		})
+		if (guards) {
+			const updatedGuards = guards.map((g) => (g.key === guard.key ? { ...g, mode: mode } : g))
+			setGuards(updatedGuards)
+		}
 	}
 
 	const getThresholdColor = (threshold: number) => {
@@ -83,7 +71,7 @@ const Guardrails = () => {
 			</div>
 
 			<div className="guards-list">
-				{guards.map((guard, index) => (
+				{guards?.map((guard, index) => (
 					<div key={index} className="guard-item">
 						<div className="guard-header">
 							<div className="guard-info">

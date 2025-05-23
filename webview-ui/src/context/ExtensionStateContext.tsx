@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState, use
 import { useEvent } from "react-use"
 import { StateServiceClient } from "@/services/grpc-client"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
-import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "@shared/ExtensionMessage"
+import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM, Guard } from "@shared/ExtensionMessage"
 import {
 	ApiConfiguration,
 	ModelInfo,
@@ -52,6 +52,9 @@ interface ExtensionStateContextType extends ExtensionState {
 	// Navigation
 	setShowMcp: (value: boolean) => void
 	setMcpTab: (tab?: McpViewTab) => void
+
+	//GuardRails
+	setGuards: (value: Guard[]) => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -327,6 +330,11 @@ export const ExtensionStateContextProvider: React.FC<{
 		setMcpServers: (mcpServers: McpServer[]) => setMcpServers(mcpServers),
 		setShowMcp,
 		setMcpTab,
+		setGuards: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				guards: value,
+			})),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

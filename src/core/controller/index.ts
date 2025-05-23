@@ -71,7 +71,7 @@ import { deleteFromContextDirectory } from "@utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
-import { Guardrails } from "@integrations/guardrails"
+import { Guardrails, GuardrailsConfig } from "@integrations/guardrails"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -815,15 +815,16 @@ export class Controller {
 			case "loadGuards":
 				await this.loadGuards()
 				break
-			case "updateGuardThreshold":
-				if (message.guard) {
-					await this.guardrails.updateThreshold(message.guard.key as "injection" | "leakage", message.guard.threshold!)
-				}
-				await this.loadGuards()
-				break
-			case "updateGuardMode":
-				if (message.guard) {
-					await this.guardrails.updateMode(message.guard.key as "secret" | "pii", message.guard.mode!)
+			case "updateGuards":
+				if (message.guards && Array.isArray(message.guards)) {
+					const guardUpdates = message.guards.map((guard) => ({
+						guardKey: guard.key as keyof GuardrailsConfig,
+						updates: {
+							...(guard.threshold !== undefined && { threshold: guard.threshold }),
+							...(guard.mode !== undefined && { mode: guard.mode }),
+						},
+					}))
+					await this.guardrails.updateGuard(guardUpdates)
 				}
 				await this.loadGuards()
 				break

@@ -31,6 +31,7 @@ export interface WebviewMessage {
 		| "loadGuards"
 		| "updateGuardThreshold"
 		| "updateGuardMode"
+		| "updateGuards"
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
@@ -123,6 +124,7 @@ export interface WebviewMessage {
 	text?: string
 	expert?: string
 	guard?: Guard
+	guards?: Guard[]
 	disabled?: boolean
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration

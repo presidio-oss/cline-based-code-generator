@@ -40,6 +40,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		chatSettings,
 		planActSeparateModelsSetting,
 		setPlanActSeparateModelsSetting,
+		guards,
 	} = useExtensionState()
 	const [showCopied, setShowCopied] = useState(false)
 	const [pendingTabChange, setPendingTabChange] = useState<"plan" | "act" | null>(null)
@@ -79,6 +80,11 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 			planActSeparateModelsSetting,
 			customInstructionsSetting: customInstructions,
 			telemetrySetting,
+		})
+
+		vscode.postMessage({
+			type: "updateGuards",
+			guards,
 		})
 
 		if (!withoutDone) {

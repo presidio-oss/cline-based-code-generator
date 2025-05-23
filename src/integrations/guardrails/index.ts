@@ -140,32 +140,51 @@ export class Guardrails extends GuardrailsEngine {
 		return guards
 	}
 
-	public async updateThreshold(guardKey: "injection" | "leakage", newThreshold: number): Promise<void> {
-		const guard = this.guardsConfig[guardKey]
-		if (!guard) {
-			console.error(`Guard ${guardKey} not found.`)
-			return
+	public async updateGuard(
+		guardUpdates: Array<{
+			guardKey: keyof GuardrailsConfig
+			updates: { threshold?: number; mode?: string }
+		}>,
+	): Promise<void> {
+		let hasAnyUpdates = false
+		const allChanges: string[] = []
+
+		for (const { guardKey, updates } of guardUpdates) {
+			const guard = this.guardsConfig[guardKey]
+			if (!guard) {
+				console.error(`Guard ${guardKey} not found.`)
+				continue
+			}
+
+			let updated = false
+			const changes: string[] = []
+
+			// Update threshold if provided and guard supports it
+			if (updates.threshold !== undefined && "threshold" in guard) {
+				guard.threshold = updates.threshold
+				updated = true
+				changes.push(`threshold to ${updates.threshold}`)
+			}
+
+			// Update mode if provided and guard supports it
+			if (updates.mode !== undefined && "mode" in guard) {
+				guard.mode = updates.mode
+				updated = true
+				changes.push(`mode to ${updates.mode}`)
+			}
+
+			if (updated) {
+				hasAnyUpdates = true
+				allChanges.push(`${guardKey}: ${changes.join(", ")}`)
+			}
 		}
 
-		if ("threshold" in guard) {
-			guard.threshold = newThreshold
+		if (hasAnyUpdates) {
 			await this.saveGuardsConfig()
 			this.updateGuards()
-			console.log(`Threshold for ${guardKey} guard updated to ${newThreshold}`)
-		}
-	}
-	public async updateMode(guardKey: "secret" | "pii", mode: string): Promise<void> {
-		const guard = this.guardsConfig[guardKey]
-		if (!guard) {
-			console.error(`Guard ${guardKey} not found.`)
-			return
-		}
-
-		if ("mode" in guard) {
-			guard.mode = mode
-			await this.saveGuardsConfig()
-			this.updateGuards()
-			console.log(`Mode for ${guardKey} guard updated to ${mode}`)
+			console.log(`Updated guards: ${allChanges.join(" | ")}`)
+		} else {
+			console.warn(`No valid updates provided for any guards`)
 		}
 	}
 }
