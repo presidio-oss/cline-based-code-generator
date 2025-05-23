@@ -3,7 +3,7 @@
 	"displayName": "HAI Build Code Generator",
 	"description": "Human AI (HAI) VS Code extension that streamlines development workflows through AI-powered task execution, intelligent file management, and automated code generation. Built on HAI, it integrates with various LLMs to enhance productivity and code quality while simplifying complex development tasks.",
 	"clineVersion": "3.15.1",
-	"version": "3.5.1",
+	"version": "3.5.2",
 	"icon": "assets/icons/HAI-Rounded-Dark@3x.png",
 	"galleryBanner": {
 		"color": "#617A91",
