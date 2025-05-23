@@ -71,6 +71,7 @@ import { deleteFromContextDirectory } from "@utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
+import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -2504,6 +2505,15 @@ Commit message:`
 				await this.postStateToWebview()
 				break
 		}
+	}
+
+	async updateTelemetryConfig() {
+		// Create new posthost client
+		posthogClientProvider.initPostHogClient()
+
+		// Update langfuse and posthog instance in telemetry
+		telemetryService.initPostHogClient()
+		telemetryService.initLangfuseClient()
 	}
 
 	async updateExpertPrompt(prompt?: string, expertName?: string) {

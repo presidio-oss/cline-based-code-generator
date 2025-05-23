@@ -28,7 +28,7 @@ class HaiFileSystemWatcher {
 			this.ig.add(
 				content
 					.split("\n")
-					.filter((line) => line.trim() && !line.startsWith("#")),
+					.filter((line) => line.trim() && !line.startsWith("#") && !line.includes(GlobalFileNames.haiConfig)),
 			)
 		} catch (error) {
 			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
@@ -67,6 +67,11 @@ class HaiFileSystemWatcher {
 		this.watcher.on("unlink", (filePath) => {
 			console.log("HaiFileSystemWatcher File deleted", filePath)
 
+			// Check for .hai.config
+			if (this.isHaiConfigPath(filePath)) {
+				this.providerRef.deref()?.updateTelemetryConfig()
+			}
+
 			// Check for the experts
 			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
@@ -78,6 +83,11 @@ class HaiFileSystemWatcher {
 		this.watcher.on("add", (filePath) => {
 			console.log("HaiFileSystemWatcher File added", filePath)
 
+			// Check for .hai.config
+			if (this.isHaiConfigPath(filePath)) {
+				this.providerRef.deref()?.updateTelemetryConfig()
+			}
+
 			// Check for the experts
 			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
@@ -88,12 +98,25 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("change", (filePath) => {
 			console.log("HaiFileSystemWatcher File changes", filePath)
+
+			// Check for .hai.config
+			if (this.isHaiConfigPath(filePath)) {
+				this.providerRef.deref()?.updateTelemetryConfig()
+			}
+
 			// Check for the experts
 			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
 			}
 			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
 		})
+	}
+
+	isHaiConfigPath(path: string) {
+		const pathSplit = path.split(this.sourceFolder)
+		const hairulesPath = pathSplit.length === 2 ? pathSplit[1].replace("/", "") : ""
+
+		return hairulesPath === GlobalFileNames.haiConfig
 	}
 
 	async dispose() {
