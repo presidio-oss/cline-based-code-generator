@@ -139,15 +139,14 @@ const Guardrails = () => {
 					</div>
 				))}
 			</div>
-
-			<div className="guardrails-footer">
-				<div className="recommendation">
-					<span className="codicon codicon-info"></span>
-					<span>
-						Recommended threshold: <strong>0.75</strong> for optimal accuracy
-					</span>
-				</div>
+			<div className="recommendation">
+				<span className="codicon codicon-info"></span>
+				<span>
+					Recommended threshold: <strong>0.75</strong> for optimal accuracy
+				</span>
 			</div>
+
+			<div className="guardrails-footer"></div>
 		</div>
 	)
 }

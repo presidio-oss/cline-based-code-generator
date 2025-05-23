@@ -36,6 +36,10 @@
 	background-color: var(--vscode-editor-background);
 }
 
+.guard-item:not(:has(.guard-threshold-section)) {
+	padding: 12px 8px 6px;
+}
+
 .guard-header {
 	display: flex;
 	justify-content: space-between;
