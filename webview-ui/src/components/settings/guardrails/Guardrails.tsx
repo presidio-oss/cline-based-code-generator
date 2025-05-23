@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from "react"
 import { vscode } from "../../../utils/vscode"
 import "./Guardrails.css"
+import { VSCodeButton, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
 
 interface Guard {
 	key: string
@@ -12,7 +13,6 @@ interface Guard {
 
 const Guardrails = () => {
 	const [guards, setGuards] = useState<Guard[]>([])
-	const [isDragging, setIsDragging] = useState(false)
 
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
@@ -36,8 +36,7 @@ const Guardrails = () => {
 		}
 	}, [])
 
-	const handleGuardThresholdChange = (event: React.ChangeEvent<HTMLInputElement>, guard: Guard) => {
-		const newThreshold = parseFloat(event.target.value)
+	const handleGuardThresholdChange = (guard: Guard, newThreshold: number) => {
 		setGuards((prevGuards) => prevGuards.map((g) => (g.key === guard.key ? { ...g, threshold: newThreshold } : g)))
 		vscode.postMessage({
 			type: "updateGuardThreshold",
@@ -51,8 +50,7 @@ const Guardrails = () => {
 		})
 	}
 
-	const handleGuardModeChange = (event: React.ChangeEvent<HTMLInputElement>, guard: Guard) => {
-		const mode = event.target.value === "block" ? "redact" : "block"
+	const handleGuardModeChange = (guard: Guard, mode: string) => {
 		setGuards((prevGuards) => prevGuards.map((g) => (g.key === guard.key ? { ...g, mode: mode } : g)))
 		vscode.postMessage({
 			type: "updateGuardMode",
@@ -65,73 +63,91 @@ const Guardrails = () => {
 		})
 	}
 
+	const getThresholdColor = (threshold: number) => {
+		if (threshold >= 0.75) return "var(--vscode-testing-iconPassed)"
+		if (threshold >= 0.5) return "var(--vscode-testing-iconQueued)"
+		return "var(--vscode-testing-iconFailed)"
+	}
+
+	const getThresholdLevel = (threshold: number) => {
+		if (threshold >= 0.75) return "High"
+		if (threshold >= 0.5) return "Medium"
+		return "Low"
+	}
+
 	return (
-		<div style={{ display: "flex", flexDirection: "column", gap: 5 }} className="guard-container">
-			<div className="dropdown-container">
-				<label className="feature-label">
-					<span style={{ fontWeight: 500 }}>Active Guards</span>
-				</label>
+		<div className="guardrails-container">
+			<div className="guardrails-header">
+				<h3>Active Guards</h3>
+				<p className="guardrails-description">Configure security guards to protect your code generation</p>
 			</div>
-			{guards.map((guard, index) => (
-				<div style={{ display: "flex", justifyContent: "space-between", marginTop: 2, marginBottom: 2 }}>
-					<label key={index} style={{ display: "flex", alignItems: "center", gap: 5 }} className="guard-label">
-						<span className="checkmark"></span>
-						{guard.name}
-					</label>
-					{guard.hasThreshold && guard.threshold && (
-						<div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 15 }}>
-							<input
-								type="range"
-								min="0.25"
-								max="1"
-								step="0.05"
-								value={guard.threshold}
-								onChange={(event) => handleGuardThresholdChange(event, guard)}
-								onMouseDown={() => setIsDragging(true)}
-								onMouseUp={() => setIsDragging(false)}
-								onTouchStart={() => setIsDragging(true)}
-								onTouchEnd={() => setIsDragging(false)}
-								style={{
-									verticalAlign: "middle",
-									outline: "none",
-									flex: 1,
-									accentColor: isDragging
-										? "#66b2ff"
-										: (guard.threshold ?? 0.5) >= 0.75
-											? "#90ee90"
-											: (guard.threshold ?? 0.5) >= 0.5
-												? "#ffc66e"
-												: "#ff7b7b",
-								}}
-							/>
-							<label className="label-slider" style={{ width: "38px" }}>
-								{guard.threshold?.toFixed(2)}
-							</label>
+
+			<div className="guards-list">
+				{guards.map((guard, index) => (
+					<div key={index} className="guard-item">
+						<div className="guard-header">
+							<div className="guard-info">
+								<VSCodeButton appearance="icon" className="guard-status-icon">
+									<span className="codicon codicon-shield" />
+								</VSCodeButton>
+								<span className="guard-name">{guard.name}</span>
+							</div>
+
+							{["secret", "pii"].includes(guard.key) && (
+								<div className="guard-mode-selector">
+									<VSCodeDropdown
+										value={guard.mode}
+										onChange={(e) => handleGuardModeChange(guard, (e.target as HTMLSelectElement).value)}>
+										<VSCodeOption value="block">Block</VSCodeOption>
+										<VSCodeOption value="redact">Redact</VSCodeOption>
+									</VSCodeDropdown>
+								</div>
+							)}
 						</div>
-					)}
-					{["secret", "pii"].includes(guard.key) && (
-						<div
-							className="toggle-group"
-							style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 15 }}>
-							<label className="switch" style={{ flex: 1 }}>
-								<input
-									type="checkbox"
-									checked={guard.mode == "block"}
-									value={guard.mode}
-									onChange={(event) => handleGuardModeChange(event, guard)}
-								/>
-								<span className="slider round"></span>
-							</label>
-							<label key={guard.mode} className="toggle-label" style={{ width: "38px", alignItems: "flex-end" }}>
-								{guard.mode === "redact" ? "Redact" : "Block"}
-							</label>
-						</div>
-					)}
+
+						{guard.hasThreshold && guard.threshold && (
+							<div className="guard-threshold-section">
+								<div className="threshold-header">
+									<span className="threshold-label">Sensitivity</span>
+									<div className="threshold-value">
+										<span
+											className="threshold-indicator"
+											style={{ color: getThresholdColor(guard.threshold) }}>
+											●
+										</span>
+										<span className="threshold-level">
+											{getThresholdLevel(guard.threshold)} ({guard.threshold.toFixed(2)})
+										</span>
+									</div>
+								</div>
+
+								<div className="threshold-controls">
+									<div className="threshold-buttons">
+										{[0.25, 0.5, 0.75, 1.0].map((value) => (
+											<VSCodeButton
+												key={value}
+												appearance={guard.threshold === value ? "primary" : "secondary"}
+												onClick={() => handleGuardThresholdChange(guard, value)}
+												className="threshold-button">
+												{value === 0.25 ? "Low" : value === 0.5 ? "Med" : value === 0.75 ? "High" : "Max"}
+											</VSCodeButton>
+										))}
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
+				))}
+			</div>
+
+			<div className="guardrails-footer">
+				<div className="recommendation">
+					<span className="codicon codicon-info"></span>
+					<span>
+						Recommended threshold: <strong>0.75</strong> for optimal accuracy
+					</span>
 				</div>
-			))}
-			<sub>
-				Recommended threshold value is <strong>0.75</strong> to ensure optimal accuracy and performance
-			</sub>
+			</div>
 		</div>
 	)
 }

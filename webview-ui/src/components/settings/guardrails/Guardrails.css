@@ -1,213 +1,152 @@
-.guard-container {
-	border-bottom: 1px solid var(--vscode-editorWidget-border);
-	padding-bottom: 10px;
+.guardrails-container {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px 0;
+	border-top: 1px solid var(--vscode-panel-border);
 }
-.guard-container .feature-label {
-	width: 100%;
+
+.guardrails-header {
+	margin-bottom: 8px;
+}
+
+.guardrails-header h3 {
+	margin: 0 0 4px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.guardrails-description {
+	margin: 0;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.guards-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.guard-item {
+	padding: 12px;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 4px;
+	background-color: var(--vscode-editor-background);
+}
+
+.guard-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.guard-info {
 	display: flex;
 	align-items: center;
+	gap: 8px;
+}
+
+.guard-status-icon {
+	color: var(--vscode-testing-iconPassed);
+	cursor: default;
+}
+
+.guard-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-foreground);
+}
+
+.guard-mode-selector {
+	min-width: 80px;
+}
+
+.guard-threshold-section {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--vscode-widget-border);
+}
+
+.threshold-header {
+	display: flex;
 	justify-content: space-between;
-}
-.guard-container .feature-label .reset {
-	text-decoration: underline;
-}
-.guard-container .checkmark {
-	display: inline-block;
-	width: 16px;
-	height: 16px;
-	background-color: #4cd964;
-	border-radius: 50%;
-	position: relative;
-	/* box-shadow: 0 10px 15px rgba(76, 217, 100, 0.3); */
+	align-items: center;
+	margin-bottom: 8px;
 }
 
-.guard-container .checkmark::after {
-	content: "";
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	width: 8px;
-	height: 4px;
-	border-bottom: 2px solid white;
-	border-left: 2px solid white;
-	transform: translate(-50%, -60%) rotate(-45deg);
-}
-
-.guard-container input[type="range"] {
-	-webkit-appearance: none;
-	width: 100%;
-	height: 8px;
-	border-radius: 10px;
-	/* background: linear-gradient(90deg, #66b2ff 0%, #90ee90 50%, #ff7b7b 100%); */
-	/* background: linear-gradient(90deg, #d3d3d3 0%, #4682b4 100%); */
-	/* background: linear-gradient(90deg, #333333 0%, #00bcd4 100%); */
-	background: linear-gradient(90deg, #ff7f50 0%, #ff1493 100%);
-	/* background: linear-gradient(90deg, #f4e1d2 0%, #b3e6b0 100%); */
-	/* Red for 25% */
-	/* Yellow for 50% */
-	/* Green for 75% */
-	/* Blue for 100% */
-	/* background: linear-gradient(90deg,#ff4c4c 0%,#ffcc00 50%,#66cc66 75%,#4d90fe 100%); */
-	outline: none;
-	transition: background 0.3s ease-in-out;
-}
-
-/* Track (for Webkit browsers like Chrome and Safari) */
-.guard-container input[type="range"]::-webkit-slider-runnable-track {
-	height: 8px;
-	border-radius: 10px;
-	background: transparent;
-}
-
-/* Thumb Styling */
-.guard-container input[type="range"]::-webkit-slider-thumb {
-	-webkit-appearance: none;
-	height: 20px;
-	width: 20px;
-	border-radius: 50%;
-	background-color: #fff;
-	border: 2px solid #444;
-	cursor: pointer;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.2); /* Light shadow for the 3D effect */
-	transition:
-		transform 0.2s ease,
-		background-color 0.2s ease,
-		border-color 0.2s ease;
-	margin-top: -6px; /* Adjusted to align the thumb properly */
-}
-
-.guard-container input[type="range"]:hover::-webkit-slider-thumb {
-	background-color: #66b2ff; /* Thumb color changes on hover */
-	border-color: #fff; /* Border color changes on hover */
-	transform: scale(1.2); /* Slightly enlarges the thumb when hovered */
-}
-
-/* Firefox Styles */
-.guard-container input[type="range"]::-moz-range-thumb {
-	height: 20px;
-	width: 20px;
-	border-radius: 50%;
-	background-color: #fff;
-	border: 2px solid #444;
-	cursor: pointer;
-	box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-	transition:
-		transform 0.2s ease,
-		background-color 0.2s ease,
-		border-color 0.2s ease;
-	margin-top: -6px; /* Adjusted for proper alignment */
-}
-
-.guard-container input[type="range"]:hover::-moz-range-thumb {
-	background-color: #66b2ff;
-	border-color: #fff;
-	transform: scale(1.2);
-}
-
-/* Focused state */
-.guard-container input[type="range"]:focus {
-	outline: none;
-	border-color: #66b2ff;
-}
-
-/* Active state when the slider is clicked or dragging */
-.guard-container input[type="range"]:active {
-	background: linear-gradient(90deg, #ff7f50 0%, #ff1493 100%);
-}
-
-.guard-container .label-slider {
+.threshold-label {
+	font-size: 12px;
 	color: var(--vscode-descriptionForeground);
-	width: 3ch;
-	text-align: right;
-	user-select: none;
-	transform: scale(1.1);
-	transition: all 300ms linear;
+	font-weight: 500;
 }
 
-/* .guard-container .toggle-group {
-    display: flex;
-    border-radius: 8px;
-    overflow: hidden;
-    width: fit-content;
-  }
-  .guard-container .toggle-button {
-    width: 50px;
-    height: 1=2px;
-    font-size: 0.5rem;
-    cursor: pointer;
-    background: white;
-    border: none;
-    outline: none;
-    font-weight: bold;
-    transition: background 0.2s;
-  }
-  .guard-container .toggle-button.active {
-    background: #007bff;
-    color: white;
-  } */
-
-.guard-container .toggle-group .switch {
-	position: relative;
-	display: inline-block;
-	width: 30px;
-	height: 18px;
+.threshold-value {
+	display: flex;
+	align-items: center;
+	gap: 4px;
 }
 
-.guard-container .toggle-group .switch input {
-	opacity: 0;
-	width: 0;
-	height: 0;
+.threshold-indicator {
+	font-size: 12px;
 }
 
-.guard-container .toggle-group .slider {
-	position: absolute;
-	cursor: pointer;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: #ccc;
-	-webkit-transition: 0.4s;
-	transition: 0.4s;
+.threshold-level {
+	font-size: 12px;
+	color: var(--vscode-foreground);
+	font-weight: 500;
 }
 
-.guard-container .toggle-group .slider:before {
-	position: absolute;
-	content: "";
-	height: 13px;
-	width: 13px;
-	left: 2.5px;
-	bottom: 2.5px;
-	background-color: white;
-	-webkit-transition: 0.4s;
-	transition: 0.4s;
+.threshold-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
 }
 
-.guard-container input:checked + .slider {
-	background-color: #4cd964;
+.threshold-buttons {
+	display: flex;
+	gap: 4px;
+	flex: 1;
 }
 
-.guard-container input:focus + .slider {
-	box-shadow: 0 0 1px #4cd964;
+.threshold-button {
+	flex: 1;
+	font-size: 11px;
+	min-height: 24px;
 }
 
-.guard-container input:checked + .slider:before {
-	-webkit-transform: translateX(12px);
-	-ms-transform: translateX(12px);
-	transform: translateX(12px);
+.guardrails-footer {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--vscode-widget-border);
 }
 
-/* Rounded sliders */
-.guard-container .toggle-group .slider.round {
-	border-radius: 34px;
+.recommendation {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
 }
 
-.guard-container .toggle-group .slider.round:before {
-	border-radius: 50%;
+.recommendation .codicon {
+	color: var(--vscode-notificationsInfoIcon-foreground);
 }
 
-.guard-container .toggle-label {
-	position: relative;
-	transition: opacity 1s ease;
-	opacity: 1;
+/* Dark theme adjustments */
+.vscode-dark .guard-item {
+	background-color: var(--vscode-sideBar-background);
+}
+
+/* Light theme adjustments */
+.vscode-light .guard-item {
+	background-color: var(--vscode-editor-background);
+}
+
+/* High contrast theme adjustments */
+.vscode-high-contrast .guard-item {
+	border: 2px solid var(--vscode-contrastBorder);
 }
