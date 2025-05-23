@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.5.2]
+
+### Added
+
+-   Added `.hai.config` to support external overrides for telemetry configuration
+
 ## [3.5.1]
 
 ### Fixed
