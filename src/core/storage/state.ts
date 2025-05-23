@@ -212,7 +212,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		globalClineRulesToggles,
 		requestTimeoutMs,
 		shellIntegrationTimeout,
-		isHaiRulesPresent,
 		buildContextOptions,
 		buildIndexProgress,
 		isApiConfigurationValid,
@@ -314,7 +313,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "globalClineRulesToggles") as Promise<ClineRulesToggles | undefined>,
 		customGetState(context, "requestTimeoutMs") as Promise<number | undefined>,
 		customGetState(context, "shellIntegrationTimeout") as Promise<number | undefined>,
-		customGetState(context, "isHaiRulesPresent") as Promise<boolean | undefined>,
 		customGetState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		customGetState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 		customGetState(context, "isApiConfigurationValid") as Promise<boolean | undefined>,
@@ -469,7 +467,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		lastShownAnnouncementId,
 		customInstructions,
 		expertPrompt,
-		isHaiRulesPresent,
 		taskHistory,
 		buildContextOptions: buildContextOptions
 			? {

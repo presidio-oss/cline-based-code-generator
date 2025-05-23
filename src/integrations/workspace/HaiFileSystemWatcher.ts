@@ -28,7 +28,7 @@ class HaiFileSystemWatcher {
 			this.ig.add(
 				content
 					.split("\n")
-					.filter((line) => line.trim() && !line.startsWith("#") && !line.includes(GlobalFileNames.clineRules)),
+					.filter((line) => line.trim() && !line.startsWith("#")),
 			)
 		} catch (error) {
 			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")
@@ -67,11 +67,6 @@ class HaiFileSystemWatcher {
 		this.watcher.on("unlink", (filePath) => {
 			console.log("HaiFileSystemWatcher File deleted", filePath)
 
-			// Check for .hairules
-			if (this.isHaiRulesPath(filePath)) {
-				this.providerRef.deref()?.updateHaiRulesState(true)
-			}
-
 			// Check for the experts
 			if (filePath.includes(GlobalFileNames.experts)) {
 				this.providerRef.deref()?.loadExperts()
@@ -82,11 +77,6 @@ class HaiFileSystemWatcher {
 
 		this.watcher.on("add", (filePath) => {
 			console.log("HaiFileSystemWatcher File added", filePath)
-
-			// Check for .hairules
-			if (this.isHaiRulesPath(filePath)) {
-				this.providerRef.deref()?.updateHaiRulesState(true)
-			}
 
 			// Check for the experts
 			if (filePath.includes(GlobalFileNames.experts)) {
@@ -104,13 +94,6 @@ class HaiFileSystemWatcher {
 			}
 			this.providerRef.deref()?.invokeReindex([filePath], FileOperations.Change)
 		})
-	}
-
-	isHaiRulesPath(path: string) {
-		const pathSplit = path.split(this.sourceFolder)
-		const hairulesPath = pathSplit.length === 2 ? pathSplit[1].replace("/", "") : ""
-
-		return hairulesPath === GlobalFileNames.clineRules
 	}
 
 	async dispose() {
