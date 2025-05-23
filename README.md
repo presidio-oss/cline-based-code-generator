@@ -168,6 +168,36 @@ Customize and seamlessly integrate advanced language and embedding models into y
   <p><i>Settings Interface</i></p>
 </div>
 
+---
+
+### 📊 Telemetry
+Configure external telemetry settings to monitor and analyze your AI-powered development workflows with environment-specific customization capabilities.
+
+- **External Configuration Override**  
+  - Support for telemetry configuration overrides via a `.hai.config` file placed at the root of your workspace.
+  - Enables environment-specific customization that can be dynamically injected through CI/CD pipelines.
+
+- **Supported Override Parameters**  
+  ```
+  # Langfuse Configuration
+  langfuse.apiUrl=
+  langfuse.apiKey=
+  langfuse.publicKey=
+  
+  # PostHog Configuration
+  posthog.url=
+  posthog.apiKey=
+  ```
+
+**Important Notes:**  
+- The `.hai.config` file is not git-excluded by default. Ensure sensitive keys are not committed unintentionally to your repository.
+
+---
+
+### 📖 Documentation
+For comprehensive documentation and in-depth guides on HAI Code Generator features, visit our [Wiki](https://github.com/presidio-oss/cline-based-code-generator/wiki).
+
+
 ## 🤝 Contributing
 
 To contribute to the project, start by exploring [open issues](https://github.com/presidio-oss/cline-based-code-generator/issues) or checking our [feature request board](https://github.com/presidio-oss/cline-based-code-generator/discussions/categories/feature-requests?discussions_q=is%3Aopen+category%3A%22Feature+Requests%22+sort%3Atop).
