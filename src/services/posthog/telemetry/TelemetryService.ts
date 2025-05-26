@@ -6,6 +6,7 @@ import type { BrowserSettings } from "@shared/BrowserSettings"
 import { posthogClientProvider } from "../PostHogClientProvider"
 import { getGitUserInfo } from "@utils/git"
 import { Langfuse, LangfuseTraceClient } from "langfuse"
+import { HaiConfig } from "@/shared/hai-config"
 
 /**
  * PostHogClient handles telemetry event tracking for the Cline extension
@@ -122,25 +123,10 @@ class PostHogClient {
 	 * Initializes PostHog client with configuration
 	 */
 	private constructor() {
-		this.client = posthogClientProvider.getClient()
-
-		// Set distinct ID for the client & identify the user
-		this.client.identify({
-			distinctId: this.distinctId,
-			properties: {
-				name: this.gitUserInfo.username,
-				email: this.gitUserInfo.email,
-			},
-		})
+		this.client = this.initPostHogClient()
 
 		// Initialize Langfuse client
-		this.langfuse = new Langfuse({
-			secretKey: process.env.LANGFUSE_API_KEY!,
-			publicKey: process.env.LANGFUSE_PUBLIC_KEY!,
-			baseUrl: process.env.LANGFUSE_API_URL,
-			requestTimeout: 10000,
-			enabled: true,
-		})
+		this.langfuse = this.initLangfuseClient()
 	}
 
 	private createLangfuseTraceClient(taskId: string, isNew: boolean = false) {
@@ -157,6 +143,38 @@ class PostHogClient {
 			},
 			...(isNew ? { startTime: new Date() } : {}),
 		})
+	}
+
+	public initPostHogClient() {
+		this.client = posthogClientProvider.getClient()
+
+		// Set distinct ID for the client & identify the user
+		this.client.identify({
+			distinctId: this.distinctId,
+			properties: {
+				name: this.gitUserInfo.username,
+				email: this.gitUserInfo.email,
+			},
+		})
+
+		return this.client
+	}
+
+	public initLangfuseClient() {
+		const config = HaiConfig.getLangfuseConfig()
+		const secretKey = config && config.apiKey ? config.apiKey : process.env.LANGFUSE_API_KEY!
+		const publicKey = config && config.publicKey ? config.publicKey : process.env.LANGFUSE_PUBLIC_KEY!
+		const baseUrl = config && config.apiUrl ? config.apiUrl : process.env.LANGFUSE_API_URL
+
+		this.langfuse = new Langfuse({
+			secretKey,
+			publicKey,
+			baseUrl,
+			requestTimeout: 10000,
+			enabled: true,
+		})
+
+		return this.langfuse
 	}
 
 	/**

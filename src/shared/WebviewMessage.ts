@@ -91,7 +91,6 @@ export interface WebviewMessage {
 		| "searchCommits"
 		| "showMcpView"
 		| "fetchLatestMcpServersFromHub"
-		| "checkHaiRules"
 		| "telemetrySetting"
 		| "openSettings"
 		| "updateMcpTimeout"

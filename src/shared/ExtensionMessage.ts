@@ -172,7 +172,6 @@ export interface ExtensionState {
 	telemetrySetting: TelemetrySetting
 	shellIntegrationTimeout: number
 	uriScheme?: string
-	isHaiRulesPresent?: boolean
 	userInfo?: {
 		displayName: string | null
 		email: string | null
