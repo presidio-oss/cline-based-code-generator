@@ -8,6 +8,7 @@ import { UserInfo } from "./UserInfo"
 import { ChatContent } from "./ChatContent"
 import { TelemetrySetting } from "./TelemetrySetting"
 import { McpViewTab } from "./mcp"
+import { Guard } from "./ExtensionMessage"
 
 export interface WebviewMessage {
 	type:
@@ -27,6 +28,10 @@ export interface WebviewMessage {
 		| "deleteExpert"
 		| "loadExperts"
 		| "loadDefaultExperts"
+		| "loadGuards"
+		| "updateGuardThreshold"
+		| "updateGuardMode"
+		| "updateGuards"
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
@@ -100,6 +105,7 @@ export interface WebviewMessage {
 		| "relaunchChromeDebugMode"
 		| "taskFeedback"
 		| "writeTaskStatus"
+		| "defaultGuards"
 		| "scrollToSettings"
 		| "searchFiles"
 		| "toggleFavoriteModel"
@@ -116,6 +122,8 @@ export interface WebviewMessage {
 	// | "relaunchChromeDebugMode"
 	text?: string
 	expert?: string
+	guard?: Guard
+	guards?: Guard[]
 	disabled?: boolean
 	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration

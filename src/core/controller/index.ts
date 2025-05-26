@@ -71,6 +71,7 @@ import { deleteFromContextDirectory } from "@utils/delete-helper"
 import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
+import { Guardrails, GuardrailsConfig } from "@integrations/guardrails"
 import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
 
 /*
@@ -100,6 +101,7 @@ export class Controller {
 	private isSideBar: boolean
 	private expertManager: ExpertManager
 	private isCodeIndexInProgress: boolean = false
+	private guardrails: Guardrails
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
@@ -124,6 +126,7 @@ export class Controller {
 				return apiConfiguration?.clineApiKey
 			},
 		)
+		this.guardrails = new Guardrails(this.context)
 
 		// Clean up legacy checkpoints
 		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
@@ -805,6 +808,22 @@ export class Controller {
 				break
 			case "loadDefaultExperts":
 				await this.loadDefaultExperts()
+				break
+			case "loadGuards":
+				await this.loadGuards()
+				break
+			case "updateGuards":
+				if (message.guards && Array.isArray(message.guards)) {
+					const guardUpdates = message.guards.map((guard) => ({
+						guardKey: guard.key as keyof GuardrailsConfig,
+						updates: {
+							...(guard.threshold !== undefined && { threshold: guard.threshold }),
+							...(guard.mode !== undefined && { mode: guard.mode }),
+						},
+					}))
+					await this.guardrails.updateGuard(guardUpdates)
+				}
+				await this.loadGuards()
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
@@ -2556,6 +2575,14 @@ Commit message:`
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
+		})
+	}
+
+	async loadGuards() {
+		const guards = this.guardrails.activeGuards
+		await this.postMessageToWebview({
+			type: "defaultGuards",
+			guards,
 		})
 	}
 

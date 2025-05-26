@@ -233,6 +233,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		isEmbeddingConfigurationValid,
 		embeddingOllamaBaseUrl,
 		embeddingOllamaModelId,
+		//Guardrails
+		guardrailsConfig,
 	] = await Promise.all([
 		customGetState(context, "apiProvider") as Promise<ApiProvider | undefined>,
 		customGetState(context, "apiModelId") as Promise<string | undefined>,
@@ -334,6 +336,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "isEmbeddingConfigurationValid") as Promise<boolean | undefined>,
 		customGetState(context, "embeddingOllamaBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "embeddingOllamaModelId") as Promise<string | undefined>,
+		//Guardrails
+		customGetState(context, "guardrailsConfig") as Promise<any | undefined>,
 	])
 
 	let apiProvider: ApiProvider
@@ -499,6 +503,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		telemetrySetting: telemetrySetting || "unset",
 		planActSeparateModelsSetting,
 		shellIntegrationTimeout: shellIntegrationTimeout || 4000,
+		guardrailsConfig: guardrailsConfig,
 	}
 }
 
