@@ -1,10 +1,10 @@
 import path from "path"
 import fs from "fs/promises"
 import { Controller } from ".."
-import { EmptyRequest } from "@shared/proto/common"
-import { DeleteNonFavoritedTasksResults } from "@shared/proto/task"
+import { EmptyRequest } from "../../../shared/proto/common"
+import { DeleteNonFavoritedTasksResults } from "../../../shared/proto/task"
 import { customGetState, customUpdateState } from "../../storage/state"
-import { fileExistsAtPath } from "@utils/fs"
+import { fileExistsAtPath } from "../../../utils/fs"
 
 /**
  * Deletes all non-favorited tasks, preserving only favorited ones

@@ -6,7 +6,6 @@ import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "@shared/context-mentions"
 import { ExtensionMessage } from "@shared/ExtensionMessage"
 import { useExtensionState } from "@/context/ExtensionStateContext"
-import { ExpertData } from "@shared/experts.ts"
 import {
 	ContextMenuOptionType,
 	getContextMenuOptions,
@@ -40,6 +39,10 @@ import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
 import { ChatSettings } from "@shared/ChatSettings"
 import ServersToggleModal from "./ServersToggleModal"
 import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
+import { PlanActMode } from "@shared/proto/state"
+
+// TAG:HAI
+import { ExpertData } from "@shared/experts.ts"
 
 const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: number }> => {
 	return new Promise((resolve, reject) => {
@@ -242,6 +245,7 @@ const ModelButtonContent = styled.div`
 	white-space: nowrap;
 `
 
+// TAG:HAI
 // Experts dropdown styled components
 const ExpertsContainer = styled.div`
 	position: relative;
@@ -388,7 +392,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		},
 		ref,
 	) => {
-		const { filePaths, chatSettings, apiConfiguration, openRouterModels, platform } = useExtensionState()
+		const {
+			filePaths,
+			chatSettings,
+			apiConfiguration,
+			openRouterModels,
+			platform,
+			localWorkflowToggles,
+			globalWorkflowToggles,
+		} = useExtensionState()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
 		const [gitCommits, setGitCommits] = useState<GitCommit[]>([])
@@ -420,15 +432,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [menuPosition, setMenuPosition] = useState(0)
 		const [shownTooltipMode, setShownTooltipMode] = useState<ChatSettings["mode"] | null>(null)
 
-		const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
-		const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
-		const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
-		const [showExpertsSelector, setShowExpertsSelector] = useState(false)
-		const expertsSelectorRef = useRef<HTMLDivElement>(null)
-		const expertsButtonRef = useRef<HTMLDivElement>(null)
-		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
-		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
-
 		const [pendingInsertions, setPendingInsertions] = useState<string[]>([])
 		const shiftHoldTimerRef = useRef<NodeJS.Timeout | null>(null)
 		const [showUnsupportedFileError, setShowUnsupportedFileError] = useState(false)
@@ -442,6 +445,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Add a ref to track previous menu state
 		const prevShowModelSelector = useRef(showModelSelector)
+
+		// TAG:HAI
+		const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
+		const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
+		const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
+		const [showExpertsSelector, setShowExpertsSelector] = useState(false)
+		const expertsSelectorRef = useRef<HTMLDivElement>(null)
+		const expertsButtonRef = useRef<HTMLDivElement>(null)
+		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
+		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
 
 		// Fetch git commits when Git is selected or when typing a hash
 		useEffect(() => {
@@ -469,6 +482,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleMessage = useCallback((event: MessageEvent) => {
 			const message: ExtensionMessage = event.data
 			switch (message.type) {
+				case "fileSearchResults": {
+					// Only update results if they match the current query or if there's no mentionsRequestId - better UX
+					if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
+						setFileSearchResults(message.results || [])
+						setSearchLoading(false)
+					}
+					break
+				}
+
+				// TAG:HAI
 				case "expertsUpdated": {
 					if (message.experts) {
 						setCustomExperts(message.experts)
@@ -478,14 +501,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "defaultExpertsLoaded": {
 					if (message.experts) {
 						setDefaultExperts(message.experts)
-					}
-					break
-				}
-				case "fileSearchResults": {
-					// Only update results if they match the current query or if there's no mentionsRequestId - better UX
-					if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
-						setFileSearchResults(message.results || [])
-						setSearchLoading(false)
 					}
 					break
 				}
@@ -523,6 +538,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				document.removeEventListener("mousedown", handleClickOutside)
 			}
 		}, [showContextMenu, setShowContextMenu])
+
+		useEffect(() => {
+			const handleClickOutsideSlashMenu = (event: MouseEvent) => {
+				if (
+					slashCommandsMenuContainerRef.current &&
+					!slashCommandsMenuContainerRef.current.contains(event.target as Node)
+				) {
+					setShowSlashCommandsMenu(false)
+				}
+			}
+
+			if (showSlashCommandsMenu) {
+				document.addEventListener("mousedown", handleClickOutsideSlashMenu)
+			}
+
+			return () => {
+				document.removeEventListener("mousedown", handleClickOutsideSlashMenu)
+			}
+		}, [showSlashCommandsMenu])
 
 		const handleMentionSelect = useCallback(
 			(type: ContextMenuOptionType, value?: string) => {
@@ -614,13 +648,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						event.preventDefault()
 						setSelectedSlashCommandsIndex((prevIndex) => {
 							const direction = event.key === "ArrowUp" ? -1 : 1
-							const commands = getMatchingSlashCommands(slashCommandsQuery)
+							// Get commands with workflow toggles
+							const allCommands = getMatchingSlashCommands(
+								slashCommandsQuery,
+								localWorkflowToggles,
+								globalWorkflowToggles,
+							)
 
-							if (commands.length === 0) {
+							if (allCommands.length === 0) {
 								return prevIndex
 							}
 
-							const newIndex = (prevIndex + direction + commands.length) % commands.length
+							// Calculate total command count
+							const totalCommandCount = allCommands.length
+
+							// Create wraparound navigation - moves from last item to first and vice versa
+							const newIndex = (prevIndex + direction + totalCommandCount) % totalCommandCount
 							return newIndex
 						})
 						return
@@ -628,7 +671,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 					if ((event.key === "Enter" || event.key === "Tab") && selectedSlashCommandsIndex !== -1) {
 						event.preventDefault()
-						const commands = getMatchingSlashCommands(slashCommandsQuery)
+						const commands = getMatchingSlashCommands(slashCommandsQuery, localWorkflowToggles, globalWorkflowToggles)
 						if (commands.length > 0) {
 							handleSlashCommandsSelect(commands[selectedSlashCommandsIndex])
 						}
@@ -1031,7 +1074,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 				// extract and validate the exact command text
 				const commandText = processedText.substring(slashIndex + 1, endIndex)
-				const isValidCommand = validateSlashCommand(commandText)
+				const isValidCommand = validateSlashCommand(commandText, localWorkflowToggles, globalWorkflowToggles)
 
 				if (isValidCommand) {
 					const fullCommand = processedText.substring(slashIndex, endIndex) // includes slash
@@ -1044,7 +1087,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			highlightLayerRef.current.innerHTML = processedText
 			highlightLayerRef.current.scrollTop = textAreaRef.current.scrollTop
 			highlightLayerRef.current.scrollLeft = textAreaRef.current.scrollLeft
-		}, [])
+		}, [localWorkflowToggles, globalWorkflowToggles])
 
 		useLayoutEffect(() => {
 			updateHighlights()
@@ -1092,11 +1135,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				changeModeDelay = 250 // necessary to let the api config update (we send message and wait for it to be saved) FIXME: this is a hack and we ideally should check for api config changes, then wait for it to be saved, before switching modes
 			}
 			setTimeout(() => {
-				const newMode = chatSettings.mode === "plan" ? "act" : "plan"
-				vscode.postMessage({
-					type: "togglePlanActMode",
+				const newMode = chatSettings.mode === "plan" ? PlanActMode.ACT : PlanActMode.PLAN
+				StateServiceClient.togglePlanActMode({
 					chatSettings: {
 						mode: newMode,
+						preferredLanguage: chatSettings.preferredLanguage,
+						openAIReasoningEffort: chatSettings.openAIReasoningEffort,
 					},
 					chatContent: {
 						message: inputValue.trim() ? inputValue : undefined,
@@ -1173,6 +1217,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setShowModelSelector(false)
 		})
 
+		// TAG:HAI
 		// Experts dropdown handlers
 		const handleExpertSelect = useCallback((expert: ExpertData | null) => {
 			setSelectedExpert(expert)
@@ -1227,6 +1272,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					return `vscode-lm:${apiConfiguration.vsCodeLmModelSelector ? `${apiConfiguration.vsCodeLmModelSelector.vendor ?? ""}/${apiConfiguration.vsCodeLmModelSelector.family ?? ""}` : unknownModel}`
 				case "together":
 					return `${selectedProvider}:${apiConfiguration.togetherModelId}`
+				case "fireworks":
+					return `fireworks:${apiConfiguration.fireworksModelId}`
 				case "lmstudio":
 					return `${selectedProvider}:${apiConfiguration.lmStudioModelId}`
 				case "ollama":
@@ -1234,6 +1281,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "litellm":
 					return `${selectedProvider}:${apiConfiguration.liteLlmModelId}`
 				case "requesty":
+					return `${selectedProvider}:${apiConfiguration.requestyModelId}`
 				case "anthropic":
 				case "openrouter":
 				default:
@@ -1562,6 +1610,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								setSelectedIndex={setSelectedSlashCommandsIndex}
 								onMouseDown={handleMenuMouseDown}
 								query={slashCommandsQuery}
+								localWorkflowToggles={localWorkflowToggles}
+								globalWorkflowToggles={globalWorkflowToggles}
 							/>
 						</div>
 					)}
@@ -1714,7 +1764,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							display: "flex",
 							alignItems: "flex-center",
 							height: textAreaBaseHeight || 31,
-							bottom: 9.5, // should be 10 but doesnt look good on mac
+							bottom: 9.5, // should be 10 but doesn't look good on mac
 							zIndex: 2,
 						}}>
 						<div
@@ -1808,6 +1858,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							<ServersToggleModal />
 							<ClineRulesToggleModal />
 
+							{/* TAG:HAI */}
 							{/* Experts dropdown */}
 							<ExpertsContainer ref={expertsSelectorRef}>
 								<ExpertsButtonWrapper ref={expertsButtonRef}>

@@ -24,7 +24,20 @@ interface Collection {
 	properties: any
 }
 
+/**
+ * Represents telemetry event categories that can be individually enabled or disabled
+ * When adding a new category, add it both here and to the initial values in telemetryCategoryEnabled
+ * Ensure `if (!this.isCategoryEnabled('<category_name>')` is added to the capture method
+ */
+type TelemetryCategory = "checkpoints" | "browser"
+
 class PostHogClient {
+	// Map to control specific telemetry categories (event types)
+	private telemetryCategoryEnabled: Map<TelemetryCategory, boolean> = new Map([
+		["checkpoints", false], // Checkpoints telemetry disabled
+		["browser", true], // Browser telemetry enabled
+	])
+
 	// Stores events when collect=true
 	private collectedTasks: CollectedTasks[] = []
 	// Event constants for tracking user interactions and system events
@@ -65,6 +78,8 @@ class PostHogClient {
 			BROWSER_TOOL_END: "task.browser_tool_end",
 			// Tracks when browser errors occur
 			BROWSER_ERROR: "task.browser_error",
+			// Tracks Gemini API specific performance metrics
+			GEMINI_API_PERFORMANCE: "task.gemini_api_performance",
 			// Collection of all task events
 			TASK_COLLECTION: "task.collection",
 		},
@@ -108,6 +123,7 @@ class PostHogClient {
 	/** Whether the extension is running in development mode */
 	private readonly isDev = process.env.IS_DEV
 
+	// TAG:HAI
 	/** Git user information (username and email) for tracking user identity */
 	// This is used to identify the user in PostHog and Langfuse
 	private readonly gitUserInfo: {
@@ -340,7 +356,6 @@ class PostHogClient {
 	}
 
 	/**
-	 * TODO
 	 * Records token usage metrics for cost tracking and usage analysis
 	 * @param taskId Unique identifier for the task
 	 * @param tokensIn Number of input tokens consumed
@@ -461,6 +476,10 @@ class PostHogClient {
 		durationMs?: number,
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("checkpoints")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.CHECKPOINT_USED,
@@ -680,6 +699,10 @@ class PostHogClient {
 	 * @param browserSettings The browser settings being used
 	 */
 	public captureBrowserToolStart(taskId: string, browserSettings: BrowserSettings, collect: boolean = false) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_TOOL_START,
@@ -709,6 +732,10 @@ class PostHogClient {
 		},
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_TOOL_END,
@@ -743,6 +770,10 @@ class PostHogClient {
 		},
 		collect: boolean = false,
 	) {
+		if (!this.isCategoryEnabled("browser")) {
+			return
+		}
+
 		this.capture(
 			{
 				event: PostHogClient.EVENTS.TASK.BROWSER_ERROR,
@@ -799,6 +830,43 @@ class PostHogClient {
 	}
 
 	/**
+	 * Captures Gemini API performance metrics.
+	 * @param taskId Unique identifier for the task
+	 * @param modelId Specific Gemini model ID
+	 * @param data Performance data including TTFT, durations, token counts, cache stats, and API success status
+	 * @param collect If true, collect event instead of sending
+	 */
+	public captureGeminiApiPerformance(
+		taskId: string,
+		modelId: string,
+		data: {
+			ttftSec?: number
+			totalDurationSec?: number
+			promptTokens: number
+			outputTokens: number
+			cacheReadTokens: number
+			cacheHit: boolean
+			cacheHitPercentage?: number
+			apiSuccess: boolean
+			apiError?: string
+			throughputTokensPerSec?: number
+		},
+		collect: boolean = false,
+	) {
+		this.capture(
+			{
+				event: PostHogClient.EVENTS.TASK.GEMINI_API_PERFORMANCE,
+				properties: {
+					taskId,
+					modelId,
+					...data,
+				},
+			},
+			collect,
+		)
+	}
+
+	/**
 	 * Records when the user uses the model favorite button in the model picker
 	 * @param model The name of the model the user has interacted with
 	 * @param isFavorited Whether the model is being favorited (true) or unfavorited (false)
@@ -816,8 +884,22 @@ class PostHogClient {
 		)
 	}
 
+	/**
+	 * Checks if telemetry is enabled
+	 * @returns Boolean indicating whether telemetry is enabled
+	 */
 	public isTelemetryEnabled(): boolean {
 		return this.telemetryEnabled
+	}
+
+	/**
+	 * Checks if a specific telemetry category is enabled
+	 * @param category The telemetry category to check
+	 * @returns Boolean indicating whether the specified telemetry category is enabled
+	 */
+	public isCategoryEnabled(category: TelemetryCategory): boolean {
+		// Default to true if category has not been explicitly configured
+		return this.telemetryCategoryEnabled.get(category) ?? true
 	}
 
 	public async sendCollectedEvents(taskId?: string): Promise<void> {

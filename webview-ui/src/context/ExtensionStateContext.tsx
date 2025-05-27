@@ -1,8 +1,7 @@
-import { EmbeddingConfiguration } from "@shared/embeddings"
-import { HaiBuildContextOptions } from "@shared/customApi"
 import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from "react"
 import { useEvent } from "react-use"
 import { StateServiceClient } from "@/services/grpc-client"
+import { EmptyRequest } from "@shared/proto/common"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "@shared/ExtensionMessage"
 import {
@@ -14,12 +13,17 @@ import {
 	requestyDefaultModelInfo,
 } from "@shared/api"
 import { findLastIndex } from "@shared/array"
-import { McpMarketplaceCatalog, McpServer, McpViewTab } from "@shared/mcp"
-import { convertTextMateToHljs } from "@utils/textMateToHljs"
-import { vscode } from "@utils/vscode"
+import { McpMarketplaceCatalog, McpServer, McpViewTab } from "../../../src/shared/mcp"
+import { convertTextMateToHljs } from "../utils/textMateToHljs"
+import { vscode } from "../utils/vscode"
 import { DEFAULT_BROWSER_SETTINGS } from "@shared/BrowserSettings"
-import { DEFAULT_CHAT_SETTINGS } from "@shared/ChatSettings"
+import { ChatSettings, DEFAULT_CHAT_SETTINGS } from "@shared/ChatSettings"
 import { TelemetrySetting } from "@shared/TelemetrySetting"
+
+// TAG:HAI
+import { EmbeddingConfiguration } from "@shared/embeddings"
+import { HaiBuildContextOptions } from "@shared/customApi"
+import { IHaiStory, IHaiTask } from "@shared/hai-task"
 
 interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -31,27 +35,69 @@ interface ExtensionStateContextType extends ExtensionState {
 	mcpServers: McpServer[]
 	mcpMarketplaceCatalog: McpMarketplaceCatalog
 	filePaths: string[]
-	haiConfig: { [key in string]: any }
 	totalTasksSize: number | null
+
 	// View state
 	showMcp: boolean
 	mcpTab?: McpViewTab
+	showSettings: boolean
+	showHistory: boolean
+	showAccount: boolean
+	showAnnouncement: boolean
 
 	// Setters
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
 	setTelemetrySetting: (value: TelemetrySetting) => void
 	setShowAnnouncement: (value: boolean) => void
+	setShouldShowAnnouncement: (value: boolean) => void
 	setPlanActSeparateModelsSetting: (value: boolean) => void
+	setEnableCheckpointsSetting: (value: boolean) => void
+	setMcpMarketplaceEnabled: (value: boolean) => void
+	setShellIntegrationTimeout: (value: number) => void
+	setChatSettings: (value: ChatSettings) => void
+	setMcpServers: (value: McpServer[]) => void
+	setGlobalClineRulesToggles: (toggles: Record<string, boolean>) => void
+	setLocalClineRulesToggles: (toggles: Record<string, boolean>) => void
+	setLocalCursorRulesToggles: (toggles: Record<string, boolean>) => void
+	setLocalWindsurfRulesToggles: (toggles: Record<string, boolean>) => void
+	setLocalWorkflowToggles: (toggles: Record<string, boolean>) => void
+	setGlobalWorkflowToggles: (toggles: Record<string, boolean>) => void
+	setMcpMarketplaceCatalog: (value: McpMarketplaceCatalog) => void
+
+	// Navigation state setters
+	setShowMcp: (value: boolean) => void
+	setMcpTab: (tab?: McpViewTab) => void
+
+	// Navigation functions
+	navigateToMcp: (tab?: McpViewTab) => void
+	navigateToSettings: () => void
+	navigateToHistory: () => void
+	navigateToAccount: () => void
+	navigateToChat: () => void
+
+	// Hide functions
+	hideSettings: () => void
+	hideHistory: () => void
+	hideAccount: () => void
+	hideAnnouncement: () => void
+	closeMcpView: () => void
+
+	// TAG:HAI
+	haiConfig: { [key in string]: any }
+	showHaiTaskList: boolean
+	detailedStory: IHaiStory | null
+	detailedTask: IHaiTask | null
+	showExperts: boolean
+	setShowHaiTaskList: (value: boolean) => void
+	setDetailedStory: (value: IHaiStory | null) => void
+	setDetailedTask: (value: IHaiTask | null) => void
+	setShowExperts: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
 	setHaiConfig: (value: { [key in string]: any }) => void
 	setEmbeddingConfiguration: (config: EmbeddingConfiguration) => void
-	setShellIntegrationTimeout: (value: number) => void
-	setMcpServers: (value: McpServer[]) => void
-
-	// Navigation
-	setShowMcp: (value: boolean) => void
-	setMcpTab: (tab?: McpViewTab) => void
+	navigateToExperts: () => void
+	hideExperts: () => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -62,6 +108,192 @@ export const ExtensionStateContextProvider: React.FC<{
 	// UI view state
 	const [showMcp, setShowMcp] = useState(false)
 	const [mcpTab, setMcpTab] = useState<McpViewTab | undefined>(undefined)
+	const [showSettings, setShowSettings] = useState(false)
+	const [showHistory, setShowHistory] = useState(false)
+	const [showAccount, setShowAccount] = useState(false)
+	const [showAnnouncement, setShowAnnouncement] = useState(false)
+
+	// TAG:HAI
+	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
+	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
+	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
+	const [showExperts, setShowExperts] = useState(false)
+
+	// Helper for MCP view
+	const closeMcpView = useCallback(() => {
+		setShowMcp(false)
+		setMcpTab(undefined)
+	}, [setShowMcp, setMcpTab])
+
+	// Hide functions
+	const hideSettings = useCallback(() => setShowSettings(false), [setShowSettings])
+	const hideHistory = useCallback(() => setShowHistory(false), [setShowHistory])
+	const hideAccount = useCallback(() => setShowAccount(false), [setShowAccount])
+	const hideAnnouncement = useCallback(() => setShowAnnouncement(false), [setShowAnnouncement])
+
+	// TAG:HAI
+	const hideExperts = useCallback(() => setShowExperts(false), [setShowExperts])
+
+	// Navigation functions
+	const navigateToMcp = useCallback(
+		(tab?: McpViewTab) => {
+			setShowSettings(false)
+			setShowHistory(false)
+			setShowAccount(false)
+			if (tab) {
+				setMcpTab(tab)
+			}
+			setShowMcp(true)
+
+			// TAG:HAI
+			setShowHaiTaskList(false)
+			setDetailedStory(null)
+			setDetailedTask(null)
+			setShowExperts(false)
+		},
+		[
+			setShowMcp,
+			setMcpTab,
+			setShowSettings,
+			setShowHistory,
+			setShowAccount,
+			setShowHaiTaskList,
+			setDetailedStory,
+			setDetailedTask,
+			setShowExperts,
+		],
+	)
+
+	const navigateToSettings = useCallback(() => {
+		setShowHistory(false)
+		closeMcpView()
+		setShowAccount(false)
+		setShowSettings(true)
+
+		// TAG:HAI
+		setShowHaiTaskList(false)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(false)
+	}, [
+		setShowSettings,
+		setShowHistory,
+		closeMcpView,
+		setShowAccount,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
+
+	const navigateToHistory = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowAccount(false)
+		setShowHistory(true)
+
+		// TAG:HAI
+		setShowHaiTaskList(false)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(false)
+	}, [
+		setShowSettings,
+		closeMcpView,
+		setShowAccount,
+		setShowHistory,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
+
+	const navigateToAccount = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(true)
+
+		// TAG:HAI
+		setShowHaiTaskList(false)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(false)
+	}, [
+		setShowSettings,
+		closeMcpView,
+		setShowHistory,
+		setShowAccount,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
+
+	const navigateToChat = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(false)
+
+		// TAG:HAI
+		setShowHaiTaskList(false)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(false)
+	}, [
+		setShowSettings,
+		closeMcpView,
+		setShowHistory,
+		setShowAccount,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
+
+	// TAG:HAI
+	const navigateToHaiTask = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(false)
+
+		setShowHaiTaskList(true)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(false)
+	}, [
+		setShowSettings,
+		closeMcpView,
+		setShowHistory,
+		setShowAccount,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
+
+	const navigateToExperts = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(false)
+
+		setShowHaiTaskList(false)
+		setDetailedStory(null)
+		setDetailedTask(null)
+		setShowExperts(true)
+	}, [
+		setShowSettings,
+		closeMcpView,
+		setShowHistory,
+		setShowAccount,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+	])
 
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
@@ -75,11 +307,15 @@ export const ExtensionStateContextProvider: React.FC<{
 		telemetrySetting: "unset",
 		vscMachineId: "",
 		planActSeparateModelsSetting: true,
+		enableCheckpointsSetting: true,
 		globalClineRulesToggles: {},
 		localClineRulesToggles: {},
 		localCursorRulesToggles: {},
 		localWindsurfRulesToggles: {},
+		localWorkflowToggles: {},
+		globalWorkflowToggles: {},
 		shellIntegrationTimeout: 4000, // default timeout for shell integration
+		isNewUser: false,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -88,7 +324,6 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [openRouterModels, setOpenRouterModels] = useState<Record<string, ModelInfo>>({
 		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
-	const [haiConfig, setHaiConfig] = useState({})
 	const [totalTasksSize, setTotalTasksSize] = useState<number | null>(null)
 
 	const [openAiModels, setOpenAiModels] = useState<string[]>([])
@@ -97,9 +332,93 @@ export const ExtensionStateContextProvider: React.FC<{
 	})
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 	const [mcpMarketplaceCatalog, setMcpMarketplaceCatalog] = useState<McpMarketplaceCatalog>({ items: [] })
+
+	// TAG:HAI
+	const [haiConfig, setHaiConfig] = useState({})
+
 	const handleMessage = useCallback((event: MessageEvent) => {
 		const message: ExtensionMessage = event.data
 		switch (message.type) {
+			case "action": {
+				switch (message.action!) {
+					case "mcpButtonClicked":
+						navigateToMcp(message.tab)
+						break
+					case "settingsButtonClicked":
+						navigateToSettings()
+						break
+					case "historyButtonClicked":
+						navigateToHistory()
+						break
+					case "accountButtonClicked":
+						navigateToAccount()
+						break
+					case "chatButtonClicked":
+						navigateToChat()
+						break
+					case "haiBuildTaskListClicked":
+						navigateToHaiTask()
+						break
+					case "expertsButtonClicked":
+						navigateToExperts()
+						break
+				}
+				break
+			}
+			case "state": {
+				// Handler for direct state messages
+				if (message.state) {
+					const stateData = message.state as ExtensionState
+					console.log("[Webview Context Test Revert] Received direct 'state' message, updating state.")
+					setState((prevState) => {
+						// Versioning logic for autoApprovalSettings (copied from original onResponse)
+						const incomingVersion = stateData.autoApprovalSettings?.version ?? 1
+						const currentVersion = prevState.autoApprovalSettings?.version ?? 1
+						const shouldUpdateAutoApproval = incomingVersion > currentVersion
+
+						const newState = {
+							...stateData,
+							autoApprovalSettings: shouldUpdateAutoApproval
+								? stateData.autoApprovalSettings
+								: prevState.autoApprovalSettings,
+						}
+
+						// Update welcome screen state based on API configuration (copied from original onResponse)
+						const config = stateData.apiConfiguration
+						const hasKey = config
+							? [
+									config.apiKey,
+									config.openRouterApiKey,
+									config.awsRegion,
+									config.vertexProjectId,
+									config.openAiApiKey,
+									config.ollamaModelId,
+									config.lmStudioModelId,
+									config.liteLlmApiKey,
+									config.geminiApiKey,
+									config.openAiNativeApiKey,
+									config.deepSeekApiKey,
+									config.requestyApiKey,
+									config.togetherApiKey,
+									config.qwenApiKey,
+									config.doubaoApiKey,
+									config.mistralApiKey,
+									config.vsCodeLmModelSelector,
+									config.clineApiKey,
+									config.asksageApiKey,
+									config.xaiApiKey,
+									config.sambanovaApiKey,
+									config.nebiusApiKey,
+								].some((key) => key !== undefined)
+							: false
+
+						setShowWelcome(!hasKey)
+						setDidHydrateState(true)
+						return newState
+					})
+				}
+				break
+			}
 			case "theme": {
 				if (message.text) {
 					setTheme(convertTextMateToHljs(JSON.parse(message.text)))
@@ -132,10 +451,6 @@ export const ExtensionStateContextProvider: React.FC<{
 				})
 				break
 			}
-			case "haiConfig": {
-				setHaiConfig(message.haiConfig || {})
-				break
-			}
 			case "openAiModels": {
 				const updatedModels = message.openAiModels ?? []
 				setOpenAiModels(updatedModels)
@@ -163,6 +478,11 @@ export const ExtensionStateContextProvider: React.FC<{
 				setTotalTasksSize(message.totalTasksSize ?? null)
 				break
 			}
+			// TAG:HAI
+			case "haiConfig": {
+				setHaiConfig(message.haiConfig || {})
+				break
+			}
 		}
 	}, [])
 
@@ -172,32 +492,33 @@ export const ExtensionStateContextProvider: React.FC<{
 	const stateSubscriptionRef = useRef<(() => void) | null>(null)
 
 	// Subscribe to state updates using the new gRPC streaming API
+	/* // TEST REVERT: Commenting out gRPC state subscription
 	useEffect(() => {
 		// Set up state subscription
 		stateSubscriptionRef.current = StateServiceClient.subscribeToState(
 			{},
 			{
 				onResponse: (response) => {
-					console.log("[DEBUG] got state update via subscription", response)
+					console.log("[DEBUG] got state update via subscription", response);
 					if (response.stateJson) {
 						try {
-							const stateData = JSON.parse(response.stateJson) as ExtensionState
-							console.log("[DEBUG] parsed state JSON, updating state")
+							const stateData = JSON.parse(response.stateJson) as ExtensionState;
+							console.log("[DEBUG] parsed state JSON, updating state");
 							setState((prevState) => {
 								// Versioning logic for autoApprovalSettings
-								const incomingVersion = stateData.autoApprovalSettings?.version ?? 1
-								const currentVersion = prevState.autoApprovalSettings?.version ?? 1
-								const shouldUpdateAutoApproval = incomingVersion > currentVersion
+								const incomingVersion = stateData.autoApprovalSettings?.version ?? 1;
+								const currentVersion = prevState.autoApprovalSettings?.version ?? 1;
+								const shouldUpdateAutoApproval = incomingVersion > currentVersion;
 
 								const newState = {
 									...stateData,
 									autoApprovalSettings: shouldUpdateAutoApproval
 										? stateData.autoApprovalSettings
 										: prevState.autoApprovalSettings,
-								}
+								};
 
 								// Update welcome screen state based on API configuration
-								const config = stateData.apiConfiguration
+								const config = stateData.apiConfiguration;
 								const hasKey = config
 									? [
 											config.apiKey,
@@ -222,41 +543,52 @@ export const ExtensionStateContextProvider: React.FC<{
 											config.xaiApiKey,
 											config.sambanovaApiKey,
 										].some((key) => key !== undefined)
-									: false
+									: false;
 
-								setShowWelcome(!hasKey)
-								setDidHydrateState(true)
+								setShowWelcome(!hasKey);
+								setDidHydrateState(true);
 
-								console.log("[DEBUG] returning new state in ESC")
+								console.log("[DEBUG] returning new state in ESC");
 
-								return newState
-							})
+								return newState;
+							});
 						} catch (error) {
-							console.error("Error parsing state JSON:", error)
-							console.log("[DEBUG] ERR getting state", error)
+							console.error("Error parsing state JSON:", error);
+							console.log("[DEBUG] ERR getting state", error);
 						}
 					}
-					console.log('[DEBUG] ended "got subscribed state"')
+					console.log('[DEBUG] ended "got subscribed state"');
 				},
 				onError: (error) => {
-					console.error("Error in state subscription:", error)
+					console.error("Error in state subscription:", error);
 				},
 				onComplete: () => {
-					console.log("State subscription completed")
+					console.log("State subscription completed");
 				},
 			},
-		)
+		);
 
 		// Still send the webviewDidLaunch message for other initialization
-		vscode.postMessage({ type: "webviewDidLaunch" })
+		vscode.postMessage({ type: "webviewDidLaunch" });
 
 		// Clean up subscription when component unmounts
 		return () => {
 			if (stateSubscriptionRef.current) {
-				stateSubscriptionRef.current()
-				stateSubscriptionRef.current = null
+				stateSubscriptionRef.current();
+				stateSubscriptionRef.current = null;
 			}
-		}
+		};
+	}, []);
+	*/ // END TEST REVERT
+
+	// For the test revert, ensure webviewDidLaunch is still sent if not done by the above useEffect
+	useEffect(() => {
+		// This effect now only sends webviewDidLaunch if the gRPC subscription is commented out.
+		// If the gRPC subscription is active, it sends webviewDidLaunch.
+		// To avoid sending it twice if you uncomment the above, you might add a flag.
+		// For this specific test (gRPC sub commented out), this is fine.
+		console.log("[Webview Context Test Revert] Sending webviewDidLaunch from separate useEffect.")
+		vscode.postMessage({ type: "webviewDidLaunch" })
 	}, [])
 
 	const contextValue: ExtensionStateContextType = {
@@ -270,14 +602,33 @@ export const ExtensionStateContextProvider: React.FC<{
 		mcpServers,
 		mcpMarketplaceCatalog,
 		filePaths,
-		haiConfig,
 		totalTasksSize,
 		showMcp,
 		mcpTab,
+		showSettings,
+		showHistory,
+		showAccount,
+		showAnnouncement,
 		globalClineRulesToggles: state.globalClineRulesToggles || {},
 		localClineRulesToggles: state.localClineRulesToggles || {},
 		localCursorRulesToggles: state.localCursorRulesToggles || {},
 		localWindsurfRulesToggles: state.localWindsurfRulesToggles || {},
+		localWorkflowToggles: state.localWorkflowToggles || {},
+		globalWorkflowToggles: state.globalWorkflowToggles || {},
+		enableCheckpointsSetting: state.enableCheckpointsSetting,
+
+		// Navigation functions
+		navigateToMcp,
+		navigateToSettings,
+		navigateToHistory,
+		navigateToAccount,
+		navigateToChat,
+
+		// Hide functions
+		hideSettings,
+		hideHistory,
+		hideAccount,
+		hideAnnouncement,
 		setApiConfiguration: (value) =>
 			setState((prevState) => ({
 				...prevState,
@@ -298,25 +649,21 @@ export const ExtensionStateContextProvider: React.FC<{
 				...prevState,
 				planActSeparateModelsSetting: value,
 			})),
-		setShowAnnouncement: (value) =>
+		setEnableCheckpointsSetting: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				enableCheckpointsSetting: value,
+			})),
+		setMcpMarketplaceEnabled: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				mcpMarketplaceEnabled: value,
+			})),
+		setShowAnnouncement,
+		setShouldShowAnnouncement: (value) =>
 			setState((prevState) => ({
 				...prevState,
 				shouldShowAnnouncement: value,
-			})),
-		setHaiConfig: (value) =>
-			setHaiConfig((prevState) => ({
-				...prevState,
-				...value,
-			})),
-		setBuildContextOptions: (value) =>
-			setState((prevState) => ({
-				...prevState,
-				buildContextOptions: value,
-			})),
-		setEmbeddingConfiguration: (value) =>
-			setState((prevState) => ({
-				...prevState,
-				embeddingConfiguration: value,
 			})),
 		setShellIntegrationTimeout: (value) =>
 			setState((prevState) => ({
@@ -324,8 +671,84 @@ export const ExtensionStateContextProvider: React.FC<{
 				shellIntegrationTimeout: value,
 			})),
 		setMcpServers: (mcpServers: McpServer[]) => setMcpServers(mcpServers),
+		setMcpMarketplaceCatalog: (catalog: McpMarketplaceCatalog) => setMcpMarketplaceCatalog(catalog),
 		setShowMcp,
+		closeMcpView,
+		setChatSettings: (value) => {
+			setState((prevState) => ({
+				...prevState,
+				chatSettings: value,
+			}))
+			vscode.postMessage({
+				type: "updateSettings",
+				chatSettings: value,
+				apiConfiguration: state.apiConfiguration,
+				customInstructionsSetting: state.customInstructions,
+				telemetrySetting: state.telemetrySetting,
+				planActSeparateModelsSetting: state.planActSeparateModelsSetting,
+				enableCheckpointsSetting: state.enableCheckpointsSetting,
+				mcpMarketplaceEnabled: state.mcpMarketplaceEnabled,
+			})
+		},
+		setGlobalClineRulesToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				globalClineRulesToggles: toggles,
+			})),
+		setLocalClineRulesToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				localClineRulesToggles: toggles,
+			})),
+		setLocalCursorRulesToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				localCursorRulesToggles: toggles,
+			})),
+		setLocalWindsurfRulesToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				localWindsurfRulesToggles: toggles,
+			})),
+		setLocalWorkflowToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				localWorkflowToggles: toggles,
+			})),
+		setGlobalWorkflowToggles: (toggles) =>
+			setState((prevState) => ({
+				...prevState,
+				globalWorkflowToggles: toggles,
+			})),
 		setMcpTab,
+
+		// TAG:HAI
+		haiConfig,
+		showHaiTaskList,
+		detailedStory,
+		detailedTask,
+		showExperts,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setShowExperts,
+		setBuildContextOptions: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				buildContextOptions: value,
+			})),
+		setHaiConfig: (value) =>
+			setHaiConfig((prevState) => ({
+				...prevState,
+				...value,
+			})),
+		setEmbeddingConfiguration: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				embeddingConfiguration: value,
+			})),
+		navigateToExperts,
+		hideExperts,
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

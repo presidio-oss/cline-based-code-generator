@@ -18,23 +18,8 @@ import { COMMAND_OUTPUT_STRING, COMMAND_REQ_APP_STRING } from "@shared/combineCo
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { findMatchingResourceOrTemplate, getMcpServerDisplayName } from "@/utils/mcp"
 import { vscode } from "@/utils/vscode"
-import { FileServiceClient } from "@/services/grpc-client"
+import { FileServiceClient, TaskServiceClient } from "@/services/grpc-client"
 import { CheckmarkControl } from "@/components/common/CheckmarkControl"
-import { CheckpointControls } from "../common/CheckpointControls"
-import CodeAccordian, { cleanPathPrefix } from "../common/CodeAccordian"
-import CodeBlock, { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
-import MarkdownBlock from "@/components/common/MarkdownBlock"
-import McpToolRow from "@/components/mcp/configuration/tabs/installed/server-row/McpToolRow"
-import McpResponseDisplay from "@/components/mcp/chat-display/McpResponseDisplay"
-import CreditLimitError from "@/components/chat/CreditLimitError"
-import { OptionsButtons } from "@/components/chat/OptionsButtons"
-import SuccessButton from "@/components/common/SuccessButton"
-import TaskFeedbackButtons from "@/components/chat/TaskFeedbackButtons"
-import NewTaskPreview from "./NewTaskPreview"
-import ReportBugPreview from "./ReportBugPreview"
-import McpResourceRow from "@/components/mcp/configuration/tabs/installed/server-row/McpResourceRow"
-import UserMessage from "./UserMessage"
-import QuoteButton from "./QuoteButton"
 
 interface CopyButtonProps {
 	textToCopy: string | undefined
@@ -91,6 +76,23 @@ const WithCopyButton = React.forwardRef<HTMLDivElement, WithCopyButtonProps>(
 		)
 	},
 )
+import { CheckpointControls, CheckpointOverlay } from "../common/CheckpointControls"
+import CodeAccordian, { cleanPathPrefix } from "../common/CodeAccordian"
+import CodeBlock, { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
+import MarkdownBlock from "@/components/common/MarkdownBlock"
+import Thumbnails from "@/components/common/Thumbnails"
+import McpToolRow from "@/components/mcp/configuration/tabs/installed/server-row/McpToolRow"
+import McpResponseDisplay from "@/components/mcp/chat-display/McpResponseDisplay"
+import CreditLimitError from "@/components/chat/CreditLimitError"
+import { OptionsButtons } from "@/components/chat/OptionsButtons"
+import { highlightText } from "./TaskHeader"
+import SuccessButton from "@/components/common/SuccessButton"
+import TaskFeedbackButtons from "@/components/chat/TaskFeedbackButtons"
+import NewTaskPreview from "./NewTaskPreview"
+import ReportBugPreview from "./ReportBugPreview"
+import McpResourceRow from "@/components/mcp/configuration/tabs/installed/server-row/McpResourceRow"
+import UserMessage from "./UserMessage"
+import QuoteButton from "./QuoteButton"
 
 const ChatRowContainer = styled.div`
 	padding: 10px 6px 10px 15px;
@@ -206,12 +208,12 @@ export const ChatRowContent = ({
 		selectedText: "",
 	})
 	const contentRef = useRef<HTMLDivElement>(null)
-	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage] = useMemo(() => {
+	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage, retryStatus] = useMemo(() => {
 		if (message.text != null && message.say === "api_req_started") {
 			const info: ClineApiReqInfo = JSON.parse(message.text)
-			return [info.cost, info.cancelReason, info.streamingFailedMessage]
+			return [info.cost, info.cancelReason, info.streamingFailedMessage, info.retryStatus]
 		}
-		return [undefined, undefined, undefined]
+		return [undefined, undefined, undefined, undefined]
 	}, [message.text, message.say])
 
 	// when resuming task last won't be api_req_failed but a resume_task message so api_req_started will show loading spinner. that's why we just remove the last api_req_started that failed without streaming anything
@@ -376,7 +378,7 @@ export const ChatRowContent = ({
 								marginBottom: "-1.5px",
 							}}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold", wordBreak: "break-word" }}>
+					<span className="ph-no-capture" style={{ color: normalColor, fontWeight: "bold", wordBreak: "break-word" }}>
 						HAI wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
 						<code style={{ wordBreak: "break-all" }}>
 							{getMcpServerDisplayName(mcpServerUse.serverName, mcpMarketplaceCatalog)}
@@ -443,6 +445,17 @@ export const ChatRowContent = ({
 						if (apiRequestFailedMessage) {
 							return <span style={{ color: errorColor, fontWeight: "bold" }}>API Request Failed</span>
 						}
+						// New: Check for retryStatus to modify the title
+						if (retryStatus && cost == null && !apiReqCancelReason) {
+							const retryOperations = retryStatus.maxAttempts > 0 ? retryStatus.maxAttempts - 1 : 0
+							return (
+								<span
+									style={{
+										color: normalColor,
+										fontWeight: "bold",
+									}}>{`API Request (Retrying failed attempt ${retryStatus.attempt}/${retryOperations})...`}</span>
+							)
+						}
 
 						return <span style={{ color: normalColor, fontWeight: "bold" }}>API Request...</span>
 					})(),
@@ -491,7 +504,7 @@ export const ChatRowContent = ({
 		}
 		const toolIcon = (name: string, color?: string, rotation?: number, title?: string) => (
 			<span
-				className={`codicon codicon-${name}`}
+				className={`codicon codicon-${name} ph-no-capture`}
 				style={{
 					color: color ? colorMap[color as keyof typeof colorMap] || color : "var(--vscode-foreground)",
 					marginBottom: "-1.5px",
@@ -575,6 +588,7 @@ export const ChatRowContent = ({
 								}}>
 								{tool.path?.startsWith(".") && <span>.</span>}
 								<span
+									className="ph-no-capture"
 									style={{
 										whiteSpace: "nowrap",
 										overflow: "hidden",
@@ -997,12 +1011,13 @@ export const ChatRowContent = ({
 													}}
 												/>
 											</span>
-											{message.text}
+											<span className="ph-no-capture">{message.text}</span>
 										</div>
 									) : (
 										<div style={{ display: "flex", alignItems: "center" }}>
 											<span style={{ fontWeight: "bold", marginRight: "4px" }}>Thinking:</span>
 											<span
+												className="ph-no-capture"
 												style={{
 													whiteSpace: "nowrap",
 													overflow: "hidden",
@@ -1211,10 +1226,9 @@ export const ChatRowContent = ({
 										disabled={seeNewChangesDisabled}
 										onClick={() => {
 											setSeeNewChangesDisabled(true)
-											vscode.postMessage({
-												type: "taskCompletionViewChanges",
-												number: message.ts,
-											})
+											TaskServiceClient.taskCompletionViewChanges({
+												value: message.ts,
+											}).catch((err) => console.error("Failed to show task completion view changes:", err))
 										}}
 										style={{
 											cursor: seeNewChangesDisabled ? "wait" : "pointer",
@@ -1375,10 +1389,11 @@ export const ChatRowContent = ({
 											disabled={seeNewChangesDisabled}
 											onClick={() => {
 												setSeeNewChangesDisabled(true)
-												vscode.postMessage({
-													type: "taskCompletionViewChanges",
-													number: message.ts,
-												})
+												TaskServiceClient.taskCompletionViewChanges({
+													value: message.ts,
+												}).catch((err) =>
+													console.error("Failed to show task completion view changes:", err),
+												)
 											}}>
 											<i
 												className="codicon codicon-new-file"

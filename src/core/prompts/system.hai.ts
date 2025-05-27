@@ -22,6 +22,6 @@ export const haiSystemPrompt = (
 		case "v3":
 			return haiSystemPromptV3(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		default:
-			return haiDefaultSystemPrompt(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiDefaultSystemPrompt(cwd, supportsBrowserUse, mcpHub, browserSettings, supportsCodeIndex, expertPrompt)
 	}
 }

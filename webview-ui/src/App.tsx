@@ -6,14 +6,18 @@ import HistoryView from "./components/history/HistoryView"
 import SettingsView from "./components/settings/SettingsView"
 import WelcomeView from "./components/welcome/WelcomeView"
 import AccountView from "./components/account/AccountView"
-import ExpertsView from "./components/experts/ExpertsView"
-import { useExtensionState } from "./context/ExtensionStateContext"
 import { vscode } from "./utils/vscode"
+import { useExtensionState } from "./context/ExtensionStateContext"
+import { UiServiceClient } from "./services/grpc-client"
+import McpView from "./components/mcp/configuration/McpConfigurationView"
+import { Providers } from "./Providers"
+import { Boolean, EmptyRequest } from "@shared/proto/common"
+
+// TAG:HAI
+import ExpertsView from "./components/experts/ExpertsView"
 import { HaiTasksList } from "./components/hai/hai-tasks-list"
 import { IHaiClineTask, IHaiStory, IHaiTask } from "@shared/hai-task"
 import DetailedView from "./components/hai/DetailedView"
-import McpView from "./components/mcp/configuration/McpConfigurationView"
-import { Providers } from "./Providers"
 
 const AppContent = () => {
 	const {
@@ -22,143 +26,66 @@ const AppContent = () => {
 		shouldShowAnnouncement,
 		showMcp,
 		mcpTab,
-		telemetrySetting,
-		vscMachineId,
-		setHaiConfig,
+		showSettings,
+		showHistory,
+		showAccount,
+		showAnnouncement,
+		setShowAnnouncement,
+		setShouldShowAnnouncement,
+		closeMcpView,
+		navigateToHistory,
+		hideSettings,
+		hideHistory,
+		hideAccount,
+		hideAnnouncement,
+
+		// TAG:HAI
 		haiConfig,
+		showHaiTaskList,
+		detailedStory,
+		detailedTask,
+		showExperts,
+		setShowHaiTaskList,
+		setDetailedStory,
+		setDetailedTask,
+		setHaiConfig,
+		hideExperts,
 	} = useExtensionState()
-	const [showSettings, setShowSettings] = useState(false)
-	const hideSettings = useCallback(() => setShowSettings(false), [])
-	const [showHistory, setShowHistory] = useState(false)
-	const [showAccount, setShowAccount] = useState(false)
-	const [showExperts, setShowExperts] = useState(false)
-	const [showAnnouncement, setShowAnnouncement] = useState(false)
-	const { setShowMcp, setMcpTab } = useExtensionState()
-	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
+
+	// TAG:HAI
 	const [taskList, setTaskList] = useState<IHaiStory[]>([])
 	const [taskLastUpdatedTs, setTaskLastUpdatedTs] = useState<string>("")
 	const [selectedTask, setSelectedTask] = useState<IHaiClineTask | null>(null)
-	const [detailedTask, setDetailedTask] = useState<IHaiTask | null>(null)
-	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
-
-	const closeMcpView = useCallback(() => {
-		setShowMcp(false)
-		setMcpTab(undefined)
-	}, [setShowMcp, setMcpTab])
 
 	const handleMessage = useCallback((e: MessageEvent) => {
 		const message: ExtensionMessage = e.data
 		switch (message.type) {
-			case "action":
-				switch (message.action!) {
-					case "settingsButtonClicked":
-						setShowSettings(true)
-						setShowHistory(false)
-						closeMcpView()
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "historyButtonClicked":
-						setShowSettings(false)
-						setShowHistory(true)
-						closeMcpView()
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "mcpButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						if (message.tab) {
-							setMcpTab(message.tab)
-						}
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(true)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "accountButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						closeMcpView()
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(true)
-						setShowExperts(false)
-						break
-					case "chatButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						closeMcpView()
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "haiBuildTaskListClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						closeMcpView()
-						setShowHaiTaskList(true)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(false)
-						break
-					case "expertsButtonClicked":
-						setShowSettings(false)
-						setShowHistory(false)
-						closeMcpView()
-						setShowHaiTaskList(false)
-						setDetailedStory(null)
-						setDetailedTask(null)
-						setShowMcp(false)
-						setShowAccount(false)
-						setShowExperts(true)
-						break
-				}
-				break
 			case "haiTaskData":
 				setTaskList(message.haiTaskData!.tasks)
 				setTaskLastUpdatedTs(message.haiTaskData!.ts)
 				setHaiConfig({ ...haiConfig, folder: message.haiTaskData!.folder, ts: message.haiTaskData!.ts })
 				break
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	useEvent("message", handleMessage)
 
-	// useEffect(() => {
-	// 	if (telemetrySetting === "enabled") {
-	// 		posthog.identify(vscMachineId)
-	// 		posthog.opt_in_capturing()
-	// 	} else {
-	// 		posthog.opt_out_capturing()
-	// 	}
-	// }, [telemetrySetting, vscMachineId])
-
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
 			setShowAnnouncement(true)
-			vscode.postMessage({ type: "didShowAnnouncement" })
+
+			// Use the gRPC client instead of direct WebviewMessage
+			UiServiceClient.onDidShowAnnouncement({} as EmptyRequest)
+				.then((response: Boolean) => {
+					setShouldShowAnnouncement(response.value)
+				})
+				.catch((error) => {
+					console.error("Failed to acknowledge announcement:", error)
+				})
 		}
 	}, [shouldShowAnnouncement])
 
+	// TAG:HAI
 	useEffect(() => {
 		if (haiConfig?.folder) {
 			onConfigure(true)
@@ -243,29 +170,21 @@ const AppContent = () => {
 								/>
 							)}
 							{showSettings && <SettingsView onDone={hideSettings} />}
-							{showHistory && <HistoryView onDone={() => setShowHistory(false)} />}
+							{showHistory && <HistoryView onDone={hideHistory} />}
 							{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
-							{showAccount && <AccountView onDone={() => setShowAccount(false)} />}
-							{showExperts && <ExpertsView onDone={() => setShowExperts(false)} />}
+							{showAccount && <AccountView onDone={hideAccount} />}
+							{showExperts && <ExpertsView onDone={hideExperts} />}
 							{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 							<ChatView
+								showHistoryView={navigateToHistory}
+								isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
+								showAnnouncement={showAnnouncement}
+								hideAnnouncement={hideAnnouncement}
+								// TAG:HAI
 								onTaskSelect={(selectedTask) => {
 									setSelectedTask(selectedTask)
 								}}
-								showHistoryView={() => {
-									setShowSettings(false)
-									closeMcpView()
-									setShowMcp(false)
-									setShowHistory(true)
-									setShowHaiTaskList(false)
-									setShowAccount(false)
-								}}
 								selectedHaiTask={selectedTask}
-								isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
-								showAnnouncement={showAnnouncement}
-								hideAnnouncement={() => {
-									setShowAnnouncement(false)
-								}}
 								haiConfig={haiConfig}
 							/>
 						</>
