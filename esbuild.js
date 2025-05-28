@@ -145,7 +145,7 @@ const extensionConfig = {
 	sourcesContent: false,
 	platform: "node",
 	outfile: "dist/extension.js",
-	external: ["vscode", "faiss-node"],
+	external: ["vscode", "faiss-node", "crawlee", "playwright"],
 	define: {
 		"process.env.POST_HOG_API_KEY": JSON.stringify(process.env.POST_HOG_API_KEY || "api-key"),
 		"process.env.POST_HOG_HOST": JSON.stringify(process.env.POST_HOG_HOST || "https://us.i.posthog.com"),

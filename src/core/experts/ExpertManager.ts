@@ -9,11 +9,28 @@ import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 import { getAllExtensionState } from "../storage/state"
 import { buildApiHandler } from "../../api"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
+import * as cheerio from "cheerio"
+import TurndownService from "turndown"
+import { RecursiveCharacterTextSplitter } from "@langchain/textsplitters"
+import { buildEmbeddingHandler } from "@/embedding"
+import { FaissStore } from "@langchain/community/vectorstores/faiss"
+import { Document } from "@langchain/core/documents"
+import { existsSync } from "fs"
+import { join } from "path"
+import { fileExists } from "@/utils/runtime-downloader"
+import { ensureFaissPlatformDeps } from "@/utils/faiss"
+import { EmbeddingConfiguration } from "@/shared/embeddings"
+import { BedrockEmbeddings } from "@langchain/aws"
+import { OllamaEmbeddings } from "@langchain/ollama"
+import { OpenAIEmbeddings } from "@langchain/openai"
 
 export class ExpertManager {
 	private extensionContext: vscode.ExtensionContext
 	private workspaceId: string
 	private systemPrompt: string
+	private embeddings: OpenAIEmbeddings | BedrockEmbeddings | OllamaEmbeddings
+	private vectorStore: FaissStore
+	private embeddingConfig: EmbeddingConfiguration
 
 	public static readonly METADATA_FILE = "metadata.json"
 	public static readonly PROMPT_FILE = "prompt.md"
@@ -21,11 +38,17 @@ export class ExpertManager {
 	public static readonly DOCS_DIR = "docs"
 	public static readonly STATUS_FILE = "status.json"
 	public static readonly PLACEHOLDER_FILE = "placeholder.txt"
+	public static readonly FAISS = ".faiss"
+	public static readonly CRAWLEE_STORAGE = "crawlee_storage"
 
-	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, embeddingConfig: EmbeddingConfiguration) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
 		this.systemPrompt = HaiBuildDefaults.defaultMarkDownSummarizer
+		this.embeddingConfig = embeddingConfig
+		const embeddingHandler = buildEmbeddingHandler(this.embeddingConfig)
+		this.embeddings = embeddingHandler.getClient()
+		this.vectorStore = new FaissStore(this.embeddings, {})
 	}
 
 	/**
@@ -44,7 +67,9 @@ export class ExpertManager {
 		const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
 		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
 		const metadataFilePath = path.join(expertDir, ExpertManager.METADATA_FILE)
-		return { sanitizedName, expertDir, docsDir, statusFilePath, metadataFilePath }
+		const faissFilePath = path.join(expertDir, ExpertManager.FAISS)
+		const crawlStorage = path.join(expertDir, ExpertManager.CRAWLEE_STORAGE)
+		return { sanitizedName, expertDir, docsDir, statusFilePath, metadataFilePath, faissFilePath, crawlStorage }
 	}
 
 	/**
@@ -98,6 +123,40 @@ export class ExpertManager {
 	}
 
 	/**
+	 * Process a single document link
+	 */
+	private async processSingleDocumentLink(
+		expertName: string,
+		docsDir: string,
+		statusFilePath: string,
+		link: DocumentLink,
+		urlContentFetcher: UrlContentFetcher,
+	): Promise<void> {
+		try {
+			const markdown = await urlContentFetcher.urlToMarkdown(link.url)
+			const summarizedMarkDown = await this.summarizeMarDownContent(markdown)
+			const docFilePath = path.join(docsDir, link.filename || "")
+			await fs.writeFile(docFilePath, summarizedMarkDown)
+
+			link.status = DocumentStatus.COMPLETED
+			link.processedAt = new Date().toISOString()
+			link.error = null
+		} catch (error) {
+			link.status = DocumentStatus.FAILED
+			link.processedAt = new Date().toISOString()
+			link.error = error instanceof Error ? error.message : String(error)
+			console.error(`Failed to process document link for expert ${expertName}:`, error)
+		}
+	}
+
+	/**
+	 * Update status file with document link data
+	 */
+	private async updateStatusFile(statusFilePath: string, links: DocumentLink[]): Promise<void> {
+		await fs.writeFile(statusFilePath, JSON.stringify(links, null, 2))
+	}
+
+	/**
 	 * Process document links for an expert
 	 */
 	private async processDocumentLinks(
@@ -137,38 +196,24 @@ export class ExpertManager {
 				link.processedAt = new Date().toISOString()
 
 				if (existingLinkIndex !== -1) {
-					// Update the existing link
 					existingStatusData[existingLinkIndex] = link
 				} else {
-					// Add the new link
 					existingStatusData.push(link)
 				}
 
-				await fs.writeFile(statusFilePath, JSON.stringify(existingStatusData, null, 2))
+				await this.updateStatusFile(statusFilePath, existingStatusData)
 
-				try {
-					const markdown = await urlContentFetcher.urlToMarkdown(link.url)
-					const summarizedMarkDown = await this.summarizeMarDownContent(markdown)
-					const docFilePath = path.join(docsDir, link.filename || "")
-					await fs.writeFile(docFilePath, summarizedMarkDown)
+				//invoke crawlAndConvertToMarkdown
+				await this.crawlAndConvertToMarkdown(link.url, expertName, workspacePath, 2)
 
-					link.status = DocumentStatus.COMPLETED
-					link.processedAt = new Date().toISOString()
-					link.error = null
-				} catch (error) {
-					link.status = DocumentStatus.FAILED
-					link.processedAt = new Date().toISOString()
-					link.error = error instanceof Error ? error.message : String(error)
-					console.error(`Failed to process document link for expert ${expertName}:`, error)
-				}
+				// Process the document link
+				await this.processSingleDocumentLink(expertName, docsDir, statusFilePath, link, urlContentFetcher)
 
 				// Update the status file after processing
 				if (existingLinkIndex !== -1) {
 					existingStatusData[existingLinkIndex] = link
-				} else {
-					existingStatusData.push(link)
 				}
-				await fs.writeFile(statusFilePath, JSON.stringify(existingStatusData, null, 2))
+				await this.updateStatusFile(statusFilePath, existingStatusData)
 			}
 		} catch (error) {
 			console.error(`Error processing document links for expert ${expertName}:`, error)
@@ -181,7 +226,7 @@ export class ExpertManager {
 	 * Refresh (or edit) a single document link for an expert.
 	 */
 	async refreshDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const { expertDir, docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
+		const { docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		let statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
 		const index = statusData.findIndex((link) => link.url === linkUrl)
@@ -192,30 +237,22 @@ export class ExpertManager {
 		// Update status to processing
 		statusData[index].status = DocumentStatus.PROCESSING
 		statusData[index].processedAt = new Date().toISOString()
-		await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+		await this.updateStatusFile(statusFilePath, statusData)
 
 		if (!this.extensionContext) {
 			console.error("Extension context not available")
 			return
 		}
-		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
-		await urlContentFetcher.launchBrowser()
-		try {
-			const markdown = await urlContentFetcher.urlToMarkdown(linkUrl)
-			const summarizedMarkDown = await this.summarizeMarDownContent(markdown)
-			const docFilePath = path.join(docsDir, statusData[index].filename || "")
-			await fs.writeFile(docFilePath, summarizedMarkDown)
 
-			statusData[index].status = DocumentStatus.COMPLETED
-			statusData[index].processedAt = new Date().toISOString()
-			statusData[index].error = null
-			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
-		} catch (error) {
-			statusData[index].status = DocumentStatus.FAILED
-			statusData[index].processedAt = new Date().toISOString()
-			statusData[index].error = error instanceof Error ? error.message : String(error)
-			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
-			console.error(`Failed to refresh document link for expert ${expertName}:`, error)
+		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
+		try {
+			await urlContentFetcher.launchBrowser()
+
+			// Process the document link
+			await this.processSingleDocumentLink(expertName, docsDir, statusFilePath, statusData[index], urlContentFetcher)
+
+			// Update the status file after processing
+			await this.updateStatusFile(statusFilePath, statusData)
 		} finally {
 			await urlContentFetcher.closeBrowser()
 		}
@@ -563,5 +600,100 @@ export class ExpertManager {
 		}
 
 		return experts
+	}
+
+	/**
+	 * crawl the url
+	 */
+	private async crawlAndConvertToMarkdown(
+		url: string,
+		expertName: string,
+		workspacePath: string,
+		maxRequestsPerCrawl: number = 10,
+	): Promise<void> {
+		const { PlaywrightCrawler } = await import("crawlee")
+		const self = this
+		const { crawlStorage } = this.getExpertPaths(workspacePath, expertName)
+		process.env.CRAWLEE_STORAGE_DIR = crawlStorage
+		const crawler = new PlaywrightCrawler({
+			async requestHandler({ request, page, enqueueLinks }) {
+				const title = await page.title()
+				const content = await page.content()
+				const url = request.loadedUrl
+
+				// Parse and clean HTML
+				const $ = cheerio.load(content)
+				$("script, style, nav, footer, header").remove()
+
+				// Convert to Markdown
+				const turndownService = new TurndownService()
+				const markdown = turndownService.turndown($.html())
+
+				//chunk and store the markdown
+				await self.chunkAndStore(markdown, expertName, workspacePath, url, title)
+
+				// Enqueue more links
+				await enqueueLinks()
+			},
+			maxRequestsPerCrawl,
+			// Optional: headless: false, to show browser
+		})
+
+		await crawler.run([url])
+	}
+
+	/**
+	 * Store it in vector database
+	 */
+	private async chunkAndStore(
+		mdContent: string,
+		expertName: string,
+		workspacePath: string,
+		url: string,
+		title?: string,
+	): Promise<void> {
+		await ensureFaissPlatformDeps()
+
+		const mdSplitter = RecursiveCharacterTextSplitter.fromLanguage("markdown", {
+			chunkSize: 8192,
+			chunkOverlap: 0,
+		})
+		const texts = await mdSplitter.splitText(mdContent)
+
+		const { faissFilePath } = this.getExpertPaths(workspacePath, expertName)
+
+		if (existsSync(faissFilePath)) {
+			const faissIndexPath = join(faissFilePath, "faiss.index")
+			if (fileExists(faissIndexPath)) {
+				try {
+					this.vectorStore = await FaissStore.load(faissFilePath, this.embeddings)
+				} catch (error) {
+					// ignore, we can't do anything about it, the faiss index is corrupted
+					// we will just recreate it
+				}
+			}
+		}
+
+		// Create documents from text chunks with title and URL metadata
+		const docs: Document[] = texts.map((text) => ({
+			pageContent: text,
+			metadata: {
+				source: url,
+				title: title || "Untitled",
+				expertName,
+			},
+		}))
+
+		try {
+			// Add documents to vector store
+			await this.vectorStore.addDocuments(docs)
+
+			await this.vectorStore.save(faissFilePath)
+
+			console.log(`Successfully stored ${docs.length} chunks for expert ${expertName} from ${url}`)
+		} catch (error) {
+			console.error(`Failed to store chunks in vector database for expert ${expertName}:`, error)
+			throw error
+		}
 	}
 }

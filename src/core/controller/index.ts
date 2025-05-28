@@ -98,7 +98,7 @@ export class Controller {
 	private vsCodeWorkSpaceFolderFsPath!: string
 	private codeIndexAbortController: AbortController
 	private isSideBar: boolean
-	private expertManager: ExpertManager
+	private _expertManager: ExpertManager | undefined
 	private isCodeIndexInProgress: boolean = false
 
 	constructor(
@@ -132,7 +132,6 @@ export class Controller {
 
 		this.codeIndexAbortController = new AbortController()
 		this.workspaceId = getWorkspaceID() || ""
-		this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (getWorkspacePath() || "").trim()
 		if (this.vsCodeWorkSpaceFolderFsPath) {
@@ -146,6 +145,15 @@ export class Controller {
 			this.expertPromptProvider,
 		)
 		this.disposables.push(registration)
+	}
+
+	//TAG: HAI
+	private async getExpertManager(): Promise<ExpertManager> {
+		if (!this._expertManager) {
+			const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+			this._expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
+		}
+		return this._expertManager
 	}
 
 	// Content provider for expert prompts
@@ -258,6 +266,7 @@ export class Controller {
 	 * @param webview A reference to the extension webview
 	 */
 	async handleWebviewMessage(message: WebviewMessage) {
+		const expertManager = await this.getExpertManager()
 		switch (message.type) {
 			case "authStateChanged":
 				await this.setUserInfo(message.user || undefined)
@@ -772,10 +781,7 @@ export class Controller {
 						}
 					} else {
 						// For custom experts, use the existing path
-						const promptPath = await this.expertManager.getExpertPromptPath(
-							this.vsCodeWorkSpaceFolderFsPath,
-							expertName,
-						)
+						const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
 						if (promptPath) {
 							openFile(promptPath)
 						} else {
@@ -789,14 +795,14 @@ export class Controller {
 			case "saveExpert":
 				if (message.text) {
 					const expert = JSON.parse(message.text) as ExpertData
-					await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
+					await expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
 					await this.loadExperts()
 				}
 				break
 			case "deleteExpert":
 				if (message.text) {
 					const expertName = message.text
-					await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
+					await expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
 					await this.loadExperts()
 				}
 				break
@@ -808,18 +814,14 @@ export class Controller {
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
-					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+					await expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 				}
 				await this.loadExperts()
 				break
 			case "deleteDocumentLink":
 				if (message.text && message.expert) {
 					try {
-						await this.expertManager.deleteDocumentLink(
-							this.vsCodeWorkSpaceFolderFsPath,
-							message.expert,
-							message.text,
-						)
+						await expertManager.deleteDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
@@ -830,7 +832,7 @@ export class Controller {
 			case "addDocumentLink":
 				if (message.text && message.expert) {
 					try {
-						await this.expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+						await expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to add document link for expert ${message.expert}:`, error)
@@ -2544,7 +2546,8 @@ Commit message:`
 	}
 
 	async loadExperts() {
-		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+		const expertManager = await this.getExpertManager()
+		const experts = await expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
 		await this.postMessageToWebview({
 			type: "expertsUpdated",
 			experts,
@@ -2552,7 +2555,8 @@ Commit message:`
 	}
 
 	async loadDefaultExperts() {
-		const experts = await this.expertManager.loadDefaultExperts()
+		const expertManager = await this.getExpertManager()
+		const experts = await expertManager.loadDefaultExperts()
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
@@ -2560,7 +2564,8 @@ Commit message:`
 	}
 
 	private async getExpertDocumentsContent(expertName: string): Promise<string> {
-		const expertPath = await this.expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
+		const expertManager = await this.getExpertManager()
+		const expertPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
 
 		if (!expertPath) {
 			return ""
