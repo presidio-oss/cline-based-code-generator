@@ -16,6 +16,7 @@ export interface GuardrailsConfig {
 	injection: {
 		name: string
 		threshold: number
+		mode?: string
 	}
 	pii: {
 		name: string
@@ -31,6 +32,7 @@ export interface GuardrailsConfig {
 		name: string
 		roles: MessageType[]
 		threshold: number
+		mode: string
 	}
 }
 
@@ -44,6 +46,7 @@ export class Guardrails extends GuardrailsEngine {
 		injection: {
 			name: "Prompt Injection",
 			threshold: 0.75,
+			mode: "heuristic",
 		},
 		pii: {
 			name: "PII",
@@ -57,6 +60,7 @@ export class Guardrails extends GuardrailsEngine {
 		},
 		leakage: {
 			name: "Prompt Leakage",
+			mode: "heuristic",
 			roles: ["user"],
 			threshold: 0.75,
 		},

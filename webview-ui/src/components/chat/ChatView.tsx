@@ -335,6 +335,13 @@ const ChatView = ({
 							setPrimaryButtonText("Report GitHub issue")
 							setSecondaryButtonText(undefined)
 							break
+						case "guardrails_filter":
+							setSendingDisabled(false)
+							setClineAsk("followup")
+							setEnableButtons(false)
+							setPrimaryButtonText(undefined)
+							setSecondaryButtonText(undefined)
+							break
 					}
 					break
 				case "say":
@@ -349,6 +356,13 @@ const ChatView = ({
 								setClineAsk(undefined)
 								setEnableButtons(false)
 							}
+							break
+						case "guardrails_filter":
+							setSendingDisabled(false)
+							setClineAsk("followup")
+							setEnableButtons(false)
+							setPrimaryButtonText(undefined)
+							setSecondaryButtonText(undefined)
 							break
 						case "task":
 						case "error":
@@ -431,7 +445,6 @@ const ChatView = ({
 			}
 
 			if (hasContent) {
-				console.log("[ChatView] handleSendMessage - Sending message:", messageToSend)
 				if (messages.length === 0) {
 					await TaskServiceClient.newTask({ text: messageToSend, images })
 				} else if (clineAsk) {
@@ -448,6 +461,7 @@ const ChatView = ({
 						case "resume_completed_task":
 						case "mistake_limit_reached":
 						case "new_task": // user can provide feedback or reject the new task suggestion
+							console.log("sending message with clineAsk", clineAsk, messageToSend, images)
 							vscode.postMessage({
 								type: "askResponse",
 								askResponse: "messageResponse",
@@ -743,6 +757,8 @@ const ChatView = ({
 					}
 					break
 				case "mcp_server_request_started":
+					return false
+				case "guardrails_filter":
 					return false
 			}
 			return true

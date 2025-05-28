@@ -225,6 +225,7 @@ export type ClineAsk =
 	| "condense"
 	| "report_bug"
 	| "guardrails"
+	| "guardrails_filter"
 
 export type ClineSay =
 	| "task"
@@ -325,7 +326,7 @@ export interface ClineApiReqInfo {
 	streamingFailedMessage?: string
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "guardrails_interrupted"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"
 export interface Guard {

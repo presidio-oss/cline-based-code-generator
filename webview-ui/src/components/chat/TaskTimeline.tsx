@@ -52,6 +52,8 @@ const getBlockColor = (message: ClineMessage): string => {
 				return COLOR_PURPLE // Purple for browser actions
 			case "completion_result":
 				return COLOR_GREEN // Green for task success
+			case "guardrails_filter":
+				return COLOR_RED // Red for guardrails filter
 			default:
 				return COLOR_DARK_GRAY // Dark gray for unknown
 		}
@@ -86,6 +88,8 @@ const getBlockColor = (message: ClineMessage): string => {
 				return COLOR_PURPLE // Red for command approvals (same as terminal commands)
 			case "browser_action_launch":
 				return COLOR_PURPLE // Purple for browser launch approvals (same as browser actions)
+			case "guardrails_filter":
+				return COLOR_RED // Red for guardrails filter
 			default:
 				return COLOR_DARK_GRAY // Dark gray for unknown
 		}

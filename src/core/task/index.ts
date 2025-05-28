@@ -1582,9 +1582,11 @@ export class Task {
 			this.didAlreadyUseTool = false
 			this.didCompleteReadingStream = false
 			this.isWaitingForFirstChunk = false
+			this.didAutomaticallyRetryFailedApiRequest = false
+			await this.saveClineMessagesAndUpdateHistory()
 			yield {
 				type: "text",
-				text: Guardrails.MESSAGE,
+				text: `${Guardrails.MESSAGE} (${this.failedGuards.map((guard) => guard.guardName).join(", ")})`,
 			}
 			return
 		}
@@ -3701,17 +3703,21 @@ export class Task {
 			throw new Error("HAI instance aborted")
 		}
 
-		if (this.failedGuards && this.failedGuards.length > 0) {
-			await this.say("text", "Stopping task execution.")
-			return false // Exit the loop
-		}
-
 		// Used to know what models were used in the task if user wants to export metadata for error reporting purposes
 		const currentProviderId = (await customGetState(this.getContext(), "apiProvider")) as string
 		if (currentProviderId && this.api.getModel().id) {
 			try {
 				await this.modelContextTracker.recordModelUsage(currentProviderId, this.api.getModel().id, this.chatSettings.mode)
 			} catch {}
+		}
+
+		if (this.failedGuards && this.failedGuards.length > 0) {
+			await this.ask("guardrails_filter", "Guardrail triggered: stopping task execution.")
+			this.failedGuards = []
+			await this.saveClineMessagesAndUpdateHistory()
+			await this.postStateToWebview()
+			this.consecutiveMistakeCount = 0
+			return false
 		}
 
 		if (this.consecutiveMistakeCount >= 3) {
