@@ -1,6 +1,7 @@
 import * as vscode from "vscode"
 import type { ApiConfiguration } from "../../shared/api"
 import { type ApiHandler, buildApiHandler } from "../../api"
+import { customGetState } from "@/core/storage/state"
 
 export class InlineEditingProvider {
 	private api!: ApiHandler
@@ -46,7 +47,7 @@ export class InlineEditingProvider {
 						const action = new vscode.CodeAction("Edit with hAI", vscode.CodeActionKind.RefactorRewrite)
 						action.command = {
 							command: "hai.editSelectedWithAI",
-							title: "Edit with hAI",
+							title: "Edit with HAI",
 							tooltip: "Edit selected code with HAI",
 						}
 						return [action]
@@ -106,8 +107,8 @@ export class InlineEditingProvider {
 				},
 			),
 
-			vscode.window.onDidChangeTextEditorSelection((e) => {
-				const provider = this.registerCodeLensProvider()
+			vscode.window.onDidChangeTextEditorSelection(async (e) => {
+				const provider = await this.registerCodeLensProvider()
 				this.context?.subscriptions.push(provider)
 			}),
 
@@ -143,7 +144,7 @@ export class InlineEditingProvider {
 							const range = new vscode.Range(buttonLine, 0, buttonLine, 0)
 							const codeLens = new vscode.CodeLens(range)
 							codeLens.command = {
-								title: "⚡ hAI is working...",
+								title: "⚡ HAI is working...",
 								command: "",
 							}
 							return [codeLens]
@@ -336,10 +337,10 @@ export class InlineEditingProvider {
 		]
 	}
 
-	registerCodeLensProvider() {
+	async registerCodeLensProvider() {
 		this.activeCodeLensProvider?.dispose()
 		const isEditing = this.isEditing
-		const isInlineEditEnabled = vscode.workspace.getConfiguration("hai").get<boolean>("inlineEditing") ?? true
+		const isInlineEditEnabled = this.context ? ((await customGetState(this.context, "enableInlineEdit")) ?? true) : true
 		const provider = vscode.languages.registerCodeLensProvider("*", {
 			provideCodeLenses(document) {
 				const editor = vscode.window.activeTextEditor

@@ -11,11 +11,26 @@ const FeatureSettingsSection = () => {
 		setMcpMarketplaceEnabled,
 		chatSettings,
 		setChatSettings,
+
+		// TAG:HAI
+		enableInlineEdit,
+		setEnableInlineEdit,
 	} = useExtensionState()
 
 	return (
 		<div style={{ marginBottom: 20 }}>
 			<div>
+				<VSCodeCheckbox
+					checked={enableInlineEdit}
+					onChange={(e: any) => {
+						const checked = e.target.checked === true
+						setEnableInlineEdit(checked)
+					}}>
+					Enable Inline Editing
+				</VSCodeCheckbox>
+				<p className="text-xs text-[var(--vscode-descriptionForeground)]">Enables inline editing with HAI.</p>
+			</div>
+			<div style={{ marginTop: 10 }}>
 				<VSCodeCheckbox
 					checked={enableCheckpointsSetting}
 					onChange={(e: any) => {

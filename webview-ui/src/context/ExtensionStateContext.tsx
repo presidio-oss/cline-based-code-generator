@@ -89,6 +89,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	detailedStory: IHaiStory | null
 	detailedTask: IHaiTask | null
 	showExperts: boolean
+	setEnableInlineEdit: (value: boolean) => void
 	setShowHaiTaskList: (value: boolean) => void
 	setDetailedStory: (value: IHaiStory | null) => void
 	setDetailedTask: (value: IHaiTask | null) => void
@@ -316,6 +317,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		globalWorkflowToggles: {},
 		shellIntegrationTimeout: 4000, // default timeout for shell integration
 		isNewUser: false,
+		enableInlineEdit: true,
 	})
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
@@ -728,6 +730,11 @@ export const ExtensionStateContextProvider: React.FC<{
 		detailedStory,
 		detailedTask,
 		showExperts,
+		setEnableInlineEdit: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				enableInlineEdit: value,
+			})),
 		setShowHaiTaskList,
 		setDetailedStory,
 		setDetailedTask,

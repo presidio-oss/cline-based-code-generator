@@ -186,6 +186,7 @@ export interface ExtensionState {
 	embeddingConfiguration?: EmbeddingConfiguration
 	expertPrompt?: string
 	vscodeWorkspacePath?: string
+	enableInlineEdit?: boolean
 }
 
 export interface ClineMessage {

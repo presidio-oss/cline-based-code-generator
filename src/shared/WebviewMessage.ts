@@ -123,6 +123,7 @@ export interface WebviewMessage {
 	folder?: string
 	taskId?: string
 	status?: string
+	enableInlineEdit?: boolean
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }

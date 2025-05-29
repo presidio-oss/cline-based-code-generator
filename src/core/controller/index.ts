@@ -509,6 +509,22 @@ export class Controller {
 					}
 				}
 
+				// TAG:HAI
+				if (message.embeddingConfiguration) {
+					await updateEmbeddingConfiguration(this.context, message.embeddingConfiguration, this.workspaceId)
+				}
+
+				if (message.buildContextOptions) {
+					await customUpdateState(this.context, "buildContextOptions", message.buildContextOptions ?? undefined)
+					if (this.task) {
+						this.task.buildContextOptions = message.buildContextOptions
+					}
+				}
+
+				if (typeof message.enableInlineEdit === "boolean") {
+					await customUpdateState(this.context, "enableInlineEdit", message.enableInlineEdit)
+				}
+
 				// after settings are updated, post state to webview
 				await this.postStateToWebview()
 
@@ -1347,6 +1363,7 @@ export class Controller {
 			buildContextOptions,
 			buildIndexProgress,
 			embeddingConfiguration,
+			enableInlineEdit,
 		} = await getAllExtensionState(this.context, this.workspaceId)
 
 		const localClineRulesToggles = ((await customGetState(this.context, "localClineRulesToggles")) as ClineRulesToggles) || {}
@@ -1397,6 +1414,7 @@ export class Controller {
 			buildIndexProgress,
 			embeddingConfiguration,
 			vscodeWorkspacePath: this.vsCodeWorkSpaceFolderFsPath,
+			enableInlineEdit,
 		}
 	}
 

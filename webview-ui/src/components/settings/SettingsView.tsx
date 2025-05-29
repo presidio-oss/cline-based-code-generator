@@ -167,6 +167,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		buildIndexProgress,
 		embeddingConfiguration,
 		vscodeWorkspacePath,
+		enableInlineEdit,
 	} = useExtensionState()
 
 	// Store the original state to detect changes
@@ -178,6 +179,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		enableCheckpointsSetting,
 		mcpMarketplaceEnabled,
 		chatSettings,
+		embeddingConfiguration,
+		buildContextOptions,
+		enableInlineEdit,
 	})
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
@@ -234,7 +238,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			enableCheckpointsSetting,
 			mcpMarketplaceEnabled,
 			apiConfiguration: apiConfigurationToSubmit,
+
+			// TAG:HAI
 			embeddingConfiguration: embeddingConfigurationToSubmit,
+			buildContextOptions: buildContextOptions,
+			enableInlineEdit,
 		})
 
 		if (!withoutDone) {
@@ -251,7 +259,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			planActSeparateModelsSetting !== originalState.current.planActSeparateModelsSetting ||
 			enableCheckpointsSetting !== originalState.current.enableCheckpointsSetting ||
 			mcpMarketplaceEnabled !== originalState.current.mcpMarketplaceEnabled ||
-			JSON.stringify(chatSettings) !== JSON.stringify(originalState.current.chatSettings)
+			JSON.stringify(chatSettings) !== JSON.stringify(originalState.current.chatSettings) ||
+			// TAG:HAI
+			JSON.stringify(embeddingConfiguration) !== JSON.stringify(originalState.current.embeddingConfiguration) ||
+			JSON.stringify(buildContextOptions) !== JSON.stringify(originalState.current.buildContextOptions) ||
+			enableInlineEdit !== originalState.current.enableInlineEdit
 
 		setHasUnsavedChanges(hasChanges)
 	}, [
@@ -262,6 +274,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		enableCheckpointsSetting,
 		mcpMarketplaceEnabled,
 		chatSettings,
+		embeddingConfiguration,
+		buildContextOptions,
+		enableInlineEdit,
 	])
 
 	// Handle cancel button click

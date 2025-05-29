@@ -57,6 +57,7 @@ export function isCustomGlobalKey(key: string): boolean {
 		"shellIntegrationTimeout",
 		"autoApprovalSettings",
 		"favoritedModelIds",
+		"enableInlineEdit",
 	]
 	return customGlobalKeys.includes(key)
 }
@@ -259,6 +260,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		buildContextOptions,
 		buildIndexProgress,
 		isApiConfigurationValid,
+		enableInlineEdit,
 		// Embedding Configuration
 		storedEmbeddingProvider,
 		embeddingModelId,
@@ -372,6 +374,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		customGetState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 		customGetState(context, "isApiConfigurationValid") as Promise<boolean | undefined>,
+		customGetState(context, "enableInlineEdit") as Promise<boolean | undefined>,
 		// Embedding Configurations
 		customGetState(context, "embeddingProvider") as Promise<EmbeddingProvider | undefined>,
 		customGetState(context, "embeddingModelId") as Promise<string | undefined>,
@@ -544,6 +547,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 					systemPromptVersion: "v3", // Setting v3 as default prompt
 				},
 		buildIndexProgress: buildIndexProgress,
+		enableInlineEdit: enableInlineEdit ?? true,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
 		globalClineRulesToggles: globalClineRulesToggles || {},
 		localClineRulesToggles: localClineRulesToggles || {},
