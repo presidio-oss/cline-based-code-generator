@@ -209,7 +209,7 @@ class Task {
         switch (chunk.type) {
           case "text":
             // Parse into content blocks
-            this.assistantMessageContent = parseAssistantMessage(chunk.text)
+            this.assistantMessageContent = parseAssistantMessageV2(chunk.text)
             // Present blocks to user
             await this.presentAssistantMessage()
             break
@@ -220,7 +220,7 @@ class Task {
       await pWaitFor(() => this.userMessageContentReady)
       
       // 4. Continue loop with tool result
-      const recDidEndLoop = await this.recursivelyMakeClineRequests(
+      const recDidEndLoop = await this.recursivelyMakeHAIRequests(
         this.userMessageContent
       )
     }
@@ -430,7 +430,7 @@ The Task class provides robust task state management and resumption capabilities
 class Task {
   async resumeTaskFromHistory() {
     // 1. Load saved state
-    this.clineMessages = await getSavedClineMessages(this.getContext(), this.taskId)
+    this.clineMessages = await getSavedHAIMessages(this.getContext(), this.taskId)
     this.apiConversationHistory = await getSavedApiConversationHistory(this.getContext(), this.taskId)
 
     // 2. Handle interrupted tool executions
@@ -462,7 +462,7 @@ class Task {
   private async saveTaskState() {
     // Save conversation history
     await saveApiConversationHistory(this.getContext(), this.taskId, this.apiConversationHistory)
-    await saveClineMessages(this.getContext(), this.taskId, this.clineMessages)
+    await saveHAIMessages(this.getContext(), this.taskId, this.clineMessages)
     
     // Create checkpoint
     const commitHash = await this.checkpointTracker?.commit()
@@ -734,7 +734,7 @@ class Controller {
     const task = `Set up the MCP server from ${mcpDetails.githubUrl}...`
 
     // Initialize task and show chat view
-    await this.initClineWithTask(task)
+    await this.initHAIWithTask(task)
   }
 }
 ```
