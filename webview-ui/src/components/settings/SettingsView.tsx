@@ -572,7 +572,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 										) : (
 											<ApiOptions key={"single"} showModelOptions={true} />
 										)}
-										// TAG:HAI
+
 										<div style={{ marginBottom: 10 }}>
 											<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
 											<EmbeddingOptions showModelOptions={true} />

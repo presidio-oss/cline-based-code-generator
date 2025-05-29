@@ -231,7 +231,7 @@ describe("ApiOptions Component", () => {
 				<ApiOptions showModelOptions={true} />
 			</ExtensionStateContextProvider>,
 		)
-		const modelIdSelect = screen.getByLabelText("Model")
+		const modelIdSelect = screen.getByLabelText("Model *")
 		expect(modelIdSelect).toBeInTheDocument()
 		expect(modelIdSelect).toHaveValue("Qwen/Qwen2.5-32B-Instruct-fast")
 	})

@@ -180,7 +180,6 @@ const AppContent = () => {
 								isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
 								showAnnouncement={showAnnouncement}
 								hideAnnouncement={hideAnnouncement}
-								// TAG:HAI
 								onTaskSelect={(selectedTask) => {
 									setSelectedTask(selectedTask)
 								}}
