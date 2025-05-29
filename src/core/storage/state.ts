@@ -54,6 +54,9 @@ export function isCustomGlobalKey(key: string): boolean {
 		"globalWorkflowToggles",
 		"globalClineRulesToggles",
 		"lastShownAnnouncementId",
+		"shellIntegrationTimeout",
+		"autoApprovalSettings",
+		"favoritedModelIds",
 	]
 	return customGlobalKeys.includes(key)
 }

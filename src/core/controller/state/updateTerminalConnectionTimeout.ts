@@ -1,6 +1,6 @@
 import { Controller } from ".."
 import { Int64, Int64Request } from "../../../shared/proto/common"
-import { updateGlobalState } from "../../storage/state"
+import { customUpdateState } from "../../storage/state"
 
 /**
  * Updates the terminal connection timeout setting
@@ -14,7 +14,7 @@ export async function updateTerminalConnectionTimeout(controller: Controller, re
 
 		if (typeof timeout === "number" && !isNaN(timeout) && timeout > 0) {
 			// Update the global state directly
-			await updateGlobalState(controller.context, "shellIntegrationTimeout", timeout)
+			await customUpdateState(controller.context, "shellIntegrationTimeout", timeout)
 			return { value: timeout }
 		} else {
 			console.warn(`Invalid shell integration timeout value received: ${timeout}. Expected a positive number.`)
