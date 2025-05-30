@@ -1,5 +1,6 @@
+import * as vscode from "vscode"
 import { Controller } from "../index"
-import { EmptyRequest } from "@shared/proto/common"
+import { EmptyRequest } from "../../../shared/proto/common"
 import { StreamingResponseHandler, getRequestRegistry } from "../grpc-handler"
 
 // Keep track of active state subscriptions

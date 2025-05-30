@@ -11,6 +11,8 @@ import { StateServiceDefinition } from "@shared/proto/state"
 import { TaskServiceDefinition } from "@shared/proto/task"
 import { WebServiceDefinition } from "@shared/proto/web"
 import { ModelsServiceDefinition } from "@shared/proto/models"
+import { SlashServiceDefinition } from "@shared/proto/slash"
+import { UiServiceDefinition } from "@shared/proto/ui"
 
 const AccountServiceClient = createGrpcClient(AccountServiceDefinition)
 const BrowserServiceClient = createGrpcClient(BrowserServiceDefinition)
@@ -21,6 +23,8 @@ const StateServiceClient = createGrpcClient(StateServiceDefinition)
 const TaskServiceClient = createGrpcClient(TaskServiceDefinition)
 const WebServiceClient = createGrpcClient(WebServiceDefinition)
 const ModelsServiceClient = createGrpcClient(ModelsServiceDefinition)
+const SlashServiceClient = createGrpcClient(SlashServiceDefinition)
+const UiServiceClient = createGrpcClient(UiServiceDefinition)
 
 export {
 	AccountServiceClient,
@@ -32,4 +36,6 @@ export {
 	TaskServiceClient,
 	WebServiceClient,
 	ModelsServiceClient,
+	SlashServiceClient,
+	UiServiceClient
 }

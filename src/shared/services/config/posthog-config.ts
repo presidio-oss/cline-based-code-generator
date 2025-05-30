@@ -2,4 +2,5 @@
 export const posthogConfig = {
 	apiKey: "api-key",
 	host: "url",
+	uiHost: "ui-host",
 }

@@ -1,6 +1,6 @@
-import type { ToggleMcpServerRequest, McpServers } from "@shared/proto/mcp"
+import type { ToggleMcpServerRequest, McpServers } from "../../../shared/proto/mcp"
 import type { Controller } from "../index"
-import { convertMcpServersToProtoMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
+import { convertMcpServersToProtoMcpServers } from "../../../shared/proto-conversions/mcp/mcp-server-conversion"
 
 /**
  * Toggles an MCP server's enabled/disabled status

@@ -18,6 +18,7 @@ export class PostHogClientProvider {
 		this.client = new PostHog(apiKey, {
 			host,
 			enableExceptionAutocapture: false,
+			defaultOptIn: false,
 		})
 
 		return this.client

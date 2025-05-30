@@ -1,5 +1,6 @@
 import * as path from "path"
 import * as fs from "fs"
+import execa from "execa"
 import chalk from "chalk"
 import ora from "ora"
 import { getAllAdapters } from "../adapters/index"
