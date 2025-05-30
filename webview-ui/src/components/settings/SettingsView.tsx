@@ -51,8 +51,6 @@ import EmbeddingOptions from "./EmbeddingOptions"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "@utils/constants"
 import { validateEmbeddingConfiguration } from "@shared/validate"
 
-const { IS_DEV } = process.env
-
 // Styles for the tab system
 const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
 const settingsTabList =
@@ -709,8 +707,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 								</div>
 							)}
 
-							{/* Debug Tab (only in dev mode) */}
-							{IS_DEV && activeTab === "debug" && (
+							{activeTab === "debug" && (
 								<div>
 									{renderSectionHeader("debug")}
 									<Section>
