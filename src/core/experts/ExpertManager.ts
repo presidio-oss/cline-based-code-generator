@@ -1019,7 +1019,7 @@ export class ExpertManager {
 	/**
 	 * Search for a query in the expert's vector store
 	 */
-	private async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
+	async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
 		console.log(`Searching for query: ${query} in expert: ${expertName}`)
 
 		try {

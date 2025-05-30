@@ -260,6 +260,7 @@ export interface ClineSayTool {
 		| "searchFiles"
 		| "findRelevantFiles"
 		| "codeSecurityScan"
+		| "customExpertContext"
 	path?: string
 	diff?: string
 	content?: string

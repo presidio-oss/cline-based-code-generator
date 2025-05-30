@@ -145,3 +145,8 @@ export interface CodeSecurityScanToolUse extends ToolUse {
 	name: "code_security_scan"
 	params: Partial<Record<ToolParamName, string>>
 }
+
+export interface CustomExpertContextToolUse extends ToolUse {
+	name: "custom_expert_context"
+	params: Partial<Pick<Record<ToolParamName, string>, "query" | "expertName">>
+}

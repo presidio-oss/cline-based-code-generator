@@ -25,7 +25,7 @@ import { BrowserSession } from "@services/browser/BrowserSession"
 import { UrlContentFetcher } from "@services/browser/UrlContentFetcher"
 import { listFiles } from "@services/glob/list-files"
 import { regexSearchFiles } from "@services/ripgrep"
-import { telemetryService } from "@/services/posthog/telemetry/TelemetryService"
+import { telemetryService } from "@services/posthog/telemetry/TelemetryService"
 import { parseSourceCodeForDefinitionsTopLevel } from "@services/tree-sitter"
 import { ApiConfiguration } from "@shared/api"
 import { findLast, findLastIndex, parsePartialArrayString } from "@shared/array"
@@ -106,6 +106,7 @@ import { parseSlashCommands } from "@core/slash-commands"
 import WorkspaceTracker from "@integrations/workspace/WorkspaceTracker"
 import { McpHub } from "@services/mcp/McpHub"
 import { isInTestMode } from "../../services/test/TestMode"
+import { ExpertManager } from "@core/experts/ExpertManager"
 
 export const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -4349,6 +4350,8 @@ export class Task {
 				return `[${block.name} for '${block.params.path}']`
 			case "code_security_scan":
 				return `[${block.name}']`
+			case "custom_expert_context":
+				return `[${block.name} for '${block.params.query}' in expert '${block.params.expertName}']`
 			default:
 				return ""
 		}
@@ -4450,6 +4453,65 @@ export class Task {
 					break
 				} catch (error) {
 					await handleError("code security scan", error)
+					break
+				}
+			}
+			case "custom_expert_context": {
+				const query: string | undefined = block.params.query
+				const expertName: string | undefined = block.params.expertName
+
+				// Format the path and content to be compatible with ClineSayTool
+				const sharedMessageProps: ClineSayTool = {
+					tool: "customExpertContext",
+					path: expertName ? expertName : "(unknown expert)",
+					content: "",
+				}
+
+				try {
+					if (block.partial) {
+						// For partial tool content, we just display the initial message
+						await this.ask("tool", JSON.stringify(sharedMessageProps), block.partial).catch(() => {})
+						break
+					} else {
+						// Validate required parameters
+						if (!query) {
+							this.consecutiveMistakeCount++
+							pushToolResult(await this.sayAndCreateMissingParamError("custom_expert_context", "query"))
+							await this.saveCheckpoint()
+							break
+						}
+						if (!expertName) {
+							this.consecutiveMistakeCount++
+							pushToolResult(await this.sayAndCreateMissingParamError("custom_expert_context", "expertName"))
+							await this.saveCheckpoint()
+							break
+						}
+
+						this.consecutiveMistakeCount = 0
+
+						// Create ExpertManager instance and search for the query
+						const expertManager = new ExpertManager(this.context, this.taskId, this.embeddingConfiguration)
+						const searchResults = await expertManager.search(query, expertName, cwd)
+
+						// Format the complete message with search results
+						const completeMessage = JSON.stringify({
+							tool: "customExpertContext",
+							path: expertName,
+							content: searchResults,
+							operationIsLocatedInWorkspace: true,
+						} satisfies ClineSayTool)
+
+						// Display results in UI
+						await this.say("tool", completeMessage, undefined, false)
+
+						// Return results to the model
+						pushToolResult(searchResults)
+						await this.saveCheckpoint()
+						break
+					}
+				} catch (error) {
+					await handleError("searching expert context", error)
+					await this.saveCheckpoint()
 					break
 				}
 			}

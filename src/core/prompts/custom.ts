@@ -13,6 +13,17 @@ Usage:
     <task>User's given task here</task>
 </find_relevant_files>
 
+## custom_expert_context
+Description: Request to find relevant context from a custom expert's knowledge base for the given query . You need to retrieve information based on the user's query. This tool will search the vector database and return the most relevant content. This tool is specialized in retrieving context from a custom expert's knowledge base, so use it when you need specific information from the expert's domain.
+Parameters:
+- query: (required) The search query to find relevant information in the expert's knowledge base.
+- expertName: (required) The name of the custom expert whose knowledge base should be searched.
+Usage:
+<custom_expert_context>
+<query>Your search query here</query>
+<expertName>Name of the custom expert</expertName>
+</custom_expert_context>
+
 ## code_security_scan
 Description: Request to perform a security scan on the generated code for OWASP Top 10 vulnerabilities and security issues. This tool will analyze all the files that are modified for potential security risks and provide a report. The tool is specialized in scanning code for security vulnerabilities, so use it wisely don't assume that that the code is free from vulnerabilities.
 Usage:
@@ -48,6 +59,7 @@ export const customRulesPrompt = (enabled: boolean) =>
   * Does the user mention specific files, directories, or code components?
   * Is file context necessary to provide an appropriate response?
   If the answer is no to these questions, skip using the tool and respond directly.
+- When working with custom experts use the \`custom_expert_context\` tool to retrieve relevant information from the expert's knowledge base. This tool allows you to search for specific information based on the user's query.
 - You should always use the \`code_security_scan\` tool before attempting to complete any code-related tasks to ensure security and compliance with best practices. Failure to perform a security scan may expose the code to vulnerabilities and security risks. Always prioritize security and compliance with best practices. If any issue or vulnerabilities are found, address them before proceeding with the task.
 - While fixing the vulnerabilities do not remove any of the working code only replace the implementation that is affected with the vulnerabilities, if you require anymore information or course correction, consult with the user before proceeding to apply any of the change. Always show the plan before fixing the security vulnerabilities. Before fixing the vulnerabilities, you should always get the user's approval before proceeding with the fixing process.
 `
