@@ -23,6 +23,7 @@ import { EmbeddingConfiguration } from "@/shared/embeddings"
 import { BedrockEmbeddings } from "@langchain/aws"
 import { OllamaEmbeddings } from "@langchain/ollama"
 import { OpenAIEmbeddings } from "@langchain/openai"
+import { name } from "tar/types"
 
 export class ExpertManager {
 	private extensionContext: vscode.ExtensionContext
@@ -39,7 +40,7 @@ export class ExpertManager {
 	public static readonly STATUS_FILE = "status.json"
 	public static readonly PLACEHOLDER_FILE = "placeholder.txt"
 	public static readonly FAISS = ".faiss"
-	public static readonly CRAWLEE_STORAGE = "crawlee_storage"
+	public static readonly CRAWLEE_STORAGE = ".crawlee"
 
 	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, embeddingConfig: EmbeddingConfiguration) {
 		this.extensionContext = extensionContext
@@ -68,8 +69,18 @@ export class ExpertManager {
 		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
 		const metadataFilePath = path.join(expertDir, ExpertManager.METADATA_FILE)
 		const faissFilePath = path.join(expertDir, ExpertManager.FAISS)
+		const faissStatusFilePath = path.join(faissFilePath, ExpertManager.STATUS_FILE)
 		const crawlStorage = path.join(expertDir, ExpertManager.CRAWLEE_STORAGE)
-		return { sanitizedName, expertDir, docsDir, statusFilePath, metadataFilePath, faissFilePath, crawlStorage }
+		return {
+			sanitizedName,
+			expertDir,
+			docsDir,
+			statusFilePath,
+			metadataFilePath,
+			faissFilePath,
+			faissStatusFilePath,
+			crawlStorage,
+		}
 	}
 
 	/**
@@ -86,8 +97,13 @@ export class ExpertManager {
 		}
 
 		const parsedExpert = validationResult.data
+		const isDeepCrawl = parsedExpert.deepCrawl || false
 
-		const { expertDir, docsDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, parsedExpert.name)
+		const { expertDir, docsDir, statusFilePath, faissStatusFilePath, metadataFilePath } = this.getExpertPaths(
+			workspacePath,
+			parsedExpert.name,
+		)
+
 		await createDirectoriesForFile(path.join(expertDir, ExpertManager.PLACEHOLDER_FILE))
 
 		const metadata = {
@@ -95,6 +111,8 @@ export class ExpertManager {
 			isDefault: parsedExpert.isDefault,
 			createdAt: parsedExpert.createdAt || new Date().toISOString(),
 			documentLinks: parsedExpert.documentLinks || [],
+			deepCrawl: isDeepCrawl,
+			maxRequestsPerCrawl: parsedExpert.maxRequestsPerCrawl || 10,
 		}
 		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
 
@@ -102,9 +120,6 @@ export class ExpertManager {
 		await fs.writeFile(promptFilePath, parsedExpert.prompt)
 
 		if (parsedExpert.documentLinks && parsedExpert.documentLinks.length > 0) {
-			const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
-			await createDirectoriesForFile(path.join(docsDir, ExpertManager.PLACEHOLDER_FILE))
-
 			// Set initial status to "pending"
 			const statusData = parsedExpert.documentLinks.map((link) => ({
 				...link,
@@ -114,11 +129,24 @@ export class ExpertManager {
 				error: null,
 			}))
 
-			const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
-			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+			if (isDeepCrawl) {
+				// For deepcrawl, store status in the .faiss directory
+				await this.updateFaissStatusFile(faissStatusFilePath, statusData)
+			} else {
+				// For regular docs, store status in the docs directory
+				await createDirectoriesForFile(path.join(docsDir, ExpertManager.PLACEHOLDER_FILE))
+				await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+			}
 
 			// Process document links (pass workspacePath)
-			this.processDocumentLinks(parsedExpert.name, expertDir, statusData, workspacePath)
+			this.processDocumentLinks(
+				parsedExpert.name,
+				expertDir,
+				statusData,
+				workspacePath,
+				isDeepCrawl,
+				parsedExpert.maxRequestsPerCrawl,
+			)
 		}
 	}
 
@@ -164,14 +192,26 @@ export class ExpertManager {
 		expertDir: string,
 		documentLinks: DocumentLink[],
 		workspacePath: string,
+		deepCrawl: boolean = false,
+		maxRequestsPerCrawl: number = 10,
 	): Promise<void> {
-		const { docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
+		const { docsDir, statusFilePath, faissStatusFilePath } = this.getExpertPaths(workspacePath, expertName)
 
 		if (!this.extensionContext) {
 			console.error("Extension context not available")
 			return
 		}
 
+		// If deepcrawl is enabled, we only need to use crawlAndConvertToMarkdown
+		// which will handle the status updates in the .faiss directory
+		if (deepCrawl) {
+			for (const link of documentLinks) {
+				await this.crawlAndConvertToMarkdown(link.url, expertName, workspacePath, maxRequestsPerCrawl)
+			}
+			return
+		}
+
+		// For regular (non-deepcrawl) documents, proceed with the regular flow
 		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
 		try {
 			await urlContentFetcher.launchBrowser()
@@ -203,10 +243,7 @@ export class ExpertManager {
 
 				await this.updateStatusFile(statusFilePath, existingStatusData)
 
-				//invoke crawlAndConvertToMarkdown
-				await this.crawlAndConvertToMarkdown(link.url, expertName, workspacePath, 2)
-
-				// Process the document link
+				// Process the document link (only for non-deepcrawl)
 				await this.processSingleDocumentLink(expertName, docsDir, statusFilePath, link, urlContentFetcher)
 
 				// Update the status file after processing
@@ -226,9 +263,30 @@ export class ExpertManager {
 	 * Refresh (or edit) a single document link for an expert.
 	 */
 	async refreshDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const { docsDir, statusFilePath } = this.getExpertPaths(workspacePath, expertName)
+		// Read metadata to determine if this is a deepcrawl expert
+		const { docsDir, statusFilePath, faissStatusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
 
-		let statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		// Get deepcrawl setting from metadata
+		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
+		const isDeepCrawl = metadata.deepCrawl || false
+
+		if (isDeepCrawl) {
+			// For deepcrawl experts, just re-crawl the URL - it will update the status in .faiss
+			await this.deleteChunk(linkUrl, expertName, workspacePath)
+			await this.crawlAndConvertToMarkdown(linkUrl, expertName, workspacePath, metadata.maxRequestsPerCrawl || 10)
+			return
+		}
+
+		// For regular experts, continue with the existing flow
+		// Read existing status data
+		let statusData: DocumentLink[] = []
+		if (await fileExistsAtPath(statusFilePath)) {
+			statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+		} else {
+			console.error("Status file not found for expert:", expertName)
+			return
+		}
+
 		const index = statusData.findIndex((link) => link.url === linkUrl)
 		if (index === -1) {
 			return
@@ -253,6 +311,12 @@ export class ExpertManager {
 
 			// Update the status file after processing
 			await this.updateStatusFile(statusFilePath, statusData)
+		} catch (error) {
+			// Update status to FAILED if processing fails
+			statusData[index].status = DocumentStatus.FAILED
+			statusData[index].processedAt = new Date().toISOString()
+			statusData[index].error = error instanceof Error ? error.message : String(error)
+			await this.updateStatusFile(statusFilePath, statusData)
 		} finally {
 			await urlContentFetcher.closeBrowser()
 		}
@@ -261,26 +325,17 @@ export class ExpertManager {
 	/**
 	 * Add document link
 	 */
-
 	async addDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const { expertDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
+		const { expertDir, statusFilePath, faissStatusFilePath, metadataFilePath } = this.getExpertPaths(
+			workspacePath,
+			expertName,
+		)
 
-		// Ensure the docs directory exists
-		await createDirectoriesForFile(statusFilePath)
+		// Read metadata to determine if this is a deepcrawl expert
+		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
+		const isDeepCrawl = metadata.deepCrawl || false
 
-		// Read or initialize the status file
-		let statusData: DocumentLink[] = []
-		if (await fileExistsAtPath(statusFilePath)) {
-			statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
-		}
-
-		// Check if the maximum number of document links is reached
-		if (statusData.length >= 3) {
-			vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
-			return
-		}
-
-		// Add the new document link
+		// Create a new document link
 		const newLink: DocumentLink = {
 			url: linkUrl,
 			status: DocumentStatus.PENDING,
@@ -289,46 +344,104 @@ export class ExpertManager {
 			error: null,
 		}
 
-		statusData.push(newLink)
-		await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+		if (isDeepCrawl) {
+			// For deepcrawl experts, use faiss status file
+			let faissStatusData: DocumentLink[] = []
+			if (await fileExistsAtPath(faissStatusFilePath)) {
+				faissStatusData = JSON.parse(await fs.readFile(faissStatusFilePath, "utf-8"))
+			}
 
-		// Update metadata.json with the new document link
-		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
-		metadata.documentLinks = statusData.map((link) => ({ url: link.url }))
-		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+			// Check max links
+			if (faissStatusData.length >= 3) {
+				vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
+				return
+			}
 
-		// Process the newly added document link
-		await this.processDocumentLinks(expertName, expertDir, [newLink], workspacePath)
+			// Add to faiss status.json
+			faissStatusData.push(newLink)
+			await this.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
+
+			// Update metadata.json
+			metadata.documentLinks = faissStatusData.map((link) => ({ url: link.url }))
+			await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+
+			// Process the document with deep crawling
+			await this.crawlAndConvertToMarkdown(linkUrl, expertName, workspacePath, metadata.maxRequestsPerCrawl || 10)
+		} else {
+			// For regular experts, use docs status file
+			// Ensure the docs directory exists
+			await createDirectoriesForFile(statusFilePath)
+
+			// Read or initialize the status file
+			let statusData: DocumentLink[] = []
+			if (await fileExistsAtPath(statusFilePath)) {
+				statusData = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+			}
+
+			// Check if the maximum number of document links is reached
+			if (statusData.length >= 3) {
+				vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
+				return
+			}
+
+			statusData.push(newLink)
+			await fs.writeFile(statusFilePath, JSON.stringify(statusData, null, 2))
+
+			// Update metadata.json with the new document link
+			metadata.documentLinks = statusData.map((link) => ({ url: link.url }))
+			await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+
+			// Process the newly added document link
+			await this.processDocumentLinks(
+				expertName,
+				expertDir,
+				[newLink],
+				workspacePath,
+				isDeepCrawl,
+				metadata.maxRequestsPerCrawl,
+			)
+		}
 	}
 
 	/**
 	 * Delete a document link for a custom expert
 	 */
 	async deleteDocumentLink(workspacePath: string, expertName: string, linkUrl: string): Promise<void> {
-		const { docsDir, statusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
+		const { docsDir, statusFilePath, faissStatusFilePath, metadataFilePath } = this.getExpertPaths(workspacePath, expertName)
 
-		if (!(await fileExistsAtPath(statusFilePath))) {
-			throw new Error("Status file not found")
-		}
-
-		const statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
-		const updatedStatusData = statusData.filter((link) => link.url !== linkUrl)
-
-		await fs.writeFile(statusFilePath, JSON.stringify(updatedStatusData, null, 2))
-
-		// Update metadata.json after deleting the document link
+		// Read metadata to determine if this was a deepcrawl link
 		const metadata = JSON.parse(await fs.readFile(metadataFilePath, "utf-8"))
-		metadata.documentLinks = updatedStatusData.map((link) => ({ url: link.url }))
-		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
+		const isDeepCrawl = metadata.deepCrawl || false
 
-		// Optionally delete the associated file if it exists
-		const linkToDelete = statusData.find((link) => link.url === linkUrl)
-		if (linkToDelete?.filename) {
-			const filePath = path.join(docsDir, linkToDelete.filename)
-			if (await fileExistsAtPath(filePath)) {
-				await fs.unlink(filePath)
+		// Delete from vector DB regardless (since the URL might have been crawled before)
+		await this.deleteChunk(linkUrl, expertName, workspacePath)
+
+		// Update regular status.json if it exists
+		if (await fileExistsAtPath(statusFilePath)) {
+			const statusData: DocumentLink[] = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+			const updatedStatusData = statusData.filter((link) => link.url !== linkUrl)
+			await fs.writeFile(statusFilePath, JSON.stringify(updatedStatusData, null, 2))
+
+			// Delete the associated file if it exists
+			const linkToDelete = statusData.find((link) => link.url === linkUrl)
+			if (linkToDelete?.filename) {
+				const filePath = path.join(docsDir, linkToDelete.filename)
+				if (await fileExistsAtPath(filePath)) {
+					await fs.unlink(filePath)
+				}
 			}
 		}
+
+		// Update faiss status.json if it exists
+		if (isDeepCrawl && (await fileExistsAtPath(faissStatusFilePath))) {
+			const faissStatusData: DocumentLink[] = JSON.parse(await fs.readFile(faissStatusFilePath, "utf-8"))
+			const updatedFaissStatusData = faissStatusData.filter((link) => link.url !== linkUrl)
+			await this.updateFaissStatusFile(faissStatusFilePath, updatedFaissStatusData)
+		}
+
+		// Update metadata.json after deleting the document link
+		metadata.documentLinks = metadata.documentLinks.filter((link: any) => link.url !== linkUrl)
+		await fs.writeFile(metadataFilePath, JSON.stringify(metadata, null, 2))
 	}
 
 	/**
@@ -360,6 +473,8 @@ export class ExpertManager {
 					const promptPath = path.join(expertDir, ExpertManager.PROMPT_FILE)
 					const docsDir = path.join(expertDir, ExpertManager.DOCS_DIR)
 					const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
+					const faissFilePath = path.join(expertDir, ExpertManager.FAISS)
+					const faissStatusFilePath = path.join(faissFilePath, ExpertManager.STATUS_FILE)
 
 					if (!(await fileExistsAtPath(metadataPath)) || !(await fileExistsAtPath(promptPath))) {
 						continue
@@ -370,53 +485,126 @@ export class ExpertManager {
 					const promptContent = await fs.readFile(promptPath, "utf-8")
 
 					let documentLinks: DocumentLink[] = metadata.documentLinks || []
+					const isDeepCrawl = metadata.deepCrawl || false
 
-					// Keep metadata.json as source of truth
-					if (await fileExistsAtPath(statusFilePath)) {
-						try {
-							const statusContent = await fs.readFile(statusFilePath, "utf-8")
-							const allStatusLinks: DocumentLink[] = JSON.parse(statusContent)
+					// Check if this is a deepcrawl expert
+					if (isDeepCrawl) {
+						// For deepcrawl, prioritize faiss status.json if it exists
+						if (await fileExistsAtPath(faissStatusFilePath)) {
+							try {
+								const faissStatusContent = await fs.readFile(faissStatusFilePath, "utf-8")
+								const faissStatusLinks: DocumentLink[] = JSON.parse(faissStatusContent)
 
-							const metadataUrls = new Set(documentLinks.map((link) => link.url))
-							const statusUrls = new Set(allStatusLinks.map((link) => link.url))
+								const metadataUrls = new Set(documentLinks.map((link) => link.url))
+								const faissStatusUrls = new Set(faissStatusLinks.map((link) => link.url))
 
-							// Add missing links from metadata.json
+								// Add missing links from metadata.json to faiss status.json
+								for (const link of documentLinks) {
+									if (!faissStatusUrls.has(link.url)) {
+										// This will trigger crawling and update both the docs and faiss status
+										await this.addDocumentLink(workspacePath, metadata.name, link.url)
+									}
+								}
+
+								// Remove links from faiss status.json that are not in metadata.json
+								for (const link of faissStatusLinks) {
+									if (!metadataUrls.has(link.url)) {
+										await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
+									}
+								}
+
+								// Update documentLinks with the filtered faiss status links
+								const seenUrls = new Set<string>()
+								documentLinks = []
+
+								for (const link of faissStatusLinks) {
+									if (metadataUrls.has(link.url) && !seenUrls.has(link.url)) {
+										documentLinks.push(link)
+										seenUrls.add(link.url)
+									}
+								}
+							} catch (error) {
+								console.error(`Failed to sync faiss status.json for ${folder}:`, error)
+							}
+						} else {
+							// Faiss status.json missing, initialize it from metadata
+							const faissStatusLinks: DocumentLink[] = []
 							for (const link of documentLinks) {
-								if (!statusUrls.has(link.url)) {
-									await this.addDocumentLink(workspacePath, metadata.name, link.url)
-								}
+								faissStatusLinks.push({
+									url: link.url,
+									status: DocumentStatus.PENDING,
+									processedAt: new Date().toISOString(),
+									error: null,
+								})
 							}
 
-							// Remove links from status.json that are not in metadata.json
-							for (const link of allStatusLinks) {
-								if (!metadataUrls.has(link.url)) {
-									await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
-								}
+							// Create the faiss directory and status file
+							await this.updateFaissStatusFile(faissStatusFilePath, faissStatusLinks)
+
+							// Process links for crawling
+							for (const link of documentLinks) {
+								await this.crawlAndConvertToMarkdown(
+									link.url,
+									metadata.name,
+									workspacePath,
+									metadata.maxRequestsPerCrawl || 10,
+								)
 							}
 
-							// Filtered status.json entries based on metadata.json
-							const seenUrls = new Set<string>()
-							documentLinks = []
-
-							for (const link of allStatusLinks) {
-								if (metadataUrls.has(link.url) && !seenUrls.has(link.url)) {
-									documentLinks.push(link)
-									seenUrls.add(link.url)
-								}
+							// Read the updated status
+							if (await fileExistsAtPath(faissStatusFilePath)) {
+								const updatedContent = await fs.readFile(faissStatusFilePath, "utf-8")
+								documentLinks = JSON.parse(updatedContent)
 							}
-						} catch (error) {
-							console.error(`Failed to sync status.json for ${folder}:`, error)
 						}
 					} else {
-						// status.json missing, process links from metadata
-						for (const link of documentLinks) {
-							await this.addDocumentLink(workspacePath, metadata.name, link.url)
-						}
-
+						// Regular non-deepcrawl expert, handle regular status.json
 						if (await fileExistsAtPath(statusFilePath)) {
-							const refreshed = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
-							const metadataUrls = new Set(documentLinks.map((l) => l.url))
-							documentLinks = refreshed.filter((link: DocumentLink) => metadataUrls.has(link.url))
+							try {
+								const statusContent = await fs.readFile(statusFilePath, "utf-8")
+								const allStatusLinks: DocumentLink[] = JSON.parse(statusContent)
+
+								const metadataUrls = new Set(documentLinks.map((link) => link.url))
+								const statusUrls = new Set(allStatusLinks.map((link) => link.url))
+
+								// Add missing links from metadata.json
+								for (const link of documentLinks) {
+									if (!statusUrls.has(link.url)) {
+										await this.addDocumentLink(workspacePath, metadata.name, link.url)
+									}
+								}
+
+								// Remove links from status.json that are not in metadata.json
+								for (const link of allStatusLinks) {
+									if (!metadataUrls.has(link.url)) {
+										await this.deleteDocumentLink(workspacePath, metadata.name, link.url)
+									}
+								}
+
+								// Filtered status.json entries based on metadata.json
+								const seenUrls = new Set<string>()
+								documentLinks = []
+
+								for (const link of allStatusLinks) {
+									if (metadataUrls.has(link.url) && !seenUrls.has(link.url)) {
+										documentLinks.push(link)
+										seenUrls.add(link.url)
+									}
+								}
+							} catch (error) {
+								console.error(`Failed to sync status.json for ${folder}:`, error)
+							}
+						} else {
+							// status.json missing, process links from metadata
+							for (const link of documentLinks) {
+								await this.addDocumentLink(workspacePath, metadata.name, link.url)
+							}
+
+							if (await fileExistsAtPath(statusFilePath)) {
+								const refreshed = JSON.parse(await fs.readFile(statusFilePath, "utf-8"))
+								const metadataUrls = new Set(documentLinks.map((l) => l.url))
+								documentLinks = refreshed.filter((link: DocumentLink) => metadataUrls.has(link.url))
+							}
 						}
 					}
 
@@ -549,7 +737,6 @@ export class ExpertManager {
 	/**
 	 * Load the default Experts
 	 */
-
 	async loadDefaultExperts(): Promise<ExpertData[]> {
 		const expertsDir = path.join(this.extensionContext.extensionPath, GlobalFileNames.defaultExperts)
 
@@ -603,43 +790,136 @@ export class ExpertManager {
 	}
 
 	/**
+	 * Get document IDs for a given URL
+	 */
+	private async getDocumentIds(url: string): Promise<string[]> {
+		console.log(`Retrieving document IDs for URL: ${url}`)
+		const docStore = this.vectorStore.getDocstore()._docs
+
+		//log the entire docstore to view in console
+		console.log("Document Store:", docStore)
+
+		const ids: string[] = []
+
+		// Iterate through the Map entries
+		docStore.forEach((doc, id) => {
+			if (doc?.id === url) {
+				ids.push(id)
+			}
+		})
+
+		console.log(`Found ${ids.length} document IDs for file ${url}`)
+
+		return ids
+	}
+
+	/**
+	 * Update status file in .faiss directory
+	 */
+	private async updateFaissStatusFile(faissStatusFilePath: string, links: DocumentLink[]): Promise<void> {
+		try {
+			// Create the .faiss directory if it doesn't exist
+			await createDirectoriesForFile(faissStatusFilePath)
+			await fs.writeFile(faissStatusFilePath, JSON.stringify(links, null, 2))
+		} catch (error) {
+			console.error(`Failed to update faiss status file at ${faissStatusFilePath}:`, error)
+		}
+	}
+
+	/**
 	 * crawl the url
 	 */
-	private async crawlAndConvertToMarkdown(
+	async crawlAndConvertToMarkdown(
 		url: string,
 		expertName: string,
 		workspacePath: string,
 		maxRequestsPerCrawl: number = 10,
 	): Promise<void> {
-		const { PlaywrightCrawler } = await import("crawlee")
+		const { PlaywrightCrawler, Configuration } = await import("crawlee")
 		const self = this
-		const { crawlStorage } = this.getExpertPaths(workspacePath, expertName)
-		process.env.CRAWLEE_STORAGE_DIR = crawlStorage
-		const crawler = new PlaywrightCrawler({
-			async requestHandler({ request, page, enqueueLinks }) {
-				const title = await page.title()
-				const content = await page.content()
-				const url = request.loadedUrl
+		const { faissStatusFilePath } = this.getExpertPaths(workspacePath, expertName)
 
-				// Parse and clean HTML
-				const $ = cheerio.load(content)
-				$("script, style, nav, footer, header").remove()
+		// Initialize or update status file in .faiss directory
+		let faissStatusData: DocumentLink[] = []
+		try {
+			if (await fileExistsAtPath(faissStatusFilePath)) {
+				const fileContent = await fs.readFile(faissStatusFilePath, "utf-8")
+				faissStatusData = JSON.parse(fileContent)
+			}
 
-				// Convert to Markdown
-				const turndownService = new TurndownService()
-				const markdown = turndownService.turndown($.html())
+			// Find or create entry for this URL
+			const linkIndex = faissStatusData.findIndex((link) => link.url === url)
+			if (linkIndex !== -1) {
+				faissStatusData[linkIndex].status = DocumentStatus.PROCESSING
+				faissStatusData[linkIndex].processedAt = new Date().toISOString()
+			} else {
+				faissStatusData.push({
+					url,
+					status: DocumentStatus.PROCESSING,
+					processedAt: new Date().toISOString(),
+					error: null,
+				})
+			}
 
-				//chunk and store the markdown
-				await self.chunkAndStore(markdown, expertName, workspacePath, url, title)
+			// Update status file before crawling
+			await this.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
+		} catch (error) {
+			console.error(`Failed to initialize faiss status file for ${expertName}:`, error)
+		}
 
-				// Enqueue more links
-				await enqueueLinks()
-			},
-			maxRequestsPerCrawl,
-			// Optional: headless: false, to show browser
+		const config = new Configuration({
+			persistStorage: false, // Disable default storage
 		})
 
-		await crawler.run([url])
+		try {
+			const crawler = new PlaywrightCrawler(
+				{
+					async requestHandler({ request, page, enqueueLinks }) {
+						const title = await page.title()
+						const content = await page.content()
+						const suburl = request.loadedUrl
+
+						// Parse and clean HTML
+						const $ = cheerio.load(content)
+						$("script, style, nav, footer, header").remove()
+
+						// Convert to Markdown
+						const turndownService = new TurndownService()
+						const markdown = turndownService.turndown($.html())
+
+						//chunk and store the markdown
+						await self.chunkAndStore(markdown, expertName, workspacePath, url, suburl, title)
+
+						// Enqueue more links
+						await enqueueLinks()
+					},
+					maxRequestsPerCrawl,
+					// Optional: headless: false, to show browser
+				},
+				config,
+			)
+
+			await crawler.run([url])
+
+			// Update status to COMPLETED after successful crawl
+			const updatedLinkIndex = faissStatusData.findIndex((link) => link.url === url)
+			if (updatedLinkIndex !== -1) {
+				faissStatusData[updatedLinkIndex].status = DocumentStatus.COMPLETED
+				faissStatusData[updatedLinkIndex].processedAt = new Date().toISOString()
+				faissStatusData[updatedLinkIndex].error = null
+			}
+			await this.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
+		} catch (error) {
+			// Update status to FAILED if crawl fails
+			console.error(`Error in crawling ${url} for expert ${expertName}:`, error)
+			const failedLinkIndex = faissStatusData.findIndex((link) => link.url === url)
+			if (failedLinkIndex !== -1) {
+				faissStatusData[failedLinkIndex].status = DocumentStatus.FAILED
+				faissStatusData[failedLinkIndex].processedAt = new Date().toISOString()
+				faissStatusData[failedLinkIndex].error = error instanceof Error ? error.message : String(error)
+			}
+			await this.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
+		}
 	}
 
 	/**
@@ -650,8 +930,11 @@ export class ExpertManager {
 		expertName: string,
 		workspacePath: string,
 		url: string,
+		suburl: string,
 		title?: string,
 	): Promise<void> {
+		console.log(`Storing content for expert ${expertName} from ${suburl}`)
+
 		await ensureFaissPlatformDeps()
 
 		const mdSplitter = RecursiveCharacterTextSplitter.fromLanguage("markdown", {
@@ -668,8 +951,7 @@ export class ExpertManager {
 				try {
 					this.vectorStore = await FaissStore.load(faissFilePath, this.embeddings)
 				} catch (error) {
-					// ignore, we can't do anything about it, the faiss index is corrupted
-					// we will just recreate it
+					console.error(`Failed to load Faiss store from ${faissFilePath}:`, error)
 				}
 			}
 		}
@@ -677,8 +959,9 @@ export class ExpertManager {
 		// Create documents from text chunks with title and URL metadata
 		const docs: Document[] = texts.map((text) => ({
 			pageContent: text,
+			id: url.trim(),
 			metadata: {
-				source: url,
+				source: suburl.trim(),
 				title: title || "Untitled",
 				expertName,
 			},
@@ -690,9 +973,82 @@ export class ExpertManager {
 
 			await this.vectorStore.save(faissFilePath)
 
-			console.log(`Successfully stored ${docs.length} chunks for expert ${expertName} from ${url}`)
+			console.log(`Successfully stored ${docs.length} chunks for expert ${expertName} from ${suburl}`)
 		} catch (error) {
 			console.error(`Failed to store chunks in vector database for expert ${expertName}:`, error)
+		}
+	}
+
+	/**
+	 * Delete a chunk from the vector store
+	 */
+	private async deleteChunk(url: string, expertName: string, workspacePath: string): Promise<void> {
+		console.log(`Deleting chunk for URL: ${url} in expert: ${expertName}`)
+		try {
+			const { faissFilePath } = this.getExpertPaths(workspacePath, expertName)
+
+			// Ensure store is loaded
+			if (existsSync(faissFilePath)) {
+				const faissIndexPath = join(faissFilePath, "faiss.index")
+				if (fileExists(faissIndexPath)) {
+					try {
+						this.vectorStore = await FaissStore.load(faissFilePath, this.embeddings)
+					} catch (error) {
+						console.error(`Failed to load Faiss store from ${faissFilePath}:`, error)
+						throw new Error(`Failed to load vector store: ${error.message}`)
+					}
+				}
+			}
+
+			const ids = await this.getDocumentIds(url)
+
+			if (ids.length > 0) {
+				await this.vectorStore.delete({ ids })
+
+				await this.vectorStore.save(faissFilePath)
+
+				console.log(`Removed ${ids.length} vectors for ${url}`)
+			} else {
+				console.log(`No vectors found for ${url}`)
+			}
+		} catch (error) {
+			console.error(`Failed to delete chunk for ${url}:`, error)
+		}
+	}
+
+	/**
+	 * Search for a query in the expert's vector store
+	 */
+	private async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
+		console.log(`Searching for query: ${query} in expert: ${expertName}`)
+
+		try {
+			const { faissFilePath } = this.getExpertPaths(workspacePath, expertName)
+
+			// Ensure store is loaded
+			if (existsSync(faissFilePath)) {
+				const faissIndexPath = join(faissFilePath, "faiss.index")
+				if (fileExists(faissIndexPath)) {
+					try {
+						this.vectorStore = await FaissStore.load(faissFilePath, this.embeddings)
+					} catch (error) {
+						console.error(`Failed to load Faiss store from ${faissFilePath}:`, error)
+						throw new Error(`Failed to load vector store: ${error.message}`)
+					}
+				}
+			}
+
+			const results = await this.vectorStore.similaritySearchWithScore(query, k)
+
+			const formattedResults = results.map(([doc, score]) => ({
+				id: doc.id,
+				content: doc.pageContent,
+				metadata: doc.metadata,
+				score: score,
+			}))
+
+			return JSON.stringify(formattedResults, null, 2)
+		} catch (error) {
 			throw error
 		}
 	}

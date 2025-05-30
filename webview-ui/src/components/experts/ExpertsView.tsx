@@ -1,6 +1,12 @@
 import React, { useState, useEffect, memo, useMemo } from "react"
 import styled from "styled-components"
-import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
+import {
+	VSCodeButton,
+	VSCodeTextField,
+	VSCodeTextArea,
+	VSCodeProgressRing,
+	VSCodeCheckbox,
+} from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
 import { DocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
@@ -34,8 +40,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		expertName: string
 		linkUrl: string
 	} | null>(null)
-
-	const { vscodeWorkspacePath } = useExtensionState()
+	const [deepCrawl, setDeepCrawl] = useState(false)
+	const [maxRequestsPerCrawl, setMaxRequestsPerCrawl] = useState(10)
+	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
+	const { vscodeWorkspacePath, embeddingConfiguration } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
 	const allExperts = useMemo(() => [...defaultExperts, ...customExperts], [defaultExperts, customExperts])
@@ -56,6 +64,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						setCustomExperts(message.experts)
 					}
 					break
+				case "embeddingConfigValidation":
+					setIsEmbeddingValid(!!message.bool)
+					break
 
 				default:
 					console.warn(`Unhandled message type: ${message.type}`)
@@ -64,6 +75,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		window.addEventListener("message", messageHandler)
 		vscode.postMessage({ type: "loadDefaultExperts" })
 		vscode.postMessage({ type: "loadExperts" })
+		vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
 		return () => {
 			window.removeEventListener("message", messageHandler)
 		}
@@ -101,6 +113,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setSelectedExpert(null)
 		setIsFormReadOnly(false)
 		setNameError(null)
+		setDeepCrawl(false)
+		setMaxRequestsPerCrawl(10)
 	}
 
 	const handleSelectExpert = (expert: ExpertData) => {
@@ -143,6 +157,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			isDefault: false,
 			createdAt: new Date().toISOString(),
 			documentLinks: documentLinks.length > 0 ? documentLinks : undefined,
+			deepCrawl: deepCrawl,
+			maxRequestsPerCrawl: deepCrawl ? maxRequestsPerCrawl : undefined,
 		}
 		vscode.postMessage({
 			type: "saveExpert",
@@ -649,6 +665,30 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										))}
 									</div>
 								)}
+							</FormGroup>
+							<FormGroup>
+								<VSCodeCheckbox
+									checked={deepCrawl}
+									onChange={(e) => setDeepCrawl((e.target as HTMLInputElement).checked)}
+									disabled={isFormReadOnly || !isEmbeddingValid}>
+									DeepCrawl
+								</VSCodeCheckbox>
+								{!isEmbeddingValid && (
+									<p className="description-text" style={{ color: "var(--vscode-editorWarning-foreground)" }}>
+										Valid embedding configuration required for deep crawling
+									</p>
+								)}
+							</FormGroup>
+							<FormGroup>
+								<label htmlFor="max-requests">MaxRequestsPerCrawl</label>
+								<VSCodeTextField
+									id="max-requests"
+									value={maxRequestsPerCrawl.toString()}
+									onChange={(e) => setMaxRequestsPerCrawl(parseInt((e.target as HTMLInputElement).value) || 10)}
+									placeholder="10"
+									disabled={isFormReadOnly || !deepCrawl || !isEmbeddingValid}
+									style={{ width: "100%" }}
+								/>
 							</FormGroup>
 							{!isFormReadOnly && (
 								<ActionButtons>

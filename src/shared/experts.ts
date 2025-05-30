@@ -30,6 +30,8 @@ export const ExpertDataSchema = z.object({
 	iconPath: z.string().trim().optional(),
 	iconComponent: z.unknown().optional(),
 	documentLinks: z.array(DocumentLinkSchema).optional(),
+	deepCrawl: z.boolean().optional(),
+	maxRequestsPerCrawl: z.number().min(1).max(100).optional(),
 })
 
 export type ExpertDataType = z.infer<typeof ExpertDataSchema>
@@ -44,4 +46,6 @@ export interface ExpertData {
 	iconPath?: string
 	iconComponent?: any
 	documentLinks?: DocumentLink[]
+	deepCrawl?: boolean
+	maxRequestsPerCrawl?: number
 }
