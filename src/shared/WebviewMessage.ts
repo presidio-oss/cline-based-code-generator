@@ -134,6 +134,7 @@ export interface WebviewMessage {
 	folder?: string
 	taskId?: string
 	status?: string
+	isDeepCrawlEnabled?: boolean
 
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration

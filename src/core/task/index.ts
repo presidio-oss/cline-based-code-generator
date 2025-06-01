@@ -178,6 +178,8 @@ export class Task {
 
 	// HAI variables
 	expertPrompt?: string
+	expertName?: string
+	isDeepCrawlEnabled?: boolean
 	buildContextOptions?: HaiBuildContextOptions
 	private task?: string
 	private apiConfiguration: ApiConfiguration
@@ -201,6 +203,9 @@ export class Task {
 		shellIntegrationTimeout: number,
 		customInstructions?: string,
 		expertPrompt?: string,
+		expertName?: string,
+		isDeepCrawlEnabled?: boolean,
+
 		task?: string,
 		images?: string[],
 		historyItem?: HistoryItem,
@@ -229,6 +234,8 @@ export class Task {
 		// HAI variable initialization
 		this.task = task
 		this.expertPrompt = expertPrompt
+		this.expertName = expertName
+		this.isDeepCrawlEnabled = isDeepCrawlEnabled
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
 
@@ -1487,6 +1494,8 @@ export class Task {
 			this.browserSettings,
 			this.buildContextOptions?.systemPromptVersion,
 			this.expertPrompt,
+			this.isDeepCrawlEnabled,
+			this.expertName,
 		)
 		let settingsCustomInstructions = this.customInstructions?.trim()
 		const preferredLanguage = getLanguageKey(

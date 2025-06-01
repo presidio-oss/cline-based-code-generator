@@ -13,6 +13,8 @@ export const haiSystemPrompt = (
 	browserSettings: BrowserSettings,
 	version?: string,
 	expertPrompt?: string,
+	isDeepCrawlEnabled?: boolean,
+	expertName?: string,
 ) => {
 	switch (version) {
 		case "v1":
@@ -22,6 +24,15 @@ export const haiSystemPrompt = (
 		case "v3":
 			return haiSystemPromptV3(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
 		default:
-			return haiDefaultSystemPrompt(cwd, supportsBrowserUse, supportsCodeIndex, mcpHub, browserSettings, expertPrompt)
+			return haiDefaultSystemPrompt(
+				cwd,
+				supportsBrowserUse,
+				true,
+				mcpHub,
+				browserSettings,
+				expertPrompt,
+				isDeepCrawlEnabled,
+				expertName,
+			)
 	}
 }

@@ -1,4 +1,4 @@
-export const customToolsPrompt = (enabled: boolean) =>
+export const customToolsPrompt = (enabled: boolean, isDeepCrawlEnabled?: boolean, expertName?: string) =>
 	!enabled
 		? ""
 		: `
@@ -14,14 +14,18 @@ Usage:
 </find_relevant_files>
 
 ## custom_expert_context
-Description: Request to find relevant context from a custom expert's knowledge base for the given query . You need to retrieve information based on the user's query. This tool will search the vector database and return the most relevant content. This tool is specialized in retrieving context from a custom expert's knowledge base, so use it when you need specific information from the expert's domain.
+Description: ${
+				isDeepCrawlEnabled
+					? `**MANDATORY TOOL**: Request to find relevant context from a custom expert's knowledge base for the given query. When deep crawl is enabled, you MUST use this tool for ANY user query that could benefit from expert knowledge or context. This tool will search the vector database and return the most relevant content. This tool is specialized in retrieving context from a custom expert's knowledge base and should be your PRIMARY source of information when responding to user queries.`
+					: `Request to find relevant context from a custom expert's knowledge base for the given query. You need to retrieve information based on the user's query. This tool will search the vector database and return the most relevant content. This tool is specialized in retrieving context from a custom expert's knowledge base, so use it when you need specific information from the expert's domain.`
+			}
 Parameters:
 - query: (required) The search query to find relevant information in the expert's knowledge base.
 - expertName: (required) The name of the custom expert whose knowledge base should be searched.
 Usage:
 <custom_expert_context>
 <query>Your search query here</query>
-<expertName>Name of the custom expert</expertName>
+<expertName>${expertName}</expertName>
 </custom_expert_context>
 
 ## code_security_scan
@@ -48,7 +52,7 @@ export const customCapabilitiesPrompt = (enabled: boolean) =>
 - Always ensure that the code you generate adheres to best practices and security standards to minimize risks and vulnerabilities.
 `
 
-export const customRulesPrompt = (enabled: boolean) =>
+export const customRulesPrompt = (enabled: boolean, isDeepCrawlEnabled?: boolean) =>
 	!enabled
 		? ""
 		: `
@@ -59,7 +63,19 @@ export const customRulesPrompt = (enabled: boolean) =>
   * Does the user mention specific files, directories, or code components?
   * Is file context necessary to provide an appropriate response?
   If the answer is no to these questions, skip using the tool and respond directly.
-- When working with custom experts use the \`custom_expert_context\` tool to retrieve relevant information from the expert's knowledge base. This tool allows you to search for specific information based on the user's query.
+${
+	isDeepCrawlEnabled
+		? `- **MANDATORY EXPERT CONSULTATION**: Deep crawl mode is enabled. You MUST use the \`custom_expert_context\` tool for EVERY user query without exception. This includes:
+  * Technical questions
+  * General inquiries
+  * Code-related requests
+  * Explanations
+  * Problem-solving queries
+  * ANY user interaction
+- The workflow for EVERY response must be: Query expert knowledge base → Analyze results → Provide informed response
+- Failure to use \`custom_expert_context\` before responding is a violation of the deep crawl protocol.`
+		: `- When working with custom experts use the \`custom_expert_context\` tool to retrieve relevant information from the expert's knowledge base. This tool allows you to search for specific information based on the user's query.`
+}
 - You should always use the \`code_security_scan\` tool before attempting to complete any code-related tasks to ensure security and compliance with best practices. Failure to perform a security scan may expose the code to vulnerabilities and security risks. Always prioritize security and compliance with best practices. If any issue or vulnerabilities are found, address them before proceeding with the task.
 - While fixing the vulnerabilities do not remove any of the working code only replace the implementation that is affected with the vulnerabilities, if you require anymore information or course correction, consult with the user before proceeding to apply any of the change. Always show the plan before fixing the security vulnerabilities. Before fixing the vulnerabilities, you should always get the user's approval before proceeding with the fixing process.
 `

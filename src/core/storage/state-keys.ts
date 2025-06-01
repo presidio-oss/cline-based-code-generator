@@ -42,6 +42,8 @@ export type GlobalStateKey =
 	| "lastShownAnnouncementId"
 	| "customInstructions"
 	| "expertPrompt"
+	| "expertName"
+	| "isDeepCrawlEnabled"
 	| "taskHistory"
 	| "openAiBaseUrl"
 	| "openAiModelId"

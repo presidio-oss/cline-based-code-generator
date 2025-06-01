@@ -181,6 +181,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		lastShownAnnouncementId,
 		customInstructions,
 		expertPrompt,
+		expertName,
+		isDeepCrawlEnabled,
 		taskHistory,
 		autoApprovalSettings,
 		browserSettings,
@@ -282,6 +284,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "lastShownAnnouncementId") as Promise<string | undefined>,
 		customGetState(context, "customInstructions") as Promise<string | undefined>,
 		customGetState(context, "expertPrompt") as Promise<string | undefined>,
+		customGetState(context, "expertName") as Promise<string | undefined>,
+		customGetState(context, "isDeepCrawlEnabled") as Promise<boolean | undefined>,
 		customGetState(context, "taskHistory") as Promise<HistoryItem[] | undefined>,
 		customGetState(context, "autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
 		customGetState(context, "browserSettings") as Promise<BrowserSettings | undefined>,
@@ -467,6 +471,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		lastShownAnnouncementId,
 		customInstructions,
 		expertPrompt,
+		expertName,
+		isDeepCrawlEnabled,
 		taskHistory,
 		buildContextOptions: buildContextOptions
 			? {

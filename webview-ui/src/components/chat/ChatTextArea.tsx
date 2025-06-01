@@ -1184,6 +1184,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				text: expert?.name || "",
 				prompt: expert?.prompt || "",
 				category: "selectExpert",
+				isDeepCrawlEnabled: expert?.deepCrawl || false,
 			})
 		}, [])
 

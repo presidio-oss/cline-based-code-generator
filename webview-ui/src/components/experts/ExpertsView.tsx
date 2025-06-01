@@ -210,6 +210,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 				category: "viewExpert",
 				isDefault: expertToOpen.isDefault,
 				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
+				isDeepCrawlEnabled: expertToOpen.deepCrawl,
 			})
 		}
 	}

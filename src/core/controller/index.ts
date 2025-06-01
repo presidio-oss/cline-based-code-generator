@@ -214,6 +214,8 @@ export class Controller {
 			shellIntegrationTimeout,
 			embeddingConfiguration,
 			expertPrompt,
+			expertName,
+			isDeepCrawlEnabled,
 			buildContextOptions,
 		} = await getAllExtensionState(this.context, this.workspaceId)
 
@@ -241,6 +243,8 @@ export class Controller {
 			shellIntegrationTimeout,
 			customInstructions,
 			expertPrompt,
+			expertName,
+			isDeepCrawlEnabled,
 			task,
 			images,
 			historyItem,
@@ -766,30 +770,40 @@ export class Controller {
 				break
 			case "expertPrompt":
 				const expertName = message.text || ""
-				if (message.category === "viewExpert") {
-					if (message.isDefault && message.prompt) {
-						try {
-							// Create a unique URI for this expert prompt
-							const encodedContent = Buffer.from(message.prompt).toString("base64")
-							const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+				if (!message.isDeepCrawlEnabled) {
+					if (message.category === "viewExpert") {
+						if (message.isDefault && message.prompt) {
+							try {
+								// Create a unique URI for this expert prompt
+								const encodedContent = Buffer.from(message.prompt).toString("base64")
+								const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
 
-							// Open the document
-							const document = await vscode.workspace.openTextDocument(uri)
-							await vscode.window.showTextDocument(document, { preview: false })
-						} catch (error) {
-							console.error("Error creating or opening the virtual document:", error)
+								// Open the document
+								const document = await vscode.workspace.openTextDocument(uri)
+								await vscode.window.showTextDocument(document, { preview: false })
+							} catch (error) {
+								console.error("Error creating or opening the virtual document:", error)
+							}
+						} else {
+							// For custom experts, use the existing path
+							const promptPath = await expertManager.getExpertPromptPath(
+								this.vsCodeWorkSpaceFolderFsPath,
+								expertName,
+							)
+							if (promptPath) {
+								openFile(promptPath)
+							} else {
+								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+							}
 						}
 					} else {
-						// For custom experts, use the existing path
-						const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
-						if (promptPath) {
-							openFile(promptPath)
-						} else {
-							vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-						}
+						await this.updateExpertPrompt(message.prompt, expertName)
 					}
 				} else {
-					await this.updateExpertPrompt(message.prompt, expertName)
+					await customUpdateState(this.context, "expertPrompt", message.prompt || undefined)
+					await customUpdateState(this.context, "expertName", expertName || undefined)
+					await customUpdateState(this.context, "isDeepCrawlEnabled", message.isDeepCrawlEnabled || false)
+					await this.postStateToWebview()
 				}
 				break
 			case "saveExpert":

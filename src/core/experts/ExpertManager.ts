@@ -614,6 +614,8 @@ export class ExpertManager {
 						prompt: promptContent,
 						createdAt: metadata.createdAt,
 						documentLinks,
+						deepCrawl: isDeepCrawl,
+						maxRequestsPerCrawl: metadata.maxRequestsPerCrawl,
 					}
 
 					const validationResult = ExpertDataSchema.safeParse(expertData)
