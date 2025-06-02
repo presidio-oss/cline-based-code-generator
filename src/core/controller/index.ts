@@ -245,6 +245,7 @@ export class Controller {
 			enableCheckpointsSetting ?? true,
 			customInstructions,
 			expertPrompt,
+			buildContextOptions,
 			task,
 			images,
 			historyItem,
