@@ -206,6 +206,7 @@ export class Task {
 		enableCheckpointsSetting: boolean,
 		customInstructions?: string,
 		expertPrompt?: string,
+		buildContextOptions?: HaiBuildContextOptions,
 		task?: string,
 		images?: string[],
 		historyItem?: HistoryItem,
@@ -235,6 +236,7 @@ export class Task {
 		// HAI variable initialization
 		this.task = task
 		this.expertPrompt = expertPrompt
+		this.buildContextOptions = buildContextOptions
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
 
