@@ -1,4 +1,4 @@
-import { execa } from "execa"
+import execa from "execa"
 import * as path from "path"
 import * as fs from "fs"
 import fetch from "node-fetch"

@@ -1,5 +1,5 @@
 import { Controller } from ".."
-import { Empty, StringArrayRequest } from "@shared/proto/common"
+import { Empty, StringArrayRequest } from "../../../shared/proto/common"
 import { TaskMethodHandler } from "./index"
 
 /**
