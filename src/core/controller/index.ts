@@ -72,6 +72,7 @@ import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@u
 import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
 import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
+import { ExpertFileManager } from "../experts/ExpertFileManager"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -245,6 +246,7 @@ export class Controller {
 			expertPrompt,
 			expertName,
 			isDeepCrawlEnabled,
+			buildContextOptions,
 			task,
 			images,
 			historyItem,
@@ -768,44 +770,44 @@ export class Controller {
 						break
 				}
 				break
-			case "expertPrompt":
+			case "expertPrompt": {
 				const expertName = message.text || ""
-				if (!message.isDeepCrawlEnabled) {
-					if (message.category === "viewExpert") {
-						if (message.isDefault && message.prompt) {
-							try {
-								// Create a unique URI for this expert prompt
-								const encodedContent = Buffer.from(message.prompt).toString("base64")
-								const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+				const isDeepCrawlEnabled = !!message.isDeepCrawlEnabled
 
-								// Open the document
-								const document = await vscode.workspace.openTextDocument(uri)
-								await vscode.window.showTextDocument(document, { preview: false })
-							} catch (error) {
-								console.error("Error creating or opening the virtual document:", error)
-							}
-						} else {
-							// For custom experts, use the existing path
-							const promptPath = await expertManager.getExpertPromptPath(
-								this.vsCodeWorkSpaceFolderFsPath,
-								expertName,
-							)
-							if (promptPath) {
-								openFile(promptPath)
-							} else {
-								vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-							}
+				// Always update common state
+				await customUpdateState(this.context, "expertPrompt", message.prompt || undefined)
+				await customUpdateState(this.context, "expertName", expertName || undefined)
+				await customUpdateState(this.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
+
+				if (isDeepCrawlEnabled) {
+					await this.postStateToWebview()
+					break
+				}
+
+				if (message.category === "viewExpert") {
+					if (message.isDefault && message.prompt) {
+						try {
+							const encodedContent = Buffer.from(message.prompt).toString("base64")
+							const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+							const document = await vscode.workspace.openTextDocument(uri)
+							await vscode.window.showTextDocument(document, { preview: false })
+						} catch (error) {
+							console.error("Error creating or opening the virtual document:", error)
 						}
 					} else {
-						await this.updateExpertPrompt(message.prompt, expertName)
+						const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
+						if (promptPath) {
+							openFile(promptPath)
+						} else {
+							vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
+						}
 					}
 				} else {
-					await customUpdateState(this.context, "expertPrompt", message.prompt || undefined)
-					await customUpdateState(this.context, "expertName", expertName || undefined)
-					await customUpdateState(this.context, "isDeepCrawlEnabled", message.isDeepCrawlEnabled || false)
-					await this.postStateToWebview()
+					await this.updateExpertPrompt(message.prompt, expertName)
 				}
 				break
+			}
+
 			case "saveExpert":
 				if (message.text) {
 					const expert = JSON.parse(message.text) as ExpertData
@@ -2585,8 +2587,8 @@ Commit message:`
 			return ""
 		}
 
-		const docsDir = path.join(path.dirname(expertPath), ExpertManager.DOCS_DIR)
-		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
+		const docsDir = path.join(path.dirname(expertPath), ExpertFileManager.DOCS_DIR)
+		const statusFilePath = path.join(docsDir, ExpertFileManager.STATUS_FILE)
 
 		if (!(await fileExistsAtPath(statusFilePath))) {
 			return ""

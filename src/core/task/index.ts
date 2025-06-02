@@ -205,6 +205,7 @@ export class Task {
 		expertPrompt?: string,
 		expertName?: string,
 		isDeepCrawlEnabled?: boolean,
+		buildContextOptions?: HaiBuildContextOptions,
 
 		task?: string,
 		images?: string[],
@@ -236,6 +237,7 @@ export class Task {
 		this.expertPrompt = expertPrompt
 		this.expertName = expertName
 		this.isDeepCrawlEnabled = isDeepCrawlEnabled
+		this.buildContextOptions = buildContextOptions
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
 
@@ -1771,7 +1773,7 @@ export class Task {
 						case "new_rule":
 							return `[${block.name} for '${block.params.path}']`
 						default:
-							return `[${block.name}]`
+							return this.customToolUseDescriptionHandlers(block)
 					}
 				}
 
