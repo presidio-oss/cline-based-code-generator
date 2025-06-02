@@ -1,5 +1,6 @@
 import * as path from "path"
 import * as fs from "fs"
+import execa from "execa"
 import { BenchmarkAdapter, Task, VerificationResult } from "./types"
 
 const EVALS_DIR = path.resolve(__dirname, "../../../")

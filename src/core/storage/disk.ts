@@ -15,6 +15,7 @@ export const GlobalFileNames = {
 	openRouterModels: "openrouter_models.json",
 	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
+	workflows: ".hairules/workflows",
 	cursorRulesDir: ".cursor/rules",
 	cursorRulesFile: ".cursorrules",
 	windsurfRules: ".windsurfrules",
@@ -73,6 +74,17 @@ export async function ensureRulesDirectoryExists(): Promise<string> {
 		return path.join(os.homedir(), "Documents", "HAI", "Rules") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
 	}
 	return clineRulesDir
+}
+
+export async function ensureWorkflowsDirectoryExists(): Promise<string> {
+	const userDocumentsPath = await getDocumentsPath()
+	const clineWorkflowsDir = path.join(userDocumentsPath, "HAI", "Workflows")
+	try {
+		await fs.mkdir(clineWorkflowsDir, { recursive: true })
+	} catch (error) {
+		return path.join(os.homedir(), "Documents", "HAI", "Workflows") // in case creating a directory in documents fails for whatever reason (e.g. permissions) - this is fine because we will fail gracefully with a path that does not exist
+	}
+	return clineWorkflowsDir
 }
 
 export async function ensureMcpServersDirectoryExists(): Promise<string> {

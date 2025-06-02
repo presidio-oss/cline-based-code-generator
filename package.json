@@ -2,8 +2,8 @@
 	"name": "hai-build-code-generator",
 	"displayName": "HAI Build Code Generator",
 	"description": "Human AI (HAI) VS Code extension that streamlines development workflows through AI-powered task execution, intelligent file management, and automated code generation. Built on HAI, it integrates with various LLMs to enhance productivity and code quality while simplifying complex development tasks.",
-	"clineVersion": "3.15.1",
-	"version": "3.5.2",
+	"clineVersion": "3.17.5",
+	"version": "3.6.0",
 	"icon": "assets/icons/HAI-Rounded-Dark@3x.png",
 	"galleryBanner": {
 		"color": "#617A91",
@@ -58,7 +58,9 @@
 		"hai-build"
 	],
 	"activationEvents": [
-		"onStartupFinished"
+		"onLanguage",
+		"onStartupFinished",
+		"workspaceContains:evals.env"
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
@@ -66,8 +68,21 @@
 			"activitybar": [
 				{
 					"id": "hai-ActivityBar",
-					"title": "HAI Build",
-					"icon": "assets/icons/hai-logo-mini.png"
+					"title": "HAI Build (⌘+')",
+					"icon": "assets/icons/hai-logo-mini.png",
+					"when": "isMac"
+				},
+				{
+					"id": "hai-ActivityBar",
+					"title": "HAI Build (Ctrl+')",
+					"icon": "assets/icons/icon.svg",
+					"when": "isWindows"
+				},
+				{
+					"id": "hai-ActivityBar",
+					"title": "HAI Build (Ctrl+')",
+					"icon": "assets/icons/icon.svg",
+					"when": "isLinux || !isMac && !isWindows"
 				}
 			]
 		},
@@ -139,6 +154,16 @@
 				"icon": "$(robot)"
 			},
 			{
+				"command": "hai.explainCode",
+				"title": "Explain with HAI",
+				"category": "HAI"
+			},
+			{
+				"command": "hai.improveCode",
+				"title": "Improve with HAI",
+				"category": "HAI"
+			},
+			{
 				"command": "hai.haiBuildTaskListClicked",
 				"title": "Hai Tasks",
 				"category": "HAI Build"
@@ -162,6 +187,14 @@
 			{
 				"command": "hai.generateGitCommitMessage",
 				"when": "scmProvider == git"
+			},
+			{
+				"command": "hai.focusChatInput",
+				"key": "cmd+'",
+				"mac": "cmd+'",
+				"win": "ctrl+'",
+				"linux": "ctrl+'",
+				"when": "!editorHasSelection"
 			}
 		],
 		"menus": {
@@ -268,96 +301,24 @@
 		},
 		"configuration": {
 			"title": "HAI Build",
-			"properties": {
-				"hai.vsCodeLmModelSelector": {
-					"type": "object",
-					"properties": {
-						"vendor": {
-							"type": "string",
-							"description": "The vendor of the language model (e.g. copilot)"
-						},
-						"family": {
-							"type": "string",
-							"description": "The family of the language model (e.g. gpt-4)"
-						}
-					},
-					"description": "Settings for VSCode Language Model API"
-				},
-				"hai.enableCheckpoints": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enables extension to save checkpoints of workspace throughout the task. Uses git under the hood which may not work well with large workspaces."
-				},
-				"hai.disableBrowserTool": {
-					"type": "boolean",
-					"default": false,
-					"description": "Disables extension from spawning browser session."
-				},
-				"hai.modelSettings.o3Mini.reasoningEffort": {
-					"type": "string",
-					"enum": [
-						"low",
-						"medium",
-						"high"
-					],
-					"default": "medium",
-					"description": "Controls the reasoning effort when using an OpenAI reasoning model. Higher values may result in more thorough but slower responses."
-				},
-				"hai.chromeExecutablePath": {
-					"type": "string",
-					"default": null,
-					"description": "Path to Chrome executable for browser use functionality. If not set, the extension will attempt to find or download it automatically."
-				},
-				"hai.preferredLanguage": {
-					"type": "string",
-					"enum": [
-						"English",
-						"Arabic - العربية",
-						"Portuguese - Português (Brasil)",
-						"Czech - Čeština",
-						"French - Français",
-						"German - Deutsch",
-						"Hindi - हिन्दी",
-						"Hungarian - Magyar",
-						"Italian - Italiano",
-						"Japanese - 日本語",
-						"Korean - 한국어",
-						"Polish - Polski",
-						"Portuguese - Português (Portugal)",
-						"Russian - Русский",
-						"Simplified Chinese - 简体中文",
-						"Spanish - Español",
-						"Traditional Chinese - 繁體中文",
-						"Turkish - Türkçe"
-					],
-					"default": "English",
-					"description": "The language that HAI should use for communication."
-				},
-				"hai.mcpMarketplace.enabled": {
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether the MCP Marketplace is enabled."
-				},
-				"hai.inlineEditing": {
-					"type": "boolean",
-					"default": true,
-					"description": "Enables inline editing with HAI"
-				}
-			}
+			"properties": {}
 		}
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run package",
 		"compile": "npm run check-types && npm run lint && node esbuild.js",
+		"compile-standalone": "npm run check-types && npm run lint && node esbuild.js --standalone",
+		"postcompile-standalone": "node scripts/package-standalone.mjs",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-		"package": "npm run build:webview && npm run check-types && npm run lint && node esbuild.js --production",
-		"protos": "node proto/build-proto.js && prettier src/shared/proto src/core/controller webview-ui/src/services --write",
+		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.js --production",
+		"protos": "node proto/build-proto.js && node scripts/generate-server-setup.mjs",
+		"postprotos": "prettier src/shared/proto src/core/controller webview-ui/src/services src/standalone/server-setup.ts --write --log-level silent",
 		"compile-tests": "node ./scripts/build-tests.js",
 		"watch-tests": "tsc -p . -w --outDir out",
 		"pretest": "npm run compile-tests && npm run compile && npm run lint",
-		"check-types": "tsc --noEmit",
+		"check-types": "npm run protos && tsc --noEmit",
 		"lint": "eslint src --ext ts && eslint webview-ui/src --ext ts",
 		"format": "prettier . --check",
 		"format:fix": "prettier . --write",
@@ -399,16 +360,14 @@
 		"@types/vscode": "^1.84.0",
 		"@typescript-eslint/eslint-plugin": "^7.14.1",
 		"@typescript-eslint/parser": "^7.11.0",
-		"@vscode/test-cli": "^0.0.9",
-		"@vscode/test-electron": "^2.4.0",
+		"@vscode/test-cli": "^0.0.10",
+		"@vscode/test-electron": "^2.4.1",
 		"chai": "^4.3.10",
 		"chalk": "^5.3.0",
 		"esbuild": "^0.25.0",
 		"eslint": "^8.57.0",
-		"got": "^14.4.5",
 		"grpc-tools": "^1.13.0",
 		"husky": "^9.1.7",
-		"keep-a-changelog": "^2.5.3",
 		"mintlify": "^4.0.515",
 		"npm-run-all": "^4.1.5",
 		"prettier": "^3.3.3",
@@ -419,6 +378,8 @@
 		"ts-node": "^10.9.2",
 		"ts-proto": "^2.6.1",
 		"tsconfig-paths": "^4.2.0",
+		"got": "^14.4.5",
+		"keep-a-changelog": "^2.5.3",
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
@@ -426,18 +387,19 @@
 		"@anthropic-ai/sdk": "^0.37.0",
 		"@anthropic-ai/vertex-sdk": "^0.6.4",
 		"@aws-sdk/client-bedrock-runtime": "^3.758.0",
-		"@bufbuild/protobuf": "^2.2.5",
-		"@google-cloud/vertexai": "^1.9.3",
-		"@google/genai": "^0.9.0",
-		"@grpc/grpc-js": "^1.9.15",
 		"@langchain/aws": "^0.1.1",
 		"@langchain/community": "^0.3.11",
 		"@langchain/core": "^0.3.17",
 		"@langchain/ollama": "^0.1.5",
 		"@langchain/openai": "^0.3.12",
 		"@langchain/textsplitters": "^0.1.0",
+		"@bufbuild/protobuf": "^2.2.5",
+		"@google-cloud/vertexai": "^1.9.3",
+		"@google/genai": "^0.13.0",
+		"@grpc/grpc-js": "^1.9.15",
+		"@grpc/reflection": "^1.0.4",
 		"@mistralai/mistralai": "^1.5.0",
-		"@modelcontextprotocol/sdk": "^1.7.0",
+		"@modelcontextprotocol/sdk": "^1.11.1",
 		"@opentelemetry/api": "^1.4.1",
 		"@opentelemetry/exporter-trace-otlp-http": "^0.39.1",
 		"@opentelemetry/resources": "^1.30.1",
@@ -446,49 +408,51 @@
 		"@opentelemetry/semantic-conventions": "^1.30.0",
 		"@sentry/browser": "^9.12.0",
 		"@vscode/codicons": "^0.0.36",
+		"archiver": "^7.0.1",
 		"axios": "^1.8.2",
 		"cheerio": "^1.0.0",
 		"chokidar": "^4.0.1",
 		"chrome-launcher": "^1.1.2",
 		"clone-deep": "^4.0.1",
-		"crawlee": "^3.13.5",
 		"default-shell": "^2.2.0",
 		"diff": "^5.2.0",
 		"execa": "^9.5.2",
-		"faiss-node": "^0.5.1",
 		"fast-deep-equal": "^3.1.3",
 		"firebase": "^11.2.0",
 		"fzf": "^0.5.2",
 		"get-folder-size": "^5.0.0",
 		"globby": "^14.0.2",
+		"grpc-health-check": "^2.0.2",
 		"iconv-lite": "^0.6.3",
 		"ignore": "^5.3.2",
 		"ignore-walk": "^7.0.0",
 		"image-size": "^2.0.2",
 		"isbinaryfile": "^5.0.2",
 		"jschardet": "^3.1.4",
+		"faiss-node": "^0.5.1",
 		"langfuse": "^3.37.1",
 		"mammoth": "^1.8.0",
 		"monaco-vscode-textmate-theme-converter": "^0.1.7",
 		"ollama": "^0.5.13",
+		"open": "^10.1.2",
 		"open-graph-scraper": "^6.9.0",
 		"openai": "^4.83.0",
 		"os-name": "^6.0.0",
 		"p-timeout": "^6.1.4",
 		"p-wait-for": "^5.0.2",
 		"pdf-parse": "^1.1.1",
-		"playwright": "^1.52.0",
 		"posthog-node": "^4.8.1",
 		"puppeteer-chromium-resolver": "^23.0.0",
 		"puppeteer-core": "^23.4.0",
 		"serialize-error": "^11.0.3",
 		"simple-git": "^3.27.0",
 		"strip-ansi": "^7.1.0",
-		"tar": "^7.4.3",
 		"tree-sitter-wasms": "^0.1.11",
-		"turndown": "^7.2.0",
 		"uuid": "^11.1.0",
 		"watcher": "^2.3.1",
+		"ts-morph": "^25.0.1",
+		"turndown": "^7.2.0",
+		"tar": "^7.4.3",
 		"web-tree-sitter": "^0.22.6",
 		"zod": "^3.24.2"
 	}

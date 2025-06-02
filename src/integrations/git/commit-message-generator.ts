@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import { getWorkingState } from "@utils/git"
 
 /**
  * Formats the git diff into a prompt for the AI

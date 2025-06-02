@@ -1,7 +1,7 @@
 import { Controller } from ".."
-import { ClineCheckpointRestore } from "@shared/WebviewMessage"
-import { CheckpointRestoreRequest } from "@shared/proto/checkpoints"
-import { Empty } from "@shared/proto/common"
+import { ClineCheckpointRestore } from "../../../shared/WebviewMessage"
+import { CheckpointRestoreRequest } from "../../../shared/proto/checkpoints"
+import { Empty } from "../../../shared/proto/common"
 import pWaitFor from "p-wait-for"
 
 export async function checkpointRestore(controller: Controller, request: CheckpointRestoreRequest): Promise<Empty> {

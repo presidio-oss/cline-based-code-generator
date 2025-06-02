@@ -1,7 +1,4 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
-import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
-import { IHaiStory } from "./hai-task"
-import { EmbeddingConfiguration } from "./embeddings"
 import { GitCommit } from "../utils/git"
 import { ApiConfiguration, ModelInfo } from "./api"
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
@@ -10,8 +7,13 @@ import { ChatSettings } from "./ChatSettings"
 import { HistoryItem } from "./HistoryItem"
 import { McpServer, McpMarketplaceCatalog, McpDownloadResponse, McpViewTab } from "./mcp"
 import { TelemetrySetting } from "./TelemetrySetting"
-import type { BalanceResponse, UsageTransaction, PaymentTransaction } from "@shared/ClineAccount"
+import type { BalanceResponse, UsageTransaction, PaymentTransaction } from "../shared/ClineAccount"
 import { ClineRulesToggles } from "./cline-rules"
+
+// TAG:HAI
+import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
+import { IHaiStory } from "./hai-task"
+import { EmbeddingConfiguration } from "./embeddings"
 
 // webview will hold state
 export interface ExtensionMessage {
@@ -30,58 +32,51 @@ export interface ExtensionMessage {
 		| "requestyModels"
 		| "mcpServers"
 		| "relinquishControl"
-		| "vsCodeLmModels"
-		| "requestVsCodeLmModels"
+		| "authCallback"
+		| "mcpMarketplaceCatalog"
+		| "mcpDownloadDetails"
+		| "commitSearchResults"
+		| "openGraphData"
+		| "didUpdateSettings"
+		| "userCreditsBalance"
+		| "userCreditsUsage"
+		| "userCreditsPayments"
+		| "totalTasksSize"
+		| "addToInput"
+		| "browserConnectionResult"
+		| "fileSearchResults"
+		| "grpc_response" // New type for gRPC responses
+
+		// TAG:HAI
 		| "haiTaskData"
 		| "haiAction"
 		| "haiConfig"
 		| "llmConfigValidation"
 		| "embeddingConfigValidation"
 		| "ollamaEmbeddingModels"
-		| "emailSubscribed"
-		| "authCallback"
-		| "mcpMarketplaceCatalog"
-		| "mcpDownloadDetails"
-		| "commitSearchResults"
-		| "openGraphData"
-		| "isImageUrlResult"
-		| "didUpdateSettings"
-		| "addRemoteServerResult"
-		| "userCreditsBalance"
-		| "userCreditsUsage"
-		| "userCreditsPayments"
-		| "totalTasksSize"
-		| "addToInput"
 		| "expertsUpdated"
 		| "defaultExpertsLoaded"
 		| "expertPrompt"
 		| "writeTaskStatus"
-		| "browserConnectionResult"
-		| "scrollToSettings"
-		| "browserRelaunchResult"
-		| "fileSearchResults"
-		| "grpc_response" // New type for gRPC responses
-		| "setActiveQuote"
 	text?: string
-	bool?: boolean
 	action?:
 		| "chatButtonClicked"
 		| "mcpButtonClicked"
 		| "settingsButtonClicked"
 		| "historyButtonClicked"
 		| "didBecomeVisible"
-		| "accountLoginClicked"
 		| "accountLogoutClicked"
+		| "accountButtonClicked"
+		| "focusChatInput"
+
+		// TAG:HAI
 		| "haiBuildTaskListClicked"
 		| "expertsButtonClicked"
 		| "onHaiConfigure"
-		| "accountButtonClicked"
-		| "focusChatInput"
 	invoke?: Invoke
 	state?: ExtensionState
 	images?: string[]
 	ollamaModels?: string[]
-	ollamaEmbeddingModels?: string[]
 	lmStudioModels?: string[]
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	filePaths?: string[]
@@ -95,8 +90,6 @@ export interface ExtensionMessage {
 	error?: string
 	mcpDownloadDetails?: McpDownloadResponse
 	commits?: GitCommit[]
-	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
-	haiConfig?: {}
 	openGraphData?: {
 		title?: string
 		description?: string
@@ -111,19 +104,6 @@ export interface ExtensionMessage {
 	userCreditsUsage?: UsageTransaction[]
 	userCreditsPayments?: PaymentTransaction[]
 	totalTasksSize?: number | null
-	experts?: any[] // Expert data array
-	documentLinks?: any[] // Document links with status
-	expertName?: string // Expert name for document links status
-	addRemoteServerResult?: {
-		success: boolean
-		serverName: string
-		error?: string
-	}
-	writeTaskStatusResult?: {
-		success: boolean
-		message: string
-		status: string
-	}
 	success?: boolean
 	endpoint?: string
 	isBundled?: boolean
@@ -144,6 +124,20 @@ export interface ExtensionMessage {
 		is_streaming?: boolean // Whether this is part of a streaming response
 		sequence_number?: number // For ordering chunks in streaming responses
 	}
+
+	// TAG:HAI
+	bool?: boolean
+	ollamaEmbeddingModels?: string[]
+	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
+	haiConfig?: {}
+	experts?: any[] // Expert data array
+	documentLinks?: any[] // Document links with status
+	expertName?: string // Expert name for document links status
+	writeTaskStatusResult?: {
+		success: boolean
+		message: string
+		status: string
+	}
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
@@ -153,6 +147,7 @@ export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sun
 export const DEFAULT_PLATFORM = "unknown"
 
 export interface ExtensionState {
+	isNewUser: boolean
 	apiConfiguration?: ApiConfiguration
 	autoApprovalSettings: AutoApprovalSettings
 	browserSettings: BrowserSettings
@@ -164,6 +159,7 @@ export interface ExtensionState {
 	customInstructions?: string
 	mcpMarketplaceEnabled?: boolean
 	planActSeparateModelsSetting: boolean
+	enableCheckpointsSetting?: boolean
 	platform: Platform
 	shouldShowAnnouncement: boolean
 	taskHistory: HistoryItem[]
@@ -175,17 +171,22 @@ export interface ExtensionState {
 		email: string | null
 		photoURL: string | null
 	}
+	version: string
+	vscMachineId: string
+	globalClineRulesToggles: ClineRulesToggles
+	localClineRulesToggles: ClineRulesToggles
+	localWorkflowToggles: ClineRulesToggles
+	globalWorkflowToggles: ClineRulesToggles
+	localCursorRulesToggles: ClineRulesToggles
+	localWindsurfRulesToggles: ClineRulesToggles
+
+	// TAG:HAI
 	buildContextOptions?: HaiBuildContextOptions
 	buildIndexProgress?: HaiBuildIndexProgress
 	embeddingConfiguration?: EmbeddingConfiguration
 	expertPrompt?: string
 	vscodeWorkspacePath?: string
-	version: string
-	vscMachineId: string
-	globalClineRulesToggles: ClineRulesToggles
-	localClineRulesToggles: ClineRulesToggles
-	localCursorRulesToggles: ClineRulesToggles
-	localWindsurfRulesToggles: ClineRulesToggles
+	enableInlineEdit?: boolean
 }
 
 export interface ClineMessage {
@@ -248,6 +249,7 @@ export type ClineSay =
 	| "clineignore_error"
 	| "checkpoint_created"
 	| "load_mcp_documentation"
+	| "info" // Added for general informational messages like retry status
 
 export interface ClineSayTool {
 	tool:
@@ -258,6 +260,8 @@ export interface ClineSayTool {
 		| "listFilesRecursive"
 		| "listCodeDefinitionNames"
 		| "searchFiles"
+
+		// TAG:HAI
 		| "findRelevantFiles"
 		| "codeSecurityScan"
 		| "customExpertContext"
@@ -319,8 +323,14 @@ export interface ClineApiReqInfo {
 	cost?: number
 	cancelReason?: ClineApiReqCancelReason
 	streamingFailedMessage?: string
+	retryStatus?: {
+		attempt: number
+		maxAttempts: number
+		delaySec: number
+		errorSnippet?: string
+	}
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "retries_exhausted"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"

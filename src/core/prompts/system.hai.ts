@@ -27,9 +27,9 @@ export const haiSystemPrompt = (
 			return haiDefaultSystemPrompt(
 				cwd,
 				supportsBrowserUse,
-				supportsCodeIndex,
 				mcpHub,
 				browserSettings,
+				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
 				expertName,

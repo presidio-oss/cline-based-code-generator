@@ -1,5 +1,5 @@
 import * as vscode from "vscode"
-import { DEFAULT_CHAT_SETTINGS } from "@shared/ChatSettings"
+import { DEFAULT_CHAT_SETTINGS, OpenAIReasoningEffort } from "@shared/ChatSettings"
 import { DEFAULT_BROWSER_SETTINGS } from "@shared/BrowserSettings"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
 import { GlobalStateKey, SecretKey } from "./state-keys"
@@ -10,9 +10,12 @@ import { BrowserSettings } from "@shared/BrowserSettings"
 import { ChatSettings } from "@shared/ChatSettings"
 import { TelemetrySetting } from "@shared/TelemetrySetting"
 import { UserInfo } from "@shared/UserInfo"
+import { ClineRulesToggles } from "@shared/cline-rules"
+
+// TAG:HAI
 import { EmbeddingConfiguration, EmbeddingProvider } from "@shared/embeddings"
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "@shared/customApi"
-import { ClineRulesToggles } from "@shared/cline-rules"
+
 /*
 	Storage
 	https://dev.to/kompotkot/how-to-use-secretstorage-in-your-vscode-extensions-2hco
@@ -48,6 +51,13 @@ export function isCustomGlobalKey(key: string): boolean {
 		"embeddingOllamaBaseUrl",
 		"embeddingOllamaModelId",
 		"telemetrySetting",
+		"globalWorkflowToggles",
+		"globalClineRulesToggles",
+		"lastShownAnnouncementId",
+		"shellIntegrationTimeout",
+		"autoApprovalSettings",
+		"favoritedModelIds",
+		"enableInlineEdit",
 	]
 	return customGlobalKeys.includes(key)
 }
@@ -131,8 +141,32 @@ export async function getWorkspaceState(context: vscode.ExtensionContext, key: s
 	return await context.workspaceState.get(key)
 }
 
+async function migrateMcpMarketplaceEnableSetting(mcpMarketplaceEnabledRaw: boolean | undefined): Promise<boolean> {
+	const config = vscode.workspace.getConfiguration("hai")
+	const mcpMarketplaceEnabled = config.get<boolean>("mcpMarketplace.enabled")
+	if (mcpMarketplaceEnabled !== undefined) {
+		// Remove from VSCode configuration
+		await config.update("mcpMarketplace.enabled", undefined, true)
+
+		return !mcpMarketplaceEnabled
+	}
+	return mcpMarketplaceEnabledRaw ?? true
+}
+
+async function migrateEnableCheckpointsSetting(enableCheckpointsSettingRaw: boolean | undefined): Promise<boolean> {
+	const config = vscode.workspace.getConfiguration("hai")
+	const enableCheckpoints = config.get<boolean>("enableCheckpoints")
+	if (enableCheckpoints !== undefined) {
+		// Remove from VSCode configuration
+		await config.update("enableCheckpoints", undefined, true)
+		return enableCheckpoints
+	}
+	return enableCheckpointsSettingRaw ?? true
+}
+
 export async function getAllExtensionState(context: vscode.ExtensionContext, workspaceId: string) {
 	const [
+		isNewUser,
 		storedApiProvider,
 		apiModelId,
 		apiKey,
@@ -180,9 +214,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		openRouterProviderSorting,
 		lastShownAnnouncementId,
 		customInstructions,
-		expertPrompt,
-		expertName,
-		isDeepCrawlEnabled,
 		taskHistory,
 		autoApprovalSettings,
 		browserSettings,
@@ -190,7 +221,12 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		vsCodeLmModelSelector,
 		liteLlmBaseUrl,
 		liteLlmModelId,
+		liteLlmModelInfo,
 		liteLlmUsePromptCache,
+		fireworksApiKey,
+		fireworksModelId,
+		fireworksModelMaxCompletionTokens,
+		fireworksModelMaxTokens,
 		userInfo,
 		previousModeApiProvider,
 		previousModeModelId,
@@ -209,14 +245,24 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		thinkingBudgetTokens,
 		reasoningEffort,
 		sambanovaApiKey,
+		nebiusApiKey,
 		planActSeparateModelsSettingRaw,
 		favoritedModelIds,
 		globalClineRulesToggles,
 		requestTimeoutMs,
 		shellIntegrationTimeout,
+		enableCheckpointsSettingRaw,
+		mcpMarketplaceEnabledRaw,
+		globalWorkflowToggles,
+
+		// TAG:HAI
+		expertPrompt,
+		expertName,
+		isDeepCrawlEnabled,
 		buildContextOptions,
 		buildIndexProgress,
 		isApiConfigurationValid,
+		enableInlineEdit,
 		// Embedding Configuration
 		storedEmbeddingProvider,
 		embeddingModelId,
@@ -236,6 +282,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		embeddingOllamaBaseUrl,
 		embeddingOllamaModelId,
 	] = await Promise.all([
+		customGetState(context, "isNewUser") as Promise<boolean | undefined>,
 		customGetState(context, "apiProvider") as Promise<ApiProvider | undefined>,
 		customGetState(context, "apiModelId") as Promise<string | undefined>,
 		customGetSecret(context, "apiKey", workspaceId) as Promise<string | undefined>,
@@ -283,9 +330,6 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "openRouterProviderSorting") as Promise<string | undefined>,
 		customGetState(context, "lastShownAnnouncementId") as Promise<string | undefined>,
 		customGetState(context, "customInstructions") as Promise<string | undefined>,
-		customGetState(context, "expertPrompt") as Promise<string | undefined>,
-		customGetState(context, "expertName") as Promise<string | undefined>,
-		customGetState(context, "isDeepCrawlEnabled") as Promise<boolean | undefined>,
 		customGetState(context, "taskHistory") as Promise<HistoryItem[] | undefined>,
 		customGetState(context, "autoApprovalSettings") as Promise<AutoApprovalSettings | undefined>,
 		customGetState(context, "browserSettings") as Promise<BrowserSettings | undefined>,
@@ -293,7 +337,12 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "vsCodeLmModelSelector") as Promise<vscode.LanguageModelChatSelector | undefined>,
 		customGetState(context, "liteLlmBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "liteLlmModelId") as Promise<string | undefined>,
+		customGetState(context, "liteLlmModelInfo") as Promise<ModelInfo | undefined>,
 		customGetState(context, "liteLlmUsePromptCache") as Promise<boolean | undefined>,
+		customGetSecret(context, "fireworksApiKey", workspaceId) as Promise<string | undefined>,
+		customGetState(context, "fireworksModelId") as Promise<string | undefined>,
+		customGetState(context, "fireworksModelMaxCompletionTokens") as Promise<number | undefined>,
+		customGetState(context, "fireworksModelMaxTokens") as Promise<number | undefined>,
 		customGetState(context, "userInfo") as Promise<UserInfo | undefined>,
 		customGetState(context, "previousModeApiProvider") as Promise<ApiProvider | undefined>,
 		customGetState(context, "previousModeModelId") as Promise<string | undefined>,
@@ -312,14 +361,24 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "thinkingBudgetTokens") as Promise<number | undefined>,
 		customGetState(context, "reasoningEffort") as Promise<string | undefined>,
 		customGetSecret(context, "sambanovaApiKey", workspaceId) as Promise<string | undefined>,
+		customGetSecret(context, "nebiusApiKey", workspaceId) as Promise<string | undefined>,
 		customGetState(context, "planActSeparateModelsSetting") as Promise<boolean | undefined>,
 		customGetState(context, "favoritedModelIds") as Promise<string[] | undefined>,
 		customGetState(context, "globalClineRulesToggles") as Promise<ClineRulesToggles | undefined>,
 		customGetState(context, "requestTimeoutMs") as Promise<number | undefined>,
 		customGetState(context, "shellIntegrationTimeout") as Promise<number | undefined>,
+		customGetState(context, "enableCheckpointsSetting") as Promise<boolean | undefined>,
+		customGetState(context, "mcpMarketplaceEnabled") as Promise<boolean | undefined>,
+		customGetState(context, "globalWorkflowToggles") as Promise<ClineRulesToggles | undefined>,
+
+		// TAG:HAI
+		customGetState(context, "expertPrompt") as Promise<string | undefined>,
+		customGetState(context, "expertName") as Promise<string | undefined>,
+		customGetState(context, "isDeepCrawlEnabled") as Promise<boolean | undefined>,
 		customGetState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		customGetState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 		customGetState(context, "isApiConfigurationValid") as Promise<boolean | undefined>,
+		customGetState(context, "enableInlineEdit") as Promise<boolean | undefined>,
 		// Embedding Configurations
 		customGetState(context, "embeddingProvider") as Promise<EmbeddingProvider | undefined>,
 		customGetState(context, "embeddingModelId") as Promise<string | undefined>,
@@ -338,6 +397,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "isEmbeddingConfigurationValid") as Promise<boolean | undefined>,
 		customGetState(context, "embeddingOllamaBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "embeddingOllamaModelId") as Promise<string | undefined>,
+		fetch,
 	])
 
 	let apiProvider: ApiProvider
@@ -354,6 +414,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		}
 	}
 
+	// TAG:HAI
 	let embeddingProvider: EmbeddingProvider
 	if (storedEmbeddingProvider) {
 		embeddingProvider = storedEmbeddingProvider
@@ -361,11 +422,10 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		embeddingProvider = "openai-native"
 	}
 
-	const localClineRulesToggles = (await getWorkspaceState(context, "localClineRulesToggles")) as ClineRulesToggles
+	const localClineRulesToggles = (await customGetState(context, "localClineRulesToggles")) as ClineRulesToggles
 
-	const o3MiniReasoningEffort = vscode.workspace.getConfiguration("hai.modelSettings.o3Mini").get("reasoningEffort", "medium")
-
-	const mcpMarketplaceEnabled = vscode.workspace.getConfiguration("hai").get<boolean>("mcpMarketplace.enabled", true)
+	const mcpMarketplaceEnabled = await migrateMcpMarketplaceEnableSetting(mcpMarketplaceEnabledRaw)
+	const enableCheckpointsSetting = await migrateEnableCheckpointsSetting(enableCheckpointsSettingRaw)
 
 	// Plan/Act separate models setting is a boolean indicating whether the user wants to use different models for plan and act. Existing users expect this to be enabled, while we want new users to opt in to this being disabled by default.
 	// On win11 state sometimes initializes as empty string instead of undefined
@@ -434,21 +494,30 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			openRouterModelInfo,
 			openRouterProviderSorting,
 			vsCodeLmModelSelector,
-			o3MiniReasoningEffort,
 			thinkingBudgetTokens,
 			reasoningEffort,
 			liteLlmBaseUrl,
 			liteLlmModelId,
+			liteLlmModelInfo,
 			liteLlmApiKey,
 			liteLlmUsePromptCache,
+			fireworksApiKey,
+			fireworksModelId,
+			fireworksModelMaxCompletionTokens,
+			fireworksModelMaxTokens,
 			asksageApiKey,
 			asksageApiUrl,
 			xaiApiKey,
 			sambanovaApiKey,
-			isApiConfigurationValid,
+			nebiusApiKey,
 			favoritedModelIds,
 			requestTimeoutMs,
+			isApiConfigurationValid,
 		},
+		isNewUser: isNewUser ?? true,
+		lastShownAnnouncementId,
+		customInstructions,
+		taskHistory,
 		embeddingConfiguration: {
 			provider: embeddingProvider,
 			modelId: embeddingModelId,
@@ -468,12 +537,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			ollamaBaseUrl: embeddingOllamaBaseUrl,
 			ollamaModelId: embeddingOllamaModelId,
 		},
-		lastShownAnnouncementId,
-		customInstructions,
 		expertPrompt,
 		expertName,
 		isDeepCrawlEnabled,
-		taskHistory,
 		buildContextOptions: buildContextOptions
 			? {
 					...buildContextOptions,
@@ -487,11 +553,15 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 					systemPromptVersion: "v3", // Setting v3 as default prompt
 				},
 		buildIndexProgress: buildIndexProgress,
+		enableInlineEdit: enableInlineEdit ?? true,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
 		globalClineRulesToggles: globalClineRulesToggles || {},
 		localClineRulesToggles: localClineRulesToggles || {},
 		browserSettings: { ...DEFAULT_BROWSER_SETTINGS, ...browserSettings }, // this will ensure that older versions of browserSettings (e.g. before remoteBrowserEnabled was added) are merged with the default values (false for remoteBrowserEnabled)
-		chatSettings: chatSettings || DEFAULT_CHAT_SETTINGS,
+		chatSettings: {
+			...DEFAULT_CHAT_SETTINGS, // Apply defaults first
+			...(chatSettings || {}), // Spread fetched chatSettings, which includes preferredLanguage, and openAIReasoningEffort
+		},
 		userInfo,
 		previousModeApiProvider,
 		previousModeModelId,
@@ -501,10 +571,12 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		previousModeReasoningEffort,
 		previousModeAwsBedrockCustomSelected,
 		previousModeAwsBedrockCustomModelBaseId,
-		mcpMarketplaceEnabled,
+		mcpMarketplaceEnabled: mcpMarketplaceEnabled,
 		telemetrySetting: telemetrySetting || "unset",
 		planActSeparateModelsSetting,
+		enableCheckpointsSetting: enableCheckpointsSetting,
 		shellIntegrationTimeout: shellIntegrationTimeout || 4000,
+		globalWorkflowToggles: globalWorkflowToggles || {},
 	}
 }
 
@@ -561,6 +633,7 @@ export async function updateApiConfiguration(
 		vsCodeLmModelSelector,
 		liteLlmBaseUrl,
 		liteLlmModelId,
+		liteLlmModelInfo,
 		liteLlmApiKey,
 		liteLlmUsePromptCache,
 		qwenApiLine,
@@ -571,6 +644,7 @@ export async function updateApiConfiguration(
 		reasoningEffort,
 		clineApiKey,
 		sambanovaApiKey,
+		nebiusApiKey,
 		favoritedModelIds,
 	} = apiConfiguration
 	await customUpdateState(context, "apiProvider", apiProvider)
@@ -619,6 +693,7 @@ export async function updateApiConfiguration(
 	await customUpdateState(context, "vsCodeLmModelSelector", vsCodeLmModelSelector)
 	await customUpdateState(context, "liteLlmBaseUrl", liteLlmBaseUrl)
 	await customUpdateState(context, "liteLlmModelId", liteLlmModelId)
+	await customUpdateState(context, "liteLlmModelInfo", liteLlmModelInfo)
 	await customUpdateState(context, "liteLlmUsePromptCache", liteLlmUsePromptCache)
 	await customUpdateState(context, "qwenApiLine", qwenApiLine)
 	await customUpdateState(context, "requestyModelId", requestyModelId)
@@ -630,6 +705,7 @@ export async function updateApiConfiguration(
 	await customUpdateState(context, "reasoningEffort", reasoningEffort)
 	await customStoreSecret(context, "clineApiKey", workspaceId, clineApiKey, true)
 	await customStoreSecret(context, "sambanovaApiKey", workspaceId, sambanovaApiKey, true)
+	await customStoreSecret(context, "nebiusApiKey", workspaceId, nebiusApiKey, true)
 	await customUpdateState(context, "favoritedModelIds", favoritedModelIds)
 	await customUpdateState(context, "requestTimeoutMs", apiConfiguration.requestTimeoutMs)
 }
@@ -702,9 +778,11 @@ export async function resetExtensionState(context: vscode.ExtensionContext, work
 		"mistralApiKey",
 		"clineApiKey",
 		"liteLlmApiKey",
+		"fireworksApiKey",
 		"asksageApiKey",
 		"xaiApiKey",
 		"sambanovaApiKey",
+		"nebiusApiKey",
 		"embeddingAwsAccessKey",
 		"embeddingAwsSecretKey",
 		"embeddingAwsSessionToken",

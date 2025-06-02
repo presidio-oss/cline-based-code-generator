@@ -1,7 +1,4 @@
-import { HaiBuildContextOptions } from "./customApi"
-import { EmbeddingConfiguration } from "./embeddings"
 import { ApiConfiguration } from "./api"
-import { AutoApprovalSettings } from "./AutoApprovalSettings"
 import { BrowserSettings } from "./BrowserSettings"
 import { ChatSettings } from "./ChatSettings"
 import { UserInfo } from "./UserInfo"
@@ -9,20 +6,42 @@ import { ChatContent } from "./ChatContent"
 import { TelemetrySetting } from "./TelemetrySetting"
 import { McpViewTab } from "./mcp"
 
+// TAG:HAI
+import { HaiBuildContextOptions } from "./customApi"
+import { EmbeddingConfiguration } from "./embeddings"
+
 export interface WebviewMessage {
 	type:
-		| "addRemoteServer"
 		| "apiConfiguration"
-		| "customInstructions"
-		| "expertPrompt"
 		| "webviewDidLaunch"
 		| "newTask"
 		| "condense"
 		| "reportBug"
-		| "askResponse"
-		| "clearTask"
-		| "didShowAnnouncement"
-		| "selectImages"
+		| "openInBrowser"
+		| "showChatView"
+		| "openMcpSettings"
+		| "openExtensionSettings"
+		| "requestVsCodeLmModels"
+		| "showAccountViewClicked"
+		| "authStateChanged"
+		| "authCallback"
+		| "fetchMcpMarketplace"
+		| "searchCommits"
+		| "fetchLatestMcpServersFromHub"
+		| "telemetrySetting"
+		| "invoke"
+		| "updateSettings"
+		| "clearAllTaskHistory"
+		| "fetchUserCreditsData"
+		| "optionsResponse"
+		| "requestTotalTasksSize"
+		| "searchFiles"
+		| "grpc_request"
+		| "grpc_request_cancel"
+		| "toggleWorkflow"
+
+		// TAG:HAI
+		| "expertPrompt"
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"
@@ -30,40 +49,6 @@ export interface WebviewMessage {
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
-		| "exportCurrentTask"
-		| "showTaskWithId"
-		| "deleteTaskWithId"
-		| "exportTaskWithId"
-		| "resetState"
-		| "requestOllamaModels"
-		| "requestLmStudioModels"
-		| "openImage"
-		| "openInBrowser"
-		| "openFile"
-		| "openMention"
-		| "showChatView"
-		| "refreshRequestyModels"
-		| "refreshClineRules"
-		| "cancelTask"
-		| "refreshOpenRouterModels"
-		| "refreshOpenAiModels"
-		| "openMcpSettings"
-		| "restartMcpServer"
-		| "deleteMcpServer"
-		| "autoApprovalSettings"
-		| "browserSettings"
-		| "browserRelaunchResult"
-		| "togglePlanActMode"
-		| "checkpointDiff"
-		| "checkpointRestore"
-		| "taskCompletionViewChanges"
-		| "openExtensionSettings"
-		| "requestVsCodeLmModels"
-		| "toggleToolAutoApprove"
-		| "toggleMcpServer"
-		| "getLatestState"
-		| "accountLoginClicked"
-		| "accountLogoutClicked"
 		| "onHaiConfigure"
 		| "buildContextOptions"
 		| "embeddingConfiguration"
@@ -76,70 +61,19 @@ export interface WebviewMessage {
 		| "stopIndex"
 		| "startIndex"
 		| "resetIndex"
-		| "subscribeEmail"
-		| "showAccountViewClicked"
-		| "authStateChanged"
-		| "authCallback"
-		| "fetchMcpMarketplace"
-		| "downloadMcp"
-		| "silentlyRefreshMcpMarketplace"
-		| "searchCommits"
-		| "showMcpView"
-		| "fetchLatestMcpServersFromHub"
-		| "telemetrySetting"
-		| "openSettings"
-		| "updateMcpTimeout"
-		| "fetchOpenGraphData"
-		| "checkIsImageUrl"
-		| "invoke"
-		| "updateSettings"
-		| "clearAllTaskHistory"
-		| "fetchUserCreditsData"
-		| "optionsResponse"
-		| "requestTotalTasksSize"
-		| "relaunchChromeDebugMode"
-		| "taskFeedback"
 		| "writeTaskStatus"
-		| "scrollToSettings"
-		| "searchFiles"
-		| "toggleFavoriteModel"
-		| "grpc_request"
-		| "grpc_request_cancel"
-		| "toggleClineRule"
-		| "toggleCursorRule"
-		| "toggleWindsurfRule"
-		| "deleteClineRule"
-		| "copyToClipboard"
-		| "updateTerminalConnectionTimeout"
-		| "setActiveQuote"
 
-	// | "relaunchChromeDebugMode"
 	text?: string
-	expert?: string
 	disabled?: boolean
-	askResponse?: ClineAskResponse
 	apiConfiguration?: ApiConfiguration
 	images?: string[]
 	bool?: boolean
 	number?: number
-	autoApprovalSettings?: AutoApprovalSettings
 	browserSettings?: BrowserSettings
 	chatSettings?: ChatSettings
 	chatContent?: ChatContent
 	mcpId?: string
 	timeout?: number
-	isDefault?: boolean
-	prompt?: string
-	category?: string
-	folder?: string
-	taskId?: string
-	status?: string
-	isDeepCrawlEnabled?: boolean
-
-	buildContextOptions?: HaiBuildContextOptions
-	embeddingConfiguration?: EmbeddingConfiguration
-	toast?: { message: string; toastType: "error" | "warning" | "info" }
-
 	tab?: McpViewTab
 	// For toggleToolAutoApprove
 	serverName?: string
@@ -153,10 +87,10 @@ export interface WebviewMessage {
 	// For openInBrowser
 	url?: string
 	planActSeparateModelsSetting?: boolean
+	enableCheckpointsSetting?: boolean
+	mcpMarketplaceEnabled?: boolean
 	telemetrySetting?: TelemetrySetting
 	customInstructionsSetting?: string
-	// For task feedback
-	feedbackType?: TaskFeedbackType
 	mentionsRequestId?: string
 	query?: string
 	// For toggleFavoriteModel
@@ -171,14 +105,29 @@ export interface WebviewMessage {
 	grpc_request_cancel?: {
 		request_id: string // ID of the request to cancel
 	}
-	// For cline rules
+	// For cline rules and workflows
 	isGlobal?: boolean
 	rulePath?: string
+	workflowPath?: string
 	enabled?: boolean
 	filename?: string
 
 	offset?: number
 	shellIntegrationTimeout?: number
+
+	// TAG:HAI
+	expert?: string
+	isDefault?: boolean
+	prompt?: string
+	category?: string
+	folder?: string
+	taskId?: string
+	status?: string
+	enableInlineEdit?: boolean
+	buildContextOptions?: HaiBuildContextOptions
+	embeddingConfiguration?: EmbeddingConfiguration
+	toast?: { message: string; toastType: "error" | "warning" | "info" }
+	isDeepCrawlEnabled?: boolean
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

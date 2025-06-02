@@ -1,6 +1,7 @@
-import { execa } from "execa"
+import execa from "execa"
 import * as fs from "fs"
 import * as path from "path"
+import * as os from "os"
 
 /**
  * List of VSCode extensions to install for evaluation environments
