@@ -154,7 +154,7 @@ const extensionConfig = {
 	...baseConfig,
 	entryPoints: ["src/extension.ts"],
 	outfile: `${destDir}/extension.js`,
-	external: ["vscode", "faiss-node"],
+	external: ["vscode", "faiss-node", "crawlee", "playwright"],
 }
 
 // Standalone-specific configuration
