@@ -105,7 +105,7 @@ export class Controller {
 	private vsCodeWorkSpaceFolderFsPath!: string
 	private codeIndexAbortController: AbortController
 	private isSideBar: boolean
-	private _expertManager: ExpertManager | undefined
+	private expertManager: ExpertManager | undefined
 	private isCodeIndexInProgress: boolean = false
 
 	constructor(
@@ -155,13 +155,13 @@ export class Controller {
 		this.disposables.push(registration)
 	}
 
-	//TAG: HAI
+	// TAG:HAI
 	private async getExpertManager(): Promise<ExpertManager> {
-		if (!this._expertManager) {
+		if (!this.expertManager) {
 			const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
-			this._expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
+			this.expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
 		}
-		return this._expertManager
+		return this.expertManager
 	}
 
 	/*
