@@ -142,6 +142,15 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			})
 			return
 		}
+
+		if (deepCrawl && documentLinks.length === 0) {
+			vscode.postMessage({
+				type: "showToast",
+				toast: { message: "At least one document link is required when DeepCrawl is enabled", toastType: "error" },
+			})
+			return
+		}
+
 		const expertExists = allExperts.some((expert) => expert.name.toLowerCase() === newExpertName.toLowerCase())
 		if (expertExists) {
 			setNameError("An expert with this name already exists")
@@ -674,6 +683,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									disabled={isFormReadOnly || !isEmbeddingValid}>
 									DeepCrawl
 								</VSCodeCheckbox>
+								<p className="description-text">
+									Enabling deep crawl can explore websites beyond a single page by following internal links.
+								</p>
 								{!isEmbeddingValid && (
 									<p className="description-text" style={{ color: "var(--vscode-editorWarning-foreground)" }}>
 										Valid embedding configuration required for deep crawling
@@ -690,6 +702,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									disabled={isFormReadOnly || !deepCrawl || !isEmbeddingValid}
 									style={{ width: "100%" }}
 								/>
+								<p className="description-text">Sets the maximum number of pages to crawl.</p>
 							</FormGroup>
 							{!isFormReadOnly && (
 								<ActionButtons>

@@ -2039,7 +2039,6 @@ Commit message:`
 
 				if (isDeepCrawlEnabled) {
 					await this.postStateToWebview()
-					break
 				}
 
 				if (message.category === "viewExpert") {

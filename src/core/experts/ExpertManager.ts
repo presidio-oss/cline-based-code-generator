@@ -87,7 +87,7 @@ export class ExpertManager {
 			// Set initial status to "pending"
 			const statusData = parsedExpert.documentLinks.map((link) => ({
 				...link,
-				filename: `doc-${uuidv4()}.md`,
+				...(isDeepCrawl ? {} : { filename: `doc-${uuidv4()}.md` }),
 				status: DocumentStatus.PENDING,
 				processedAt: new Date().toISOString(),
 				error: null,
