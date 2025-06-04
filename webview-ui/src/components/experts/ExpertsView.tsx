@@ -339,11 +339,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																	<StatusIcon
 																		status={link.status}
 																		title={capitalizeFirstLetter(link.status)}>
-																		{link.status.toLowerCase() === "completed" ? (
+																		{link.status.toLowerCase() ===
+																		DocumentStatus.COMPLETED ? (
 																			<span className="codicon codicon-check" />
-																		) : link.status.toLowerCase() === "failed" ? (
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.FAILED ? (
 																			<span className="codicon codicon-error" />
-																		) : link.status.toLowerCase() === "processing" ? (
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.PROCESSING ? (
 																			<div
 																				style={{
 																					transform: "scale(0.8)",

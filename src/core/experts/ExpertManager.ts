@@ -408,6 +408,15 @@ export class ExpertManager {
 						)
 					}
 
+					// Determine expert status based on document link statuses
+					let expertStatus = DocumentStatus.COMPLETED
+					if (documentLinks.length > 0) {
+						const hasNonCompletedLinks = documentLinks.some((link) => link.status !== DocumentStatus.COMPLETED)
+						if (hasNonCompletedLinks) {
+							expertStatus = DocumentStatus.PROCESSING
+						}
+					}
+
 					// Build expert data
 					const expertData = {
 						name: metadata.name,
@@ -417,6 +426,7 @@ export class ExpertManager {
 						documentLinks,
 						deepCrawl: isDeepCrawl,
 						maxRequestsPerCrawl: metadata.maxRequestsPerCrawl,
+						status: expertStatus,
 					}
 
 					// Validate and add to list

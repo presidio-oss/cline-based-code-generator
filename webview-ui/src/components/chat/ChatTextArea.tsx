@@ -42,7 +42,7 @@ import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
 import { PlanActMode } from "@shared/proto/state"
 
 // TAG:HAI
-import { ExpertData } from "@shared/experts.ts"
+import { DocumentStatus, ExpertData } from "@shared/experts.ts"
 
 const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: number }> => {
 	return new Promise((resolve, reject) => {
@@ -350,19 +350,25 @@ const ExpertsList = styled.div`
 	gap: 8px;
 `
 
-const ExpertItem = styled.div<{ isSelected?: boolean }>`
+const ExpertItem = styled.div<{ isSelected?: boolean; isDisabled?: boolean }>`
 	padding: 6px 8px;
 	font-size: 12px;
-	cursor: pointer;
+	cursor: ${(props) => (props.isDisabled ? "not-allowed" : "pointer")};
 	border-radius: 3px;
 	background-color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusBackground)" : "transparent")};
-	color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusForeground)" : "var(--vscode-foreground)")};
+	color: ${(props) =>
+		props.isDisabled
+			? "var(--vscode-disabledForeground)"
+			: props.isSelected
+				? "var(--vscode-quickInputList-focusForeground)"
+				: "var(--vscode-foreground)"};
 	display: flex;
 	align-items: center;
-	justify-content: space-between; // Add this to push items to edges
+	justify-content: space-between;
+	opacity: ${(props) => (props.isDisabled ? 0.6 : 1)};
 
 	&:hover {
-		background-color: var(--vscode-list-hoverBackground);
+		background-color: ${(props) => (props.isDisabled ? "transparent" : "var(--vscode-list-hoverBackground)")};
 	}
 `
 
@@ -1917,14 +1923,27 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											))}
 
 											{/* Custom experts without icons */}
-											{customExperts.map((expert) => (
-												<ExpertItem
-													key={expert.name}
-													isSelected={selectedExpert?.name === expert.name}
-													onClick={() => handleExpertSelect(expert)}>
-													{expert.name}
-												</ExpertItem>
-											))}
+											{customExperts.map((expert) => {
+												const isProcessing = expert.status === DocumentStatus.PROCESSING
+												return (
+													<ExpertItem
+														key={expert.name}
+														isSelected={selectedExpert?.name === expert.name}
+														isDisabled={isProcessing}
+														onClick={() => handleExpertSelect(expert)}>
+														{expert.name}
+														{isProcessing && (
+															<ExpertTag
+																style={{
+																	backgroundColor:
+																		"var(--vscode-inputValidation-warningBackground)",
+																}}>
+																Processing
+															</ExpertTag>
+														)}
+													</ExpertItem>
+												)
+											})}
 										</ExpertsList>
 									</ExpertsSelectorTooltip>
 								)}
