@@ -41,7 +41,8 @@ export interface WebviewMessage {
 		| "toggleWorkflow"
 
 		// TAG:HAI
-		| "expertPrompt"
+		| "selectExpert"
+		| "viewExpertPrompt"
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"

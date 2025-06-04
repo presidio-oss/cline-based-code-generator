@@ -2028,39 +2028,36 @@ Commit message:`
 						break
 				}
 				break
-			case "expertPrompt":
+			case "selectExpert":
 				const expertName = message.text || ""
 				const isDeepCrawlEnabled = !!message.isDeepCrawlEnabled
-
-				// Always update common state
 				await customUpdateState(this.context, "expertPrompt", message.prompt || undefined)
 				await customUpdateState(this.context, "expertName", expertName || undefined)
 				await customUpdateState(this.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
-
-				if (isDeepCrawlEnabled) {
-					await this.postStateToWebview()
+				if (!isDeepCrawlEnabled) {
+					await this.updateExpertPrompt(message.prompt, expertName)
 				}
+				break
+			case "viewExpertPrompt":
+				const viewExpertName = message.text || ""
 
-				if (message.category === "viewExpert") {
-					if (message.isDefault && message.prompt) {
-						try {
-							const encodedContent = Buffer.from(message.prompt).toString("base64")
-							const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
-							const document = await vscode.workspace.openTextDocument(uri)
-							await vscode.window.showTextDocument(document, { preview: false })
-						} catch (error) {
-							console.error("Error creating or opening the virtual document:", error)
-						}
-					} else {
-						const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
-						if (promptPath) {
-							openFile(promptPath)
-						} else {
-							vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-						}
+				if (message.isDefault && message.prompt) {
+					try {
+						const encodedContent = Buffer.from(message.prompt).toString("base64")
+						const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${viewExpertName}.md?${encodedContent}`)
+						const document = await vscode.workspace.openTextDocument(uri)
+						await vscode.window.showTextDocument(document, { preview: false })
+					} catch (error) {
+						console.error("Error creating or opening the virtual document:", error)
 					}
 				} else {
-					await this.updateExpertPrompt(message.prompt, expertName)
+					const expertManager = await this.getExpertManager()
+					const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, viewExpertName)
+					if (promptPath) {
+						openFile(promptPath)
+					} else {
+						vscode.window.showErrorMessage(`Could not find prompt file for expert: ${viewExpertName}`)
+					}
 				}
 				break
 			case "saveExpert":

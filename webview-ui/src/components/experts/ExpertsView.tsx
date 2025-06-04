@@ -214,9 +214,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		const expertToOpen = allExperts.find((expert) => expert.name === expertName)
 		if (expertToOpen) {
 			vscode.postMessage({
-				type: "expertPrompt",
+				type: "viewExpertPrompt",
 				text: expertName.trim(),
-				category: "viewExpert",
 				isDefault: expertToOpen.isDefault,
 				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
 				isDeepCrawlEnabled: expertToOpen.deepCrawl,
@@ -689,11 +688,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								<p className="description-text">
 									Enabling deep crawl can explore websites beyond a single page by following internal links.
 								</p>
-								{!isEmbeddingValid && (
-									<p className="description-text" style={{ color: "var(--vscode-editorWarning-foreground)" }}>
-										Valid embedding configuration required for deep crawling
-									</p>
-								)}
 							</FormGroup>
 							<FormGroup>
 								<label htmlFor="max-requests">MaxRequestsPerCrawl</label>
@@ -707,6 +701,20 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								/>
 								<p className="description-text">Sets the maximum number of pages to crawl.</p>
 							</FormGroup>
+							{!isEmbeddingValid && (
+								<div
+									className="warning-message"
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "8px",
+										color: "var(--vscode-editorWarning-foreground)",
+										fontSize: "11px",
+									}}>
+									<i className="codicon codicon-warning" style={{ fontSize: "14px" }} />
+									<span>Valid embedding configuration required for deep crawling</span>
+								</div>
+							)}
 							{!isFormReadOnly && (
 								<ActionButtons>
 									<VSCodeButton appearance="secondary" onClick={resetForm}>
