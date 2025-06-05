@@ -10,6 +10,7 @@ import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 import { ExpertFileManager } from "./ExpertFileManager"
 import { DocumentProcessor } from "./DocumentProcessor"
 import { VectorStoreManager } from "./VectorStoreManager"
+import { getAllExtensionState } from "../storage/state"
 
 /**
  * Manages experts, coordinating between file operations, document processing,
@@ -341,15 +342,18 @@ export class ExpertManager {
 	/**
 	 * Read all experts from the .hai-experts directory
 	 */
-	async readExperts(workspacePath: string): Promise<ExpertData[]> {
+	async readExperts(workspacePath: string): Promise<{ experts: ExpertData[]; selectedExpert: ExpertData | null }> {
 		if (!workspacePath) {
-			return []
+			return { experts: [], selectedExpert: null }
 		}
+
+		const { expertName } = await getAllExtensionState(this.extensionContext, this.workspaceId)
 
 		const expertsDir = `${workspacePath}/${GlobalFileNames.experts}`
 		try {
 			const expertFolders = await fs.readdir(expertsDir)
 			const experts: ExpertData[] = []
+			let selectedExpert: ExpertData | null = null
 
 			for (const folder of expertFolders) {
 				const expertDir = `${expertsDir}/${folder}`
@@ -432,7 +436,11 @@ export class ExpertManager {
 					// Validate and add to list
 					const validationResult = ExpertDataSchema.safeParse(expertData)
 					if (validationResult.success) {
-						experts.push(validationResult.data)
+						const validExpert = validationResult.data
+						experts.push(validExpert)
+						if (expertName && validExpert.name === expertName) {
+							selectedExpert = validExpert
+						}
 					} else {
 						vscode.window.showWarningMessage(
 							`Invalid expert data for ${folder}: ${validationResult.error.issues.map((i) => i.message).join(", ")}`,
@@ -443,10 +451,10 @@ export class ExpertManager {
 				}
 			}
 
-			return experts
+			return { experts, selectedExpert }
 		} catch (error) {
 			console.error("Failed to read experts directory:", error)
-			return []
+			return { experts: [], selectedExpert: null }
 		}
 	}
 
@@ -699,9 +707,11 @@ export class ExpertManager {
 	/**
 	 * Load the default Experts
 	 */
-	async loadDefaultExperts(): Promise<ExpertData[]> {
+	async loadDefaultExperts(): Promise<{ experts: ExpertData[]; selectedExpert: ExpertData | null }> {
 		const expertsDir = path.join(this.extensionContext.extensionPath, GlobalFileNames.defaultExperts)
 		let experts: ExpertData[] = []
+		let selectedExpert: ExpertData | null = null
+		const { expertName } = await getAllExtensionState(this.extensionContext, this.workspaceId)
 
 		try {
 			const directoryEntries = await fs.readdir(expertsDir, { withFileTypes: true })
@@ -732,18 +742,23 @@ export class ExpertManager {
 					console.warn(`Icon not found for ${folderName}`)
 				}
 
-				experts.push({
+				const expert: ExpertData = {
 					name: folderName,
 					prompt,
 					isDefault: true,
 					iconComponent: iconBase64,
-				})
+				}
+				experts.push(expert)
+
+				if (expertName && expert.name === expertName) {
+					selectedExpert = expert
+				}
 			}
 		} catch (error) {
 			console.error("Error reading experts directory:", error)
 		}
 
-		return experts
+		return { experts, selectedExpert }
 	}
 
 	/**

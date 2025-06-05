@@ -1,7 +1,7 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
-import { useClickAway, useEvent, useWindowSize } from "react-use"
+import { useClickAway, useDeepCompareEffect, useEvent, useWindowSize } from "react-use"
 import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "@shared/context-mentions"
 import { ExtensionMessage } from "@shared/ExtensionMessage"
@@ -485,35 +485,73 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [selectedType, searchQuery])
 
-		const handleMessage = useCallback((event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-			switch (message.type) {
-				case "fileSearchResults": {
-					// Only update results if they match the current query or if there's no mentionsRequestId - better UX
-					if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
-						setFileSearchResults(message.results || [])
-						setSearchLoading(false)
-					}
-					break
-				}
+		useDeepCompareEffect(() => {
+			const messageHandler = (event: MessageEvent) => {
+				const message: ExtensionMessage = event.data
 
-				// TAG:HAI
-				case "expertsUpdated": {
-					if (message.experts) {
-						setCustomExperts(message.experts)
+				switch (message.type) {
+					case "fileSearchResults": {
+						// Only update results if they match the current query or if there's no mentionsRequestId - better UX
+						if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
+							setFileSearchResults(message.results || [])
+							setSearchLoading(false)
+						}
+						break
 					}
-					break
-				}
-				case "defaultExpertsLoaded": {
-					if (message.experts) {
-						setDefaultExperts(message.experts)
+
+					// TAG:HAI
+					case "expertsUpdated": {
+						if (message.experts) {
+							setCustomExperts(message.experts)
+
+							// Check if currently selected expert still exists
+							if (selectedExpert && !message.experts.find((expert) => expert.name === selectedExpert.name)) {
+								setSelectedExpert(null)
+							}
+
+							// Set selected expert if provided
+							if (message.selectedExpert) {
+								setSelectedExpert(message.selectedExpert)
+							}
+						}
+						break
 					}
-					break
+					case "defaultExpertsLoaded": {
+						if (message.experts) {
+							setDefaultExperts(message.experts)
+
+							// Check if currently selected expert still exists in default experts
+							if (
+								selectedExpert &&
+								selectedExpert.isDefault &&
+								!message.experts.find((expert) => expert.name === selectedExpert.name)
+							) {
+								setSelectedExpert(null)
+							}
+
+							// Set selected expert if provided
+							if (message.selectedExpert) {
+								setSelectedExpert(message.selectedExpert)
+							}
+						}
+						break
+					}
+
+					default:
+						console.warn(`Unhandled message type: ${message.type}`)
 				}
 			}
-		}, [])
 
-		useEvent("message", handleMessage)
+			window.addEventListener("message", messageHandler)
+
+			// Load experts data on component mount
+			vscode.postMessage({ type: "loadExperts" })
+			vscode.postMessage({ type: "loadDefaultExperts" })
+
+			return () => {
+				window.removeEventListener("message", messageHandler)
+			}
+		}, [customExperts, defaultExperts])
 
 		const queryItems = useMemo(() => {
 			return [
@@ -1239,9 +1277,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		}, [])
 
 		const handleExpertsButtonClick = useCallback(() => {
-			// Request custom experts from the extension
-			vscode.postMessage({ type: "loadExperts" })
-			vscode.postMessage({ type: "loadDefaultExperts" })
 			setShowExpertsSelector(!showExpertsSelector)
 		}, [showExpertsSelector])
 
@@ -1887,7 +1922,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 												</div>
 											) : (
 												<span
-													className="codicon codicon-person"
+													className="codicon codicon-robot"
 													style={{ fontSize: "12px", width: "12px", height: "12px" }}
 												/>
 											)}

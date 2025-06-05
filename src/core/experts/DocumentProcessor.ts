@@ -72,38 +72,26 @@ export class DocumentProcessor {
 
 			for (const link of documentLinks) {
 				// Find or create entry in status data
-				const existingLinkIndex = existingStatusData.findIndex((l) => l.url === link.url)
+				let linkIndex = existingStatusData.findIndex((l) => l.url === link.url)
 
-				// Mark as processing
 				const processingLink = {
 					...link,
 					status: DocumentStatus.PROCESSING,
 					processedAt: new Date().toISOString(),
 				}
 
-				if (existingLinkIndex !== -1) {
-					existingStatusData[existingLinkIndex] = processingLink
+				if (linkIndex !== -1) {
+					existingStatusData[linkIndex] = processingLink
 				} else {
-					existingStatusData.push(processingLink)
+					linkIndex = existingStatusData.push(processingLink) - 1
 				}
 
-				// Update status before processing
 				await this.fileManager.writeStatusFile(statusFilePath, existingStatusData)
 
-				// Process the link
 				const updatedLink = await this.processSingleDocumentLink(expertName, docsDir, processingLink, urlContentFetcher)
 
-				// Update in the status data
-				if (existingLinkIndex !== -1) {
-					existingStatusData[existingLinkIndex] = updatedLink
-				} else {
-					const newIndex = existingStatusData.findIndex((l) => l.url === link.url)
-					if (newIndex !== -1) {
-						existingStatusData[newIndex] = updatedLink
-					}
-				}
+				existingStatusData[linkIndex] = updatedLink
 
-				// Write updated status
 				await this.fileManager.writeStatusFile(statusFilePath, existingStatusData)
 			}
 		} catch (error) {
@@ -227,17 +215,18 @@ export class DocumentProcessor {
 		let faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
 
 		// Find or create entry for this URL
-		const linkIndex = faissStatusData.findIndex((link) => link.url === url)
+		let linkIndex = faissStatusData.findIndex((link) => link.url === url)
 		if (linkIndex !== -1) {
 			faissStatusData[linkIndex].status = DocumentStatus.PROCESSING
 			faissStatusData[linkIndex].processedAt = new Date().toISOString()
 		} else {
-			faissStatusData.push({
-				url,
-				status: DocumentStatus.PROCESSING,
-				processedAt: new Date().toISOString(),
-				error: null,
-			})
+			linkIndex =
+				faissStatusData.push({
+					url,
+					status: DocumentStatus.PROCESSING,
+					processedAt: new Date().toISOString(),
+					error: null,
+				}) - 1
 		}
 
 		// Update status file before crawling
@@ -281,24 +270,18 @@ export class DocumentProcessor {
 			await crawler.run([url])
 
 			// Update status to COMPLETED after successful crawl
-			const updatedLinkIndex = faissStatusData.findIndex((link) => link.url === url)
-			if (updatedLinkIndex !== -1) {
-				faissStatusData[updatedLinkIndex].status = DocumentStatus.COMPLETED
-				faissStatusData[updatedLinkIndex].processedAt = new Date().toISOString()
-				faissStatusData[updatedLinkIndex].error = null
-			}
+			faissStatusData[linkIndex].status = DocumentStatus.COMPLETED
+			faissStatusData[linkIndex].processedAt = new Date().toISOString()
+			faissStatusData[linkIndex].error = null
 
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 		} catch (error) {
-			// Update status to FAILED if crawl fails
+			// Update status to FAILED using stored index
 			console.error(`Error in crawling ${url} for expert ${expertName}:`, error)
 
-			const failedLinkIndex = faissStatusData.findIndex((link) => link.url === url)
-			if (failedLinkIndex !== -1) {
-				faissStatusData[failedLinkIndex].status = DocumentStatus.FAILED
-				faissStatusData[failedLinkIndex].processedAt = new Date().toISOString()
-				faissStatusData[failedLinkIndex].error = error instanceof Error ? error.message : String(error)
-			}
+			faissStatusData[linkIndex].status = DocumentStatus.FAILED
+			faissStatusData[linkIndex].processedAt = new Date().toISOString()
+			faissStatusData[linkIndex].error = error instanceof Error ? error.message : String(error)
 
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 		}

@@ -2030,8 +2030,9 @@ Commit message:`
 				break
 			case "selectExpert":
 				const expertName = message.text || ""
+				const expertPrompt = message.prompt || ""
 				const isDeepCrawlEnabled = !!message.isDeepCrawlEnabled
-				await customUpdateState(this.context, "expertPrompt", message.prompt || undefined)
+				await customUpdateState(this.context, "expertPrompt", expertPrompt || undefined)
 				await customUpdateState(this.context, "expertName", expertName || undefined)
 				await customUpdateState(this.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
 				if (!isDeepCrawlEnabled) {
@@ -2069,9 +2070,23 @@ Commit message:`
 				break
 			case "deleteExpert":
 				if (message.text) {
-					const expertName = message.text
-					await expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
+					const expertToDelete = message.text
+					const { expertName } = await getAllExtensionState(this.context, this.workspaceId)
+
+					// Delete the expert
+					const expertManager = await this.getExpertManager()
+					await expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertToDelete)
+
+					// Clear selected expert state if the deleted expert was selected
+					if (expertName === expertToDelete) {
+						await customUpdateState(this.context, "expertName", undefined)
+						await customUpdateState(this.context, "expertPrompt", undefined)
+						await customUpdateState(this.context, "isDeepCrawlEnabled", false)
+					}
+
+					// Reload experts to update the UI
 					await this.loadExperts()
+					await this.loadDefaultExperts()
 				}
 				break
 			case "loadExperts":
@@ -2292,19 +2307,21 @@ Commit message:`
 
 	async loadExperts() {
 		const expertManager = await this.getExpertManager()
-		const experts = await expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+		const { experts, selectedExpert } = await expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
 		await this.postMessageToWebview({
 			type: "expertsUpdated",
 			experts,
+			selectedExpert,
 		})
 	}
 
 	async loadDefaultExperts() {
 		const expertManager = await this.getExpertManager()
-		const experts = await expertManager.loadDefaultExperts()
+		const { experts, selectedExpert } = await expertManager.loadDefaultExperts()
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
+			selectedExpert,
 		})
 	}
 
