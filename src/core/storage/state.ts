@@ -15,6 +15,7 @@ import { ClineRulesToggles } from "@shared/cline-rules"
 // TAG:HAI
 import { EmbeddingConfiguration, EmbeddingProvider } from "@shared/embeddings"
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "@shared/customApi"
+import { GuardrailsConfig } from "@/integrations/guardrails"
 
 /*
 	Storage
@@ -395,7 +396,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "isEmbeddingConfigurationValid") as Promise<boolean | undefined>,
 		customGetState(context, "embeddingOllamaBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "embeddingOllamaModelId") as Promise<string | undefined>,
-		customGetState(context, "guardrailsConfig") as Promise<any | undefined>,
+		customGetState(context, "guardrailsConfig") as Promise<GuardrailsConfig | undefined>,
 		fetch,
 	])
 

@@ -37,7 +37,7 @@ export interface GuardrailsConfig {
 }
 
 export class Guardrails extends GuardrailsEngine {
-	public static MESSAGE = "Message blocked by Hai Guardrails filter."
+	public static MESSAGE = "Message blocked by HAI Guardrails filter."
 	private context: vscode.ExtensionContext
 
 	// Default configuration that will be used if no config is found in state
