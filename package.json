@@ -171,7 +171,7 @@
 			{
 				"command": "hai.expertsButtonClicked",
 				"title": "Experts",
-				"icon": "$(gist)",
+				"icon": "$(robot)",
 				"category": "HAI Build"
 			}
 		],
@@ -414,6 +414,7 @@
 		"chokidar": "^4.0.1",
 		"chrome-launcher": "^1.1.2",
 		"clone-deep": "^4.0.1",
+		"crawlee": "^3.13.5",
 		"default-shell": "^2.2.0",
 		"diff": "^5.2.0",
 		"execa": "^9.5.2",
@@ -441,6 +442,7 @@
 		"p-timeout": "^6.1.4",
 		"p-wait-for": "^5.0.2",
 		"pdf-parse": "^1.1.1",
+		"playwright": "^1.52.0",
 		"posthog-node": "^4.8.1",
 		"puppeteer-chromium-resolver": "^23.0.0",
 		"puppeteer-core": "^23.4.0",

@@ -21,10 +21,14 @@ import { BrowserSettings } from "../../shared/BrowserSettings"
 export const SYSTEM_PROMPT = async (
 	cwd: string,
 	supportsBrowserUse: boolean,
-	supportsCodeIndex: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
+
+	// TAG:HAI
+	supportsCodeIndex: boolean,
 	expertPrompt?: string,
+	isDeepCrawlEnabled?: boolean,
+	expertName?: string,
 ) => `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
 
 ====
@@ -50,7 +54,7 @@ Always adhere to this format for the tool use to ensure proper parsing and execu
 
 # Tools
 
-${customToolsPrompt(supportsCodeIndex)}
+${customToolsPrompt(supportsCodeIndex, isDeepCrawlEnabled, expertName)}
 
 ## execute_command
 Description: Request to executes CLI command. Use for system operations/tasks. Tailor command to user system. Explain command. Use shell syntax for command chaining. Prefer CLI commands over scripts (more flexible). Runs in: ${cwd.toPosix()}
@@ -532,7 +536,7 @@ RULES
 		? " Then if you want to test your work, you might use browser_action to launch the site, wait for the user's response confirming the site was launched along with a screenshot, then perhaps e.g., click a button to test functionality if needed, wait for the user's response confirming the button was clicked along with a screenshot of the new state, before finally closing the browser."
 		: ""
 }
-${customRulesPrompt(supportsCodeIndex)}
+${customRulesPrompt(supportsCodeIndex, isDeepCrawlEnabled)}
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
 
 

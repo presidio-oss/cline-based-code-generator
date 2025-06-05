@@ -1,7 +1,7 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
-import { useClickAway, useEvent, useWindowSize } from "react-use"
+import { useClickAway, useDeepCompareEffect, useEvent, useWindowSize } from "react-use"
 import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "@shared/context-mentions"
 import { ExtensionMessage } from "@shared/ExtensionMessage"
@@ -42,7 +42,7 @@ import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
 import { PlanActMode } from "@shared/proto/state"
 
 // TAG:HAI
-import { ExpertData } from "@shared/experts.ts"
+import { DocumentStatus, ExpertData } from "@shared/experts.ts"
 
 const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: number }> => {
 	return new Promise((resolve, reject) => {
@@ -350,19 +350,25 @@ const ExpertsList = styled.div`
 	gap: 8px;
 `
 
-const ExpertItem = styled.div<{ isSelected?: boolean }>`
+const ExpertItem = styled.div<{ isSelected?: boolean; isDisabled?: boolean }>`
 	padding: 6px 8px;
 	font-size: 12px;
-	cursor: pointer;
+	cursor: ${(props) => (props.isDisabled ? "not-allowed" : "pointer")};
 	border-radius: 3px;
 	background-color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusBackground)" : "transparent")};
-	color: ${(props) => (props.isSelected ? "var(--vscode-quickInputList-focusForeground)" : "var(--vscode-foreground)")};
+	color: ${(props) =>
+		props.isDisabled
+			? "var(--vscode-disabledForeground)"
+			: props.isSelected
+				? "var(--vscode-quickInputList-focusForeground)"
+				: "var(--vscode-foreground)"};
 	display: flex;
 	align-items: center;
-	justify-content: space-between; // Add this to push items to edges
+	justify-content: space-between;
+	opacity: ${(props) => (props.isDisabled ? 0.6 : 1)};
 
 	&:hover {
-		background-color: var(--vscode-list-hoverBackground);
+		background-color: ${(props) => (props.isDisabled ? "transparent" : "var(--vscode-list-hoverBackground)")};
 	}
 `
 
@@ -479,35 +485,73 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [selectedType, searchQuery])
 
-		const handleMessage = useCallback((event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-			switch (message.type) {
-				case "fileSearchResults": {
-					// Only update results if they match the current query or if there's no mentionsRequestId - better UX
-					if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
-						setFileSearchResults(message.results || [])
-						setSearchLoading(false)
-					}
-					break
-				}
+		useDeepCompareEffect(() => {
+			const messageHandler = (event: MessageEvent) => {
+				const message: ExtensionMessage = event.data
 
-				// TAG:HAI
-				case "expertsUpdated": {
-					if (message.experts) {
-						setCustomExperts(message.experts)
+				switch (message.type) {
+					case "fileSearchResults": {
+						// Only update results if they match the current query or if there's no mentionsRequestId - better UX
+						if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
+							setFileSearchResults(message.results || [])
+							setSearchLoading(false)
+						}
+						break
 					}
-					break
-				}
-				case "defaultExpertsLoaded": {
-					if (message.experts) {
-						setDefaultExperts(message.experts)
+
+					// TAG:HAI
+					case "expertsUpdated": {
+						if (message.experts) {
+							setCustomExperts(message.experts)
+
+							// Check if currently selected expert still exists
+							if (selectedExpert && !message.experts.find((expert) => expert.name === selectedExpert.name)) {
+								setSelectedExpert(null)
+							}
+
+							// Set selected expert if provided
+							if (message.selectedExpert) {
+								setSelectedExpert(message.selectedExpert)
+							}
+						}
+						break
 					}
-					break
+					case "defaultExpertsLoaded": {
+						if (message.experts) {
+							setDefaultExperts(message.experts)
+
+							// Check if currently selected expert still exists in default experts
+							if (
+								selectedExpert &&
+								selectedExpert.isDefault &&
+								!message.experts.find((expert) => expert.name === selectedExpert.name)
+							) {
+								setSelectedExpert(null)
+							}
+
+							// Set selected expert if provided
+							if (message.selectedExpert) {
+								setSelectedExpert(message.selectedExpert)
+							}
+						}
+						break
+					}
+
+					default:
+						console.warn(`Unhandled message type: ${message.type}`)
 				}
 			}
-		}, [])
 
-		useEvent("message", handleMessage)
+			window.addEventListener("message", messageHandler)
+
+			// Load experts data on component mount
+			vscode.postMessage({ type: "loadExperts" })
+			vscode.postMessage({ type: "loadDefaultExperts" })
+
+			return () => {
+				window.removeEventListener("message", messageHandler)
+			}
+		}, [customExperts, defaultExperts])
 
 		const queryItems = useMemo(() => {
 			return [
@@ -1225,17 +1269,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 			// Send the selected expert's prompt to the extension
 			vscode.postMessage({
-				type: "expertPrompt",
+				type: "selectExpert",
 				text: expert?.name || "",
 				prompt: expert?.prompt || "",
-				category: "selectExpert",
+				isDeepCrawlEnabled: expert?.deepCrawl || false,
 			})
 		}, [])
 
 		const handleExpertsButtonClick = useCallback(() => {
-			// Request custom experts from the extension
-			vscode.postMessage({ type: "loadExperts" })
-			vscode.postMessage({ type: "loadDefaultExperts" })
 			setShowExpertsSelector(!showExpertsSelector)
 		}, [showExpertsSelector])
 
@@ -1881,7 +1922,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 												</div>
 											) : (
 												<span
-													className="codicon codicon-person"
+													className="codicon codicon-robot"
 													style={{ fontSize: "12px", width: "12px", height: "12px" }}
 												/>
 											)}
@@ -1916,14 +1957,27 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											))}
 
 											{/* Custom experts without icons */}
-											{customExperts.map((expert) => (
-												<ExpertItem
-													key={expert.name}
-													isSelected={selectedExpert?.name === expert.name}
-													onClick={() => handleExpertSelect(expert)}>
-													{expert.name}
-												</ExpertItem>
-											))}
+											{customExperts.map((expert) => {
+												const isProcessing = expert.status === DocumentStatus.PROCESSING
+												return (
+													<ExpertItem
+														key={expert.name}
+														isSelected={selectedExpert?.name === expert.name}
+														isDisabled={isProcessing}
+														onClick={() => handleExpertSelect(expert)}>
+														{expert.name}
+														{isProcessing && (
+															<ExpertTag
+																style={{
+																	backgroundColor:
+																		"var(--vscode-inputValidation-warningBackground)",
+																}}>
+																Processing
+															</ExpertTag>
+														)}
+													</ExpertItem>
+												)
+											})}
 										</ExpertsList>
 									</ExpertsSelectorTooltip>
 								)}

@@ -1,4 +1,4 @@
-export const customToolsPrompt = (enabled: boolean) =>
+export const customToolsPrompt = (enabled: boolean, isDeepCrawlEnabled?: boolean, expertName?: string) =>
 	!enabled
 		? ""
 		: `
@@ -12,6 +12,28 @@ Usage:
     <path>Current Working Directory path here</path>
     <task>User's given task here</task>
 </find_relevant_files>
+
+${
+	isDeepCrawlEnabled
+		? `## custom_expert_context
+Description: **INTELLIGENT EXPERT CONSULTATION**: Request to find relevant context from a custom expert's knowledge base when needed to provide accurate and comprehensive answers. Use this tool when:
+  * The user's query requires specialized knowledge from the expert's domain
+  * You need additional context to provide a complete answer
+  * The user asks for more detailed information
+  * You determine that expert knowledge would significantly improve your response
+This tool will search the vector database and return the most relevant content. Use your judgment to determine when expert consultation is necessary rather than calling it for every query.
+Parameters:
+- query: (required) The search query to find relevant information in the expert's knowledge base.
+- expertName: (required) The name of the custom expert whose knowledge base should be searched.
+Usage:
+<custom_expert_context>
+<query>Your search query here</query>
+<expertName>${expertName}</expertName>
+</custom_expert_context>
+
+`
+		: ""
+}
 
 ## code_security_scan
 Description: Request to perform a security scan on the generated code for OWASP Top 10 vulnerabilities and security issues. This tool will analyze all the files that are modified for potential security risks and provide a report. The tool is specialized in scanning code for security vulnerabilities, so use it wisely don't assume that that the code is free from vulnerabilities.
@@ -37,7 +59,7 @@ export const customCapabilitiesPrompt = (enabled: boolean) =>
 - Always ensure that the code you generate adheres to best practices and security standards to minimize risks and vulnerabilities.
 `
 
-export const customRulesPrompt = (enabled: boolean) =>
+export const customRulesPrompt = (enabled: boolean, isDeepCrawlEnabled?: boolean) =>
 	!enabled
 		? ""
 		: `
@@ -48,6 +70,18 @@ export const customRulesPrompt = (enabled: boolean) =>
   * Does the user mention specific files, directories, or code components?
   * Is file context necessary to provide an appropriate response?
   If the answer is no to these questions, skip using the tool and respond directly.
+${
+	isDeepCrawlEnabled
+		? `- **INTELLIGENT EXPERT CONSULTATION**: When deep crawl is enabled, use the \`custom_expert_context\` tool intelligently based on the nature of the user's query:
+  * Use it when the query requires specialized knowledge from the expert's domain
+  * Use it when you need additional context to provide a comprehensive answer
+  * Use it when the user explicitly asks for more detailed information
+  * Use it when expert knowledge would significantly enhance your response
+- Evaluate each query to determine if expert consultation is necessary. Not every query requires expert knowledge - use your judgment.
+- For simple greetings, basic clarifications, or queries you can answer adequately without expert context, you may respond directly.
+- When you do use the tool, analyze the results and determine if additional queries to the expert knowledge base are needed for a complete response.`
+		: ""
+}
 - You should always use the \`code_security_scan\` tool before attempting to complete any code-related tasks to ensure security and compliance with best practices. Failure to perform a security scan may expose the code to vulnerabilities and security risks. Always prioritize security and compliance with best practices. If any issue or vulnerabilities are found, address them before proceeding with the task.
 - While fixing the vulnerabilities do not remove any of the working code only replace the implementation that is affected with the vulnerabilities, if you require anymore information or course correction, consult with the user before proceeding to apply any of the change. Always show the plan before fixing the security vulnerabilities. Before fixing the vulnerabilities, you should always get the user's approval before proceeding with the fixing process.
 `
