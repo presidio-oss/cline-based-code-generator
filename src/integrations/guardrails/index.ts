@@ -16,7 +16,7 @@ export interface GuardrailsConfig {
 	injection: {
 		name: string
 		threshold: number
-		mode?: string
+		mode: string
 	}
 	pii: {
 		name: string

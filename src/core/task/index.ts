@@ -1652,8 +1652,6 @@ export class Task {
 
 		const messages = await this.formatClineMessagesForGuardrails()
 		const result = await this.guardrails.run(messages)
-		console.log(Guardrails.DEFAULT_GUARDS_CONFIG)
-		console.log(result.messagesWithGuardResult)
 		result.messagesWithGuardResult
 			.filter((guard) => ["secret", "pii"].includes(guard.guardId))
 			.flatMap((guard) => guard.messages)
@@ -1672,10 +1670,10 @@ export class Task {
 				}
 			})
 		const guardsToApply = ["leakage", "injection"]
-		if (this.guardrails.guardsConfig?.secret?.mode === "block") {
+		if (Guardrails.DEFAULT_GUARDS_CONFIG.secret?.mode === "block") {
 			guardsToApply.push("secret")
 		}
-		if (this.guardrails.guardsConfig?.pii?.mode === "block") {
+		if (Guardrails.DEFAULT_GUARDS_CONFIG.pii?.mode === "block") {
 			guardsToApply.push("pii")
 		}
 		this.failedGuards = result.messagesWithGuardResult.filter(
