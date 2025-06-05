@@ -16,6 +16,7 @@ export interface GuardrailsConfig {
 	injection: {
 		name: string
 		threshold: number
+		mode?: string
 	}
 	pii: {
 		name: string
@@ -31,19 +32,20 @@ export interface GuardrailsConfig {
 		name: string
 		roles: MessageType[]
 		threshold: number
+		mode: string
 	}
 }
 
 export class Guardrails extends GuardrailsEngine {
 	public static MESSAGE = "Message blocked by Hai Guardrails filter."
 	private context: vscode.ExtensionContext
-	public guardsConfig: GuardrailsConfig
 
 	// Default configuration that will be used if no config is found in state
 	public static DEFAULT_GUARDS_CONFIG: GuardrailsConfig = {
 		injection: {
 			name: "Prompt Injection",
-			threshold: 0.75,
+			threshold: 1,
+			mode: "heuristic",
 		},
 		pii: {
 			name: "PII",
@@ -57,8 +59,9 @@ export class Guardrails extends GuardrailsEngine {
 		},
 		leakage: {
 			name: "Prompt Leakage",
+			mode: "heuristic",
 			roles: ["user"],
-			threshold: 0.75,
+			threshold: 1,
 		},
 	}
 
@@ -68,7 +71,6 @@ export class Guardrails extends GuardrailsEngine {
 		super({ guards })
 
 		this.context = context
-		this.guardsConfig = Guardrails.DEFAULT_GUARDS_CONFIG
 
 		// Load configuration asynchronously
 		this.loadGuardsConfig().then(() => {
@@ -80,7 +82,7 @@ export class Guardrails extends GuardrailsEngine {
 	private async loadGuardsConfig(): Promise<void> {
 		const storedConfig = (await customGetState(this.context, "guardrailsConfig")) as GuardrailsConfig | undefined
 		if (storedConfig) {
-			this.guardsConfig = storedConfig
+			Guardrails.DEFAULT_GUARDS_CONFIG = storedConfig
 		} else {
 			// If no config exists in storage, save the default one
 			await this.saveGuardsConfig()
@@ -88,11 +90,11 @@ export class Guardrails extends GuardrailsEngine {
 	}
 
 	private async saveGuardsConfig(): Promise<void> {
-		await customUpdateState(this.context, "guardrailsConfig", this.guardsConfig)
+		await customUpdateState(this.context, "guardrailsConfig", Guardrails.DEFAULT_GUARDS_CONFIG)
 	}
 
 	private updateGuards(): void {
-		Guardrails.createGuards(this.guardsConfig)
+		Guardrails.createGuards(Guardrails.DEFAULT_GUARDS_CONFIG)
 	}
 
 	private static createGuards(config: GuardrailsConfig) {
@@ -120,8 +122,8 @@ export class Guardrails extends GuardrailsEngine {
 	}
 
 	get activeGuards() {
-		const guards = Object.keys(this.guardsConfig).map((key) => {
-			const config = this.guardsConfig[key as keyof GuardrailsConfig]
+		const guards = Object.keys(Guardrails.DEFAULT_GUARDS_CONFIG).map((key) => {
+			const config = Guardrails.DEFAULT_GUARDS_CONFIG[key as keyof GuardrailsConfig]
 			const hasThreshold = "threshold" in config
 			const hasMode = "mode" in config
 			return {
@@ -146,40 +148,37 @@ export class Guardrails extends GuardrailsEngine {
 			updates: { threshold?: number; mode?: string }
 		}>,
 	): Promise<void> {
-		let hasAnyUpdates = false
+		let hasAnyUpdates = 0
 		const allChanges: string[] = []
 
 		for (const { guardKey, updates } of guardUpdates) {
-			const guard = this.guardsConfig[guardKey]
+			const guard = Guardrails.DEFAULT_GUARDS_CONFIG[guardKey]
 			if (!guard) {
 				console.error(`Guard ${guardKey} not found.`)
 				continue
 			}
 
-			let updated = false
 			const changes: string[] = []
 
 			// Update threshold if provided and guard supports it
 			if (updates.threshold !== undefined && "threshold" in guard) {
 				guard.threshold = updates.threshold
-				updated = true
+				console.log(`Updating ${guardKey} threshold to ${guard.threshold}`)
+				hasAnyUpdates++
 				changes.push(`threshold to ${updates.threshold}`)
 			}
 
 			// Update mode if provided and guard supports it
 			if (updates.mode !== undefined && "mode" in guard) {
 				guard.mode = updates.mode
-				updated = true
+				hasAnyUpdates++
 				changes.push(`mode to ${updates.mode}`)
 			}
 
-			if (updated) {
-				hasAnyUpdates = true
-				allChanges.push(`${guardKey}: ${changes.join(", ")}`)
-			}
+			allChanges.push(`${guardKey}: ${changes.join(", ")}`)
 		}
 
-		if (hasAnyUpdates) {
+		if (hasAnyUpdates > 0) {
 			await this.saveGuardsConfig()
 			this.updateGuards()
 			console.log(`Updated guards: ${allChanges.join(" | ")}`)

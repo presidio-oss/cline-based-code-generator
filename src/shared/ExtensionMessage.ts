@@ -226,6 +226,7 @@ export type ClineAsk =
 	| "condense"
 	| "report_bug"
 	| "guardrails"
+	| "guardrails_filter"
 
 export type ClineSay =
 	| "task"
@@ -337,7 +338,7 @@ export interface ClineApiReqInfo {
 	}
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "retries_exhausted"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "guardrails_interrupted" | "retries_exhausted"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"
 export interface Guard {

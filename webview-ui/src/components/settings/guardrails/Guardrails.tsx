@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { vscode } from "../../../utils/vscode"
 import "./Guardrails.css"
 import { VSCodeButton, VSCodeDropdown, VSCodeOption } from "@vscode/webview-ui-toolkit/react"
@@ -52,15 +52,33 @@ const Guardrails = () => {
 	}
 
 	const getThresholdColor = (threshold: number) => {
-		if (threshold >= 0.75) return "var(--vscode-testing-iconPassed)"
-		if (threshold >= 0.5) return "var(--vscode-testing-iconQueued)"
+		if (threshold <= 0.25) return "var(--vscode-testing-iconPassed)"
+		if (threshold <= 0.5) return "var(--vscode-testing-iconQueued)"
 		return "var(--vscode-testing-iconFailed)"
 	}
 
 	const getThresholdLevel = (threshold: number) => {
-		if (threshold >= 0.75) return "High"
-		if (threshold >= 0.5) return "Medium"
+		if (threshold <= 0.25) return "High"
+		if (threshold <= 0.5) return "Medium"
 		return "Low"
+	}
+
+	const toggleLabel = (value: number) => {
+		if (value == null) return <>No Threshold</>
+		switch (value) {
+			case 0:
+				return "Max"
+			case 0.25:
+				return "High"
+			case 0.5:
+				return "Medium"
+			case 0.75:
+				return "Low"
+			case 1:
+				return "Off"
+			default:
+				return "Invalid Config"
+		}
 	}
 
 	return (
@@ -92,8 +110,7 @@ const Guardrails = () => {
 								</div>
 							)}
 						</div>
-
-						{guard.hasThreshold && guard.threshold && (
+						{guard.hasThreshold && guard.threshold != null && (
 							<div className="guard-threshold-section">
 								<div className="threshold-header">
 									<span className="threshold-label">Sensitivity</span>
@@ -103,21 +120,20 @@ const Guardrails = () => {
 											style={{ color: getThresholdColor(guard.threshold) }}>
 											●
 										</span>
-										<span className="threshold-level">
-											{getThresholdLevel(guard.threshold)} ({guard.threshold.toFixed(2)})
-										</span>
+										<span className="threshold-level">{getThresholdLevel(guard.threshold)}</span>
 									</div>
 								</div>
 
 								<div className="threshold-controls">
 									<div className="threshold-buttons">
-										{[0.25, 0.5, 0.75, 1.0].map((value) => (
+										{[1.0, 0.75, 0.5, 0.25, 0].map((value) => (
 											<VSCodeButton
 												key={value}
 												appearance={guard.threshold === value ? "primary" : "secondary"}
 												onClick={() => handleGuardThresholdChange(guard, value)}
 												className="threshold-button">
-												{value === 0.25 ? "Low" : value === 0.5 ? "Med" : value === 0.75 ? "High" : "Max"}
+												{toggleLabel(value)}
+												{/* {value === 0.25 ? "Low" : value === 0.5 ? "Med" : value === 0.75 ? "High" : "Max"} */}
 											</VSCodeButton>
 										))}
 									</div>
@@ -132,6 +148,9 @@ const Guardrails = () => {
 				<span>
 					Recommended threshold: <strong>0.75</strong> for optimal accuracy
 				</span>
+			</div>
+			<div className="recommendation">
+				<span>To proceed after disabling the guardrail, please create a new task.</span>
 			</div>
 
 			<div className="guardrails-footer"></div>

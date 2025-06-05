@@ -182,6 +182,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		embeddingConfiguration,
 		buildContextOptions,
 		enableInlineEdit,
+		guards,
 	})
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
@@ -268,7 +269,8 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			// TAG:HAI
 			JSON.stringify(embeddingConfiguration) !== JSON.stringify(originalState.current.embeddingConfiguration) ||
 			JSON.stringify(buildContextOptions) !== JSON.stringify(originalState.current.buildContextOptions) ||
-			enableInlineEdit !== originalState.current.enableInlineEdit
+			enableInlineEdit !== originalState.current.enableInlineEdit ||
+			JSON.stringify(guards) !== JSON.stringify(originalState.current.guards)
 
 		setHasUnsavedChanges(hasChanges)
 	}, [
@@ -282,6 +284,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		embeddingConfiguration,
 		buildContextOptions,
 		enableInlineEdit,
+		guards,
 	])
 
 	// Handle cancel button click
