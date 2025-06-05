@@ -12,10 +12,8 @@ import { getWorkspaceID } from "@/utils/path"
  */
 export async function getBrowserConnectionInfo(controller: Controller, request: EmptyRequest): Promise<BrowserConnectionInfo> {
 	try {
-		//Get work space id
-		const workspaceId = getWorkspaceID() || ""
-
 		// Get browser settings from extension state
+		const workspaceId = getWorkspaceID() || ""
 		const { browserSettings } = await getAllExtensionState(controller.context, workspaceId)
 
 		// Check if there's an active browser session by using the controller's handleWebviewMessage approach

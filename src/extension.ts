@@ -1,8 +1,5 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { createHaiAPI } from "./exports"
-import "./utils/path" // necessary to have access to String.prototype.toPosix
-import { InlineEditingProvider } from "./integrations/inline-editing"
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import * as vscode from "vscode"
 import pWaitFor from "p-wait-for"
@@ -11,11 +8,16 @@ import "./utils/path" // necessary to have access to String.prototype.toPosix
 import { DIFF_VIEW_URI_SCHEME } from "./integrations/editor/DiffViewProvider"
 import assert from "node:assert"
 import { posthogClientProvider } from "./services/posthog/PostHogClientProvider"
-import { telemetryService } from "./services/posthog/telemetry/TelemetryService"
 import { WebviewProvider } from "./core/webview"
 import { Controller } from "./core/controller"
 import { ErrorService } from "./services/error/ErrorService"
 import { initializeTestMode, cleanupTestMode } from "./services/test/TestMode"
+import { telemetryService } from "./services/posthog/telemetry/TelemetryService"
+
+// TAG:HAI
+import { createHaiAPI } from "./exports"
+import "./utils/path" // necessary to have access to String.prototype.toPosix
+import { InlineEditingProvider } from "./integrations/inline-editing"
 import { getAllExtensionState } from "./core/storage/state"
 import { getWorkspaceID } from "./utils/path"
 
@@ -32,16 +34,17 @@ let outputChannel: vscode.OutputChannel
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
 	outputChannel = vscode.window.createOutputChannel("HAI Build")
 	context.subscriptions.push(outputChannel)
-
-	let haiTaskList: string
 
 	ErrorService.initialize()
 	Logger.initialize(outputChannel)
 	Logger.log("HAI extension activated")
 
+	// Version checking for autoupdate notification
+	const currentVersion = context.extension.packageJSON.version
+	const previousVersion = context.globalState.get<string>("haiVersion")
 	const sidebarWebview = new WebviewProvider(context, outputChannel)
 
 	// Initialize test mode and add disposables to context
@@ -54,6 +57,29 @@ export function activate(context: vscode.ExtensionContext) {
 			webviewOptions: { retainContextWhenHidden: true },
 		}),
 	)
+
+	// Perform post-update actions if necessary
+	try {
+		if (!previousVersion || currentVersion !== previousVersion) {
+			Logger.log(`HAI version changed: ${previousVersion} -> ${currentVersion}. First run or update detected.`)
+			const lastShownPopupNotificationVersion = context.globalState.get<string>("haiLastPopupNotificationVersion")
+
+			if (currentVersion !== lastShownPopupNotificationVersion && previousVersion) {
+				// Show VS Code popup notification as this version hasn't been notified yet without doing it for fresh installs
+				const message = `HAI has been updated to v${currentVersion}`
+				await vscode.commands.executeCommand("hai.SidebarProvider.focus")
+				await new Promise((resolve) => setTimeout(resolve, 200))
+				vscode.window.showInformationMessage(message)
+				// Record that we've shown the popup for this version.
+				await context.globalState.update("haiLastPopupNotificationVersion", currentVersion)
+			}
+			// Always update the main version tracker for the next launch.
+			await context.globalState.update("haiVersion", currentVersion)
+		}
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		console.error(`Error during post-update actions: ${errorMessage}, Stack trace: ${error.stack}`)
+	}
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.plusButtonClicked", async (webview: any) => {
@@ -92,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
-	const openClineInNewTab = async () => {
+	const openHAIInNewTab = async () => {
 		Logger.log("Opening HAI in new tab")
 		// (this example uses webviewProvider activation event which is necessary to deserialize cached webview, but since we use retainContextWhenHidden, we don't need to use that event)
 		// https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
@@ -125,8 +151,8 @@ export function activate(context: vscode.ExtensionContext) {
 		await vscode.commands.executeCommand("workbench.action.lockEditorGroup")
 	}
 
-	context.subscriptions.push(vscode.commands.registerCommand("hai.popoutButtonClicked", openClineInNewTab))
-	context.subscriptions.push(vscode.commands.registerCommand("hai.openInNewTab", openClineInNewTab))
+	context.subscriptions.push(vscode.commands.registerCommand("hai.popoutButtonClicked", openHAIInNewTab))
+	context.subscriptions.push(vscode.commands.registerCommand("hai.openInNewTab", openHAIInNewTab))
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.settingsButtonClicked", (webview: any) => {
@@ -151,7 +177,6 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.historyButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openHistory = async (instance?: WebviewProvider) => {
-					await instance?.controller.postStateToWebview()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "historyButtonClicked",
@@ -171,7 +196,6 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.commands.registerCommand("hai.accountButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openAccount = async (instance?: WebviewProvider) => {
-					await instance?.controller.postStateToWebview()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "accountButtonClicked",
@@ -187,6 +211,7 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	// TAG:HAI
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.expertsButtonClicked", (webview: any) => {
 			WebviewProvider.getAllInstances().forEach((instance) => {
@@ -271,6 +296,8 @@ export function activate(context: vscode.ExtensionContext) {
 	}
 	context.subscriptions.push(vscode.window.registerUriHandler({ handleUri }))
 
+	// TAG:HAI
+
 	getAllExtensionState(sidebarWebview.controller.context, getWorkspaceID() || "").then(({ apiConfiguration }) => {
 		context.subscriptions.push(
 			...new InlineEditingProvider().withContext(context).withApiConfiguration(apiConfiguration).build(),
@@ -319,6 +346,8 @@ export function activate(context: vscode.ExtensionContext) {
 
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.addToChat", async (range?: vscode.Range, diagnostics?: vscode.Diagnostic[]) => {
+			await vscode.commands.executeCommand("hai.focusChatInput") // Ensure HAI is visible and input focused
+			await pWaitFor(() => !!WebviewProvider.getVisibleInstance())
 			const editor = vscode.window.activeTextEditor
 			if (!editor) {
 				return
@@ -398,50 +427,100 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	const CONTEXT_LINES_TO_EXPAND = 3
+	const START_OF_LINE_CHAR_INDEX = 0
+	const LINE_COUNT_ADJUSTMENT_FOR_ZERO_INDEXING = 1
+
 	// Register code action provider
 	context.subscriptions.push(
 		vscode.languages.registerCodeActionsProvider(
 			"*",
 			new (class implements vscode.CodeActionProvider {
-				public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix]
+				public static readonly providedCodeActionKinds = [vscode.CodeActionKind.QuickFix, vscode.CodeActionKind.Refactor]
 
 				provideCodeActions(
 					document: vscode.TextDocument,
 					range: vscode.Range,
 					context: vscode.CodeActionContext,
 				): vscode.CodeAction[] {
-					// Expand range to include surrounding 3 lines
-					const expandedRange = new vscode.Range(
-						Math.max(0, range.start.line - 3),
-						0,
-						Math.min(document.lineCount - 1, range.end.line + 3),
-						document.lineAt(Math.min(document.lineCount - 1, range.end.line + 3)).text.length,
-					)
+					const actions: vscode.CodeAction[] = []
+					const editor = vscode.window.activeTextEditor // Get active editor for selection check
 
+					// Expand range to include surrounding 3 lines or use selection if broader
+					const selection = editor?.selection
+					let expandedRange = range
+					if (
+						editor &&
+						selection &&
+						!selection.isEmpty &&
+						selection.contains(range.start) &&
+						selection.contains(range.end)
+					) {
+						expandedRange = selection
+					} else {
+						expandedRange = new vscode.Range(
+							Math.max(0, range.start.line - CONTEXT_LINES_TO_EXPAND),
+							START_OF_LINE_CHAR_INDEX,
+							Math.min(
+								document.lineCount - LINE_COUNT_ADJUSTMENT_FOR_ZERO_INDEXING,
+								range.end.line + CONTEXT_LINES_TO_EXPAND,
+							),
+							document.lineAt(
+								Math.min(
+									document.lineCount - LINE_COUNT_ADJUSTMENT_FOR_ZERO_INDEXING,
+									range.end.line + CONTEXT_LINES_TO_EXPAND,
+								),
+							).text.length,
+						)
+					}
+
+					// Add to HAI (Always available)
 					const addAction = new vscode.CodeAction("Add to HAI", vscode.CodeActionKind.QuickFix)
 					addAction.command = {
 						command: "hai.addToChat",
 						title: "Add to HAI",
 						arguments: [expandedRange, context.diagnostics],
 					}
+					actions.push(addAction)
 
-					const fixAction = new vscode.CodeAction("Fix with HAI", vscode.CodeActionKind.QuickFix)
-					fixAction.command = {
-						command: "hai.fixWithHAI",
-						title: "Fix with HAI",
-						arguments: [expandedRange, context.diagnostics],
+					// Explain with HAI (Always available)
+					const explainAction = new vscode.CodeAction("Explain with HAI", vscode.CodeActionKind.RefactorExtract) // Using a refactor kind
+					explainAction.command = {
+						command: "hai.explainCode",
+						title: "Explain with HAI",
+						arguments: [expandedRange],
 					}
+					actions.push(explainAction)
 
-					// Only show actions when there are errors
+					// Improve with HAI (Always available)
+					const improveAction = new vscode.CodeAction("Improve with HAI", vscode.CodeActionKind.RefactorRewrite) // Using a refactor kind
+					improveAction.command = {
+						command: "hai.improveCode",
+						title: "Improve with HAI",
+						arguments: [expandedRange],
+					}
+					actions.push(improveAction)
+
+					// Fix with HAI (Only if diagnostics exist)
 					if (context.diagnostics.length > 0) {
-						return [addAction, fixAction]
-					} else {
-						return []
+						const fixAction = new vscode.CodeAction("Fix with HAI", vscode.CodeActionKind.QuickFix)
+						fixAction.isPreferred = true
+						fixAction.command = {
+							command: "hai.fixWithHAI",
+							title: "Fix with HAI",
+							arguments: [expandedRange, context.diagnostics],
+						}
+						actions.push(fixAction)
 					}
+					return actions
 				}
 			})(),
 			{
-				providedCodeActionKinds: [vscode.CodeActionKind.QuickFix],
+				providedCodeActionKinds: [
+					vscode.CodeActionKind.QuickFix,
+					vscode.CodeActionKind.RefactorExtract,
+					vscode.CodeActionKind.RefactorRewrite,
+				],
 			},
 		),
 	)
@@ -468,21 +547,106 @@ export function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.explainCode", async (range: vscode.Range) => {
+			await vscode.commands.executeCommand("hai.focusChatInput") // Ensure HAI is visible and input focused
+			await pWaitFor(() => !!WebviewProvider.getVisibleInstance())
+			const editor = vscode.window.activeTextEditor
+			if (!editor) {
+				return
+			}
+			const selectedText = editor.document.getText(range)
+			if (!selectedText.trim()) {
+				vscode.window.showInformationMessage("Please select some code to explain.")
+				return
+			}
+			const filePath = editor.document.uri.fsPath
+			const visibleWebview = WebviewProvider.getVisibleInstance()
+			const fileMention = visibleWebview?.controller.getFileMentionFromPath(filePath) || filePath
+			const prompt = `Explain the following code from ${fileMention}:\n\`\`\`${editor.document.languageId}\n${selectedText}\n\`\`\``
+			await visibleWebview?.controller.initTask(prompt)
+		}),
+	)
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.improveCode", async (range: vscode.Range) => {
+			await vscode.commands.executeCommand("hai.focusChatInput") // Ensure HAI is visible and input focused
+			await pWaitFor(() => !!WebviewProvider.getVisibleInstance())
+			const editor = vscode.window.activeTextEditor
+			if (!editor) {
+				return
+			}
+			const selectedText = editor.document.getText(range)
+			if (!selectedText.trim()) {
+				vscode.window.showInformationMessage("Please select some code to improve.")
+				return
+			}
+			const filePath = editor.document.uri.fsPath
+			const visibleWebview = WebviewProvider.getVisibleInstance()
+			const fileMention = visibleWebview?.controller.getFileMentionFromPath(filePath) || filePath
+			const prompt = `Improve the following code from ${fileMention} (e.g., suggest refactorings, optimizations, or better practices):\n\`\`\`${editor.document.languageId}\n${selectedText}\n\`\`\``
+			await visibleWebview?.controller.initTask(prompt)
+		}),
+	)
+
 	// Register the focusChatInput command handler
 	context.subscriptions.push(
-		vscode.commands.registerCommand("hai.focusChatInput", () => {
-			let visibleWebview = WebviewProvider.getVisibleInstance()
-			if (!visibleWebview) {
-				vscode.commands.executeCommand("hai.SidebarProvider.focus")
-				visibleWebview = WebviewProvider.getSidebarInstance()
-				// showing the extension will call didBecomeVisible which focuses it already
-				// but it doesn't focus if a tab is selected which focusChatInput accounts for
-			}
+		vscode.commands.registerCommand("hai.focusChatInput", async () => {
+			let activeWebviewProvider: WebviewProvider | undefined = WebviewProvider.getVisibleInstance()
 
-			visibleWebview?.controller.postMessageToWebview({
-				type: "action",
-				action: "focusChatInput",
-			})
+			// If a tab is visible and active, ensure it's fully revealed (might be redundant but safe)
+			if (activeWebviewProvider?.view && activeWebviewProvider.view.hasOwnProperty("reveal")) {
+				const panelView = activeWebviewProvider.view as vscode.WebviewPanel
+				panelView.reveal(panelView.viewColumn)
+			} else if (!activeWebviewProvider) {
+				// No webview is currently visible, try to activate the sidebar
+				await vscode.commands.executeCommand("hai.SidebarProvider.focus")
+				await new Promise((resolve) => setTimeout(resolve, 200)) // Allow time for focus
+				activeWebviewProvider = WebviewProvider.getSidebarInstance()
+
+				if (!activeWebviewProvider) {
+					// Sidebar didn't become active (might be closed or not in current view container)
+					// Check for existing tab panels
+					const tabInstances = WebviewProvider.getTabInstances()
+					if (tabInstances.length > 0) {
+						const potentialTabInstance = tabInstances[tabInstances.length - 1] // Get the most recent one
+						if (potentialTabInstance.view && potentialTabInstance.view.hasOwnProperty("reveal")) {
+							const panelView = potentialTabInstance.view as vscode.WebviewPanel
+							panelView.reveal(panelView.viewColumn)
+							activeWebviewProvider = potentialTabInstance
+						}
+					}
+				}
+
+				if (!activeWebviewProvider) {
+					// No existing HAI view found at all, open a new tab
+					await vscode.commands.executeCommand("hai.openInNewTab")
+					// After openInNewTab, a new webview is created. We need to get this new instance.
+					// It might take a moment for it to register.
+					await pWaitFor(
+						() => {
+							const visibleInstance = WebviewProvider.getVisibleInstance()
+							// Ensure a boolean is returned
+							return !!(visibleInstance?.view && visibleInstance.view.hasOwnProperty("reveal"))
+						},
+						{ timeout: 2000 },
+					)
+					activeWebviewProvider = WebviewProvider.getVisibleInstance()
+				}
+			}
+			// At this point, activeWebviewProvider should be the one we want to send the message to.
+			// It could still be undefined if opening a new tab failed or timed out.
+			if (activeWebviewProvider) {
+				activeWebviewProvider.controller.postMessageToWebview({
+					type: "action",
+					action: "focusChatInput",
+				})
+			} else {
+				console.error("FocusChatInput: Could not find or activate a HAI webview to focus.")
+				vscode.window.showErrorMessage(
+					"Could not activate HAI view. Please try opening it manually from the Activity Bar.",
+				)
+			}
 		}),
 	)
 

@@ -4,9 +4,9 @@ import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from
 import { useRemark } from "react-remark"
 import { useMount } from "react-use"
 import styled from "styled-components"
-import { requestyDefaultModelId } from "@shared/api"
-import { useExtensionState } from "@context/ExtensionStateContext"
-import { vscode } from "@utils/vscode"
+import { requestyDefaultModelId } from "../../../../src/shared/api"
+import { useExtensionState } from "../../context/ExtensionStateContext"
+import { ModelsServiceClient } from "../../services/grpc-client"
 import { highlight } from "../history/HistoryView"
 import { ModelInfoView, normalizeApiConfiguration } from "./ApiOptions"
 import { CODE_BLOCK_BG_COLOR } from "../common/CodeBlock"
@@ -43,7 +43,9 @@ const RequestyModelPicker: React.FC<RequestyModelPickerProps> = ({ isPopup }) =>
 	}, [apiConfiguration])
 
 	useMount(() => {
-		vscode.postMessage({ type: "refreshRequestyModels" })
+		ModelsServiceClient.refreshRequestyModels({}).catch((err) => {
+			console.error("Failed to refresh Requesty models:", err)
+		})
 	})
 
 	useEffect(() => {

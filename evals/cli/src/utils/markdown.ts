@@ -1,4 +1,5 @@
 import * as fs from "fs"
+import * as path from "path"
 
 /**
  * Generate a markdown report from evaluation results

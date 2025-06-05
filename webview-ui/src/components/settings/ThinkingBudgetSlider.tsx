@@ -1,5 +1,5 @@
 import { memo, useCallback, useState } from "react"
-import { anthropicModels, ApiConfiguration, geminiDefaultModelId, geminiModels } from "@shared/api"
+import { anthropicModels, ApiConfiguration, geminiDefaultModelId, geminiModels, ModelInfo } from "@shared/api"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
 import styled from "styled-components"
 
