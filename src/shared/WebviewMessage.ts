@@ -5,6 +5,7 @@ import { UserInfo } from "./UserInfo"
 import { ChatContent } from "./ChatContent"
 import { TelemetrySetting } from "./TelemetrySetting"
 import { McpViewTab } from "./mcp"
+import { Guard } from "./ExtensionMessage"
 
 // TAG:HAI
 import { HaiBuildContextOptions } from "./customApi"
@@ -46,6 +47,10 @@ export interface WebviewMessage {
 		| "deleteExpert"
 		| "loadExperts"
 		| "loadDefaultExperts"
+		| "loadGuards"
+		| "updateGuardThreshold"
+		| "updateGuardMode"
+		| "updateGuards"
 		| "refreshDocumentLink"
 		| "deleteDocumentLink"
 		| "addDocumentLink"
@@ -62,6 +67,7 @@ export interface WebviewMessage {
 		| "startIndex"
 		| "resetIndex"
 		| "writeTaskStatus"
+		| "defaultGuards"
 
 	text?: string
 	disabled?: boolean
@@ -127,6 +133,8 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
+	guard?: Guard
+	guards?: Guard[]
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"
