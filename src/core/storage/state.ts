@@ -15,7 +15,7 @@ import { ClineRulesToggles } from "@shared/cline-rules"
 // TAG:HAI
 import { EmbeddingConfiguration, EmbeddingProvider } from "@shared/embeddings"
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "@shared/customApi"
-import { GuardrailsConfig } from "@/integrations/guardrails"
+import { Default_GuardsConfig, GuardrailsConfig } from "@/integrations/guardrails"
 
 /*
 	Storage
@@ -544,7 +544,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		expertPrompt,
 		expertName,
 		isDeepCrawlEnabled,
-		guardrailsConfig: guardrailsConfig,
+		guardrailsConfig: guardrailsConfig ?? Default_GuardsConfig,
 		buildContextOptions: buildContextOptions
 			? {
 					...buildContextOptions,

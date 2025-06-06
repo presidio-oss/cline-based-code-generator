@@ -36,6 +36,30 @@ export interface GuardrailsConfig {
 	}
 }
 
+export const Default_GuardsConfig = {
+	injection: {
+		name: "Prompt Injection",
+		threshold: 1,
+		mode: "heuristic",
+	},
+	pii: {
+		name: "PII",
+		selection: SelectionType.All,
+		mode: "redact",
+	},
+	secret: {
+		name: "Secrets",
+		selection: SelectionType.All,
+		mode: "block",
+	},
+	leakage: {
+		name: "Prompt Leakage",
+		mode: "heuristic",
+		roles: ["user"],
+		threshold: 1,
+	},
+}
+
 export class Guardrails extends GuardrailsEngine {
 	public static MESSAGE = "Message blocked by HAI Guardrails filter."
 	private context: vscode.ExtensionContext
@@ -185,5 +209,31 @@ export class Guardrails extends GuardrailsEngine {
 		} else {
 			console.warn(`No valid updates provided for any guards`)
 		}
+	}
+
+	public async applyPiiAndSecretGuards(content: string): Promise<string> {
+		let engine = new GuardrailsEngine({
+			guards: [
+				secretGuard({
+					selection: Guardrails.DEFAULT_GUARDS_CONFIG.secret.selection,
+					mode: Guardrails.DEFAULT_GUARDS_CONFIG.secret.mode as "redact" | "block",
+				}),
+				piiGuard({
+					selection: Guardrails.DEFAULT_GUARDS_CONFIG.pii.selection,
+					mode: Guardrails.DEFAULT_GUARDS_CONFIG.pii.mode as "redact" | "block",
+					patterns: [
+						{
+							id: "Email-pattern",
+							name: "Email pattern",
+							description: "Redact email in all combinations of special characters",
+							regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
+							replacement: "####",
+						},
+					],
+				}),
+			],
+		})
+		let results = await engine.run([{ role: "user", content }])
+		return results.messages[0].content
 	}
 }

@@ -1707,6 +1707,20 @@ export class Task {
 			return
 		}
 
+		this.apiConversationHistory
+			.filter((message) => message.role === "user")
+			.map(async (m) => {
+				if (Array.isArray(m.content)) {
+					m.content.map(async (c) => {
+						if (c.type === "text") {
+							c.text = await this.guardrails.applyPiiAndSecretGuards(c.text)
+						}
+					})
+				} else if (typeof m.content === "string") {
+					m.content = await this.guardrails.applyPiiAndSecretGuards(m.content)
+				}
+			})
+
 		const contextManagementMetadata = await this.contextManager.getNewContextMessagesAndMetadata(
 			this.apiConversationHistory,
 			this.clineMessages,
