@@ -3,7 +3,7 @@ import { useEvent } from "react-use"
 import { StateServiceClient } from "@/services/grpc-client"
 import { EmptyRequest } from "@shared/proto/common"
 import { DEFAULT_AUTO_APPROVAL_SETTINGS } from "@shared/AutoApprovalSettings"
-import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM } from "@shared/ExtensionMessage"
+import { ExtensionMessage, ExtensionState, DEFAULT_PLATFORM, Guard } from "@shared/ExtensionMessage"
 import {
 	ApiConfiguration,
 	ModelInfo,
@@ -97,6 +97,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
 	setHaiConfig: (value: { [key in string]: any }) => void
 	setEmbeddingConfiguration: (config: EmbeddingConfiguration) => void
+	setGuards: (value: Guard[]) => void
 	navigateToExperts: () => void
 	hideExperts: () => void
 }
@@ -753,6 +754,11 @@ export const ExtensionStateContextProvider: React.FC<{
 			setState((prevState) => ({
 				...prevState,
 				embeddingConfiguration: value,
+			})),
+		setGuards: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				guards: value,
 			})),
 		navigateToExperts,
 		hideExperts,
