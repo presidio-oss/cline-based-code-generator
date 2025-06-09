@@ -1,13 +1,13 @@
 import * as vscode from "vscode"
 import { v4 as uuidv4 } from "uuid"
-import TurndownService from "turndown"
-import * as cheerio from "cheerio"
+import fs from "fs"
 import { DocumentLink, DocumentStatus } from "../../shared/experts"
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 import { getAllExtensionState } from "../storage/state"
 import { buildApiHandler } from "../../api"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { ExpertFileManager } from "./ExpertFileManager"
+import path from "path"
 
 /**
  * Handles document processing operations
@@ -201,14 +201,15 @@ export class DocumentProcessor {
 	/**
 	 * Crawl a website and convert to markdown
 	 */
+	/**
+	 * Crawl a website and convert to markdown
+	 */
 	public async crawlAndConvertToMarkdown(
 		url: string,
 		expertName: string,
 		workspacePath: string,
 		maxRequestsPerCrawl: number = 10,
 	): Promise<void> {
-		// Dynamic import of crawlee
-		const { PlaywrightCrawler, Configuration } = await import("crawlee")
 		const { faissStatusFilePath } = this.fileManager.getExpertPaths(workspacePath, expertName)
 
 		// Initialize or update status file in .faiss directory
@@ -232,42 +233,26 @@ export class DocumentProcessor {
 		// Update status file before crawling
 		await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 
-		const config = new Configuration({
-			persistStorage: false, // Disable default storage
-		})
-
-		// Store reference to this instance for use in the crawler
-		const self = this
-
 		try {
-			const crawler = new PlaywrightCrawler(
-				{
-					async requestHandler({ request, page, enqueueLinks }) {
-						const title = await page.title()
-						const content = await page.content()
-						const suburl = request.loadedUrl
+			const extensionPath = this.extensionContext.extensionPath
+			const crawlerMainPath = path.join(extensionPath, "crawler", "dist", "main.js")
 
-						// Parse and clean HTML
-						const $ = cheerio.load(content)
-						$("script, style, nav, footer, header").remove()
+			if (!fs.existsSync(crawlerMainPath)) {
+				throw new Error(`Crawler not found at ${crawlerMainPath}`)
+			}
 
-						// Convert to Markdown
-						const turndownService = new TurndownService()
-						const markdown = turndownService.turndown($.html())
+			// Import from crawler's own built file
+			const { crawlWebsite } = await import(crawlerMainPath)
 
-						// Forward to vector store manager using the instance reference
-						await self.onCrawlComplete(markdown, expertName, workspacePath, url, suburl, title)
+			const crawlResults = await crawlWebsite(url, {
+				maxRequestsPerCrawl,
+				headless: true,
+			})
 
-						// Enqueue more links
-						await enqueueLinks()
-					},
-					maxRequestsPerCrawl,
-					// Optional: headless: false, to show browser
-				},
-				config,
-			)
-
-			await crawler.run([url])
+			// Process each crawled page
+			for (const result of crawlResults) {
+				await this.onCrawlComplete(result.markdown, expertName, workspacePath, url, result.suburl, result.title)
+			}
 
 			// Update status to COMPLETED after successful crawl
 			faissStatusData[linkIndex].status = DocumentStatus.COMPLETED
@@ -276,7 +261,7 @@ export class DocumentProcessor {
 
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 		} catch (error) {
-			// Update status to FAILED using stored index
+			// Update status to FAILED
 			console.error(`Error in crawling ${url} for expert ${expertName}:`, error)
 
 			faissStatusData[linkIndex].status = DocumentStatus.FAILED
@@ -286,7 +271,6 @@ export class DocumentProcessor {
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 		}
 	}
-
 	/**
 	 * Create a new document link
 	 */
