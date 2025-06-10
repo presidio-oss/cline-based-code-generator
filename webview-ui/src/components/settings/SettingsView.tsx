@@ -50,6 +50,7 @@ import SettingsViewExtra from "./SettingsViewExtra"
 import EmbeddingOptions from "./EmbeddingOptions"
 import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "@utils/constants"
 import { validateEmbeddingConfiguration } from "@shared/validate"
+import Guardrails from "./guardrails/Guardrails"
 
 // Styles for the tab system
 const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
@@ -166,6 +167,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		embeddingConfiguration,
 		vscodeWorkspacePath,
 		enableInlineEdit,
+		guards,
 	} = useExtensionState()
 
 	// Store the original state to detect changes
@@ -180,6 +182,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		embeddingConfiguration,
 		buildContextOptions,
 		enableInlineEdit,
+		guards,
 	})
 	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
 	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
@@ -243,6 +246,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			enableInlineEdit,
 		})
 
+		vscode.postMessage({
+			type: "updateGuards",
+			guards,
+		})
+
 		if (!withoutDone) {
 			onDone()
 		}
@@ -261,7 +269,8 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			// TAG:HAI
 			JSON.stringify(embeddingConfiguration) !== JSON.stringify(originalState.current.embeddingConfiguration) ||
 			JSON.stringify(buildContextOptions) !== JSON.stringify(originalState.current.buildContextOptions) ||
-			enableInlineEdit !== originalState.current.enableInlineEdit
+			enableInlineEdit !== originalState.current.enableInlineEdit ||
+			JSON.stringify(guards) !== JSON.stringify(originalState.current.guards)
 
 		setHasUnsavedChanges(hasChanges)
 	}, [
@@ -275,6 +284,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		embeddingConfiguration,
 		buildContextOptions,
 		enableInlineEdit,
+		guards,
 	])
 
 	// Handle cancel button click
@@ -638,6 +648,9 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 											vscodeWorkspacePath={vscodeWorkspacePath}
 											buildIndexProgress={buildIndexProgress}
 										/>
+
+										{/* Guardrails */}
+										<Guardrails />
 									</Section>
 								</div>
 							)}

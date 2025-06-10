@@ -112,6 +112,8 @@ import { FindFilesToEditAgent } from "../../integrations/code-prep/FindFilesToEd
 import { buildTreeString } from "@utils/customFs"
 import { CodeScanner } from "../../integrations/security/code-scan"
 import { ExpertManager } from "@core/experts/ExpertManager"
+import { GuardResult, LLMMessage } from "@presidio-dev/hai-guardrails"
+import { Guardrails } from "../../integrations/guardrails"
 
 export const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -190,6 +192,8 @@ export class Task {
 	private apiConfiguration: ApiConfiguration
 	private embeddingConfiguration: EmbeddingConfiguration
 	private filesEditedByAI: Set<string> = new Set([])
+	private guardrails: Guardrails
+	private failedGuards: { guardId: string; guardName: string; messages: Omit<GuardResult, "guardId" | "guardName">[] }[] = []
 
 	constructor(
 		context: vscode.ExtensionContext,
@@ -247,6 +251,8 @@ export class Task {
 		this.buildContextOptions = buildContextOptions
 		this.apiConfiguration = apiConfiguration
 		this.embeddingConfiguration = embeddingConfiguration
+		this.guardrails = new Guardrails(this.context)
+		this.failedGuards = []
 
 		// Initialize taskId first
 		if (historyItem) {
@@ -1147,6 +1153,9 @@ export class Task {
 		let nextUserContent = userContent
 		let includeFileDetails = true
 		while (!this.abort) {
+			if (this.failedGuards.length > 0) {
+				break // Exit the loop
+			}
 			const didEndLoop = await this.recursivelyMakeClineRequests(nextUserContent, includeFileDetails)
 			includeFileDetails = false // we only need file details the first time
 
@@ -1652,6 +1661,64 @@ export class Task {
 			)
 			systemPrompt += userInstructions
 		}
+
+		const messages = await this.formatClineMessagesForGuardrails()
+		const result = await this.guardrails.run(messages)
+		result.messagesWithGuardResult
+			.filter((guard) => ["secret", "pii"].includes(guard.guardId))
+			.flatMap((guard) => guard.messages)
+			.filter((message) => !message.passed && message.modifiedMessage)
+			.forEach((msg) => {
+				const isJson = msg.message.content.startsWith("REQUEST:::")
+				let msgContent = msg.message.content.toString()
+				if (isJson) {
+					msgContent = JSON.stringify({
+						request: `${msg.message.content}`.replace(/^(REQUEST:::)+/, ""),
+					})
+				}
+				const match = this.clineMessages.find((m) => m.text?.toString() === msgContent)
+				if (match) {
+					match.text = isJson ? JSON.stringify({ request: msg.modifiedMessage?.content }) : msg.modifiedMessage?.content
+				}
+			})
+		const guardsToApply = ["leakage", "injection"]
+		if (Guardrails.DEFAULT_GUARDS_CONFIG.secret?.mode === "block") {
+			guardsToApply.push("secret")
+		}
+		if (Guardrails.DEFAULT_GUARDS_CONFIG.pii?.mode === "block") {
+			guardsToApply.push("pii")
+		}
+		this.failedGuards = result.messagesWithGuardResult.filter(
+			(guard) => guardsToApply.includes(guard.guardId) && guard.messages.some((msg) => msg.passed === false),
+		)
+		if (this.failedGuards.length > 0) {
+			this.didRejectTool = false
+			this.didAlreadyUseTool = false
+			this.didCompleteReadingStream = false
+			this.isWaitingForFirstChunk = false
+			this.didAutomaticallyRetryFailedApiRequest = false
+			await this.saveClineMessagesAndUpdateHistory()
+			yield {
+				type: "text",
+				text: `${Guardrails.MESSAGE} (${this.failedGuards.map((guard) => guard.guardName).join(", ")})`,
+			}
+			return
+		}
+
+		this.apiConversationHistory
+			.filter((message) => message.role === "user")
+			.map(async (m) => {
+				if (Array.isArray(m.content)) {
+					m.content.map(async (c) => {
+						if (c.type === "text") {
+							c.text = await this.guardrails.applyPiiAndSecretGuards(c.text)
+						}
+					})
+				} else if (typeof m.content === "string") {
+					m.content = await this.guardrails.applyPiiAndSecretGuards(m.content)
+				}
+			})
+
 		const contextManagementMetadata = await this.contextManager.getNewContextMessagesAndMetadata(
 			this.apiConversationHistory,
 			this.clineMessages,
@@ -3786,6 +3853,15 @@ export class Task {
 			} catch {}
 		}
 
+		if (this.failedGuards && this.failedGuards.length > 0) {
+			await this.ask("guardrails_filter", "Guardrail triggered: stopping task execution.")
+			this.failedGuards = []
+			await this.saveClineMessagesAndUpdateHistory()
+			await this.postStateToWebview()
+			this.consecutiveMistakeCount = 0
+			return false
+		}
+
 		if (this.consecutiveMistakeCount >= 3) {
 			if (this.autoApprovalSettings.enabled && this.autoApprovalSettings.enableNotifications) {
 				showSystemNotification({
@@ -4654,5 +4730,41 @@ export class Task {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Formats the conversation history messages for Guardrails.
+	 * This function filters the messages to include only those that are relevant for Guardrails,
+	 * specifically messages of type "say" and "ask".
+	 * It then maps the filtered messages to the format expected by Guardrails.
+	 * The resulting array of messages is returned.
+	 * @function formatClineMessagesForGuardrails
+	 * @returns {LLMMessage[]} - An array of LLMMessage objects formatted for Guardrails.
+	 */
+	async formatClineMessagesForGuardrails(): Promise<LLMMessage[]> {
+		return this.clineMessages
+			.filter((message) => {
+				const isValidSay = message.type === "say"
+				const isAsk = message.type === "ask"
+				if (!isValidSay && !isAsk) {
+					// Unknown message type, skipping leakage guard
+				}
+				return (isValidSay && !!message.text) || isAsk
+			})
+			.map((message) => {
+				const role = message.type === "say" ? "user" : "system"
+				const shouldParse = ["api_req_started"].includes(message.say!)
+				try {
+					return {
+						role,
+						content: shouldParse ? `REQUEST:::${JSON.parse(message.text!).request}` : message.text!,
+					}
+				} catch (error) {
+					return {
+						role,
+						content: message.text!,
+					}
+				}
+			})
 	}
 }

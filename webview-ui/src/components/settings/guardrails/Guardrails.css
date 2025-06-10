@@ -1,0 +1,158 @@
+.guardrails-container {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 16px 0;
+	border-top: 1px solid var(--vscode-panel-border);
+}
+
+.guardrails-header {
+	margin-bottom: 8px;
+}
+
+.guardrails-header h3 {
+	margin: 0 0 4px 0;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--vscode-foreground);
+}
+
+.guardrails-description {
+	margin: 0;
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.guards-list {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.guard-item {
+	padding: 12px;
+	border: 1px solid var(--vscode-widget-border);
+	border-radius: 4px;
+	background-color: var(--vscode-editor-background);
+}
+
+.guard-item:not(:has(.guard-threshold-section)) {
+	padding: 12px 8px 6px;
+}
+
+.guard-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+	flex-wrap: wrap;
+}
+
+.guard-info {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.guard-status-icon {
+	color: var(--vscode-testing-iconPassed);
+	cursor: default;
+}
+
+.guard-name {
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--vscode-foreground);
+}
+
+.guard-mode-selector {
+	min-width: 80px;
+}
+
+.guard-threshold-section {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--vscode-widget-border);
+}
+
+.threshold-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 8px;
+}
+
+.threshold-label {
+	font-size: 12px;
+	color: var(--vscode-descriptionForeground);
+	font-weight: 500;
+}
+
+.threshold-value {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+}
+
+.threshold-indicator {
+	font-size: 12px;
+}
+
+.threshold-level {
+	font-size: 12px;
+	color: var(--vscode-foreground);
+	font-weight: 500;
+}
+
+.threshold-controls {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 8px;
+}
+
+.threshold-buttons {
+	display: flex;
+	gap: 4px;
+	flex: 1;
+	flex-wrap: wrap;
+}
+
+.threshold-button {
+	flex: 1;
+	font-size: 11px;
+	min-height: 24px;
+}
+
+.guardrails-footer {
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid var(--vscode-widget-border);
+}
+
+.recommendation {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 11px;
+	color: var(--vscode-descriptionForeground);
+}
+
+.recommendation .codicon {
+	color: var(--vscode-notificationsInfoIcon-foreground);
+}
+
+/* Dark theme adjustments */
+.vscode-dark .guard-item {
+	background-color: var(--vscode-sideBar-background);
+}
+
+/* Light theme adjustments */
+.vscode-light .guard-item {
+	background-color: var(--vscode-editor-background);
+}
+
+/* High contrast theme adjustments */
+.vscode-high-contrast .guard-item {
+	border: 2px solid var(--vscode-contrastBorder);
+}

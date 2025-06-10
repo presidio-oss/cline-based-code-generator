@@ -59,6 +59,7 @@ export interface ExtensionMessage {
 		| "defaultExpertsLoaded"
 		| "expertPrompt"
 		| "writeTaskStatus"
+		| "defaultGuards"
 	text?: string
 	action?:
 		| "chatButtonClicked"
@@ -140,6 +141,7 @@ export interface ExtensionMessage {
 		message: string
 		status: string
 	}
+	guards?: Guard[]
 }
 
 export type Invoke = "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
@@ -189,6 +191,7 @@ export interface ExtensionState {
 	expertPrompt?: string
 	vscodeWorkspacePath?: string
 	enableInlineEdit?: boolean
+	guards?: Guard[]
 }
 
 export interface ClineMessage {
@@ -224,6 +227,8 @@ export type ClineAsk =
 	| "new_task"
 	| "condense"
 	| "report_bug"
+	| "guardrails"
+	| "guardrails_filter"
 
 export type ClineSay =
 	| "task"
@@ -252,6 +257,9 @@ export type ClineSay =
 	| "checkpoint_created"
 	| "load_mcp_documentation"
 	| "info" // Added for general informational messages like retry status
+
+	// TAG:HAI
+	| "guardrails_filter"
 
 export interface ClineSayTool {
 	tool:
@@ -333,6 +341,13 @@ export interface ClineApiReqInfo {
 	}
 }
 
-export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "retries_exhausted"
+export type ClineApiReqCancelReason = "streaming_failed" | "user_cancelled" | "guardrails_interrupted" | "retries_exhausted"
 
 export const COMPLETION_RESULT_CHANGES_FLAG = "HAS_CHANGES"
+export interface Guard {
+	key: string
+	name: string
+	hasThreshold: boolean
+	threshold?: number
+	mode?: string
+}
