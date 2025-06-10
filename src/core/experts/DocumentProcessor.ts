@@ -2,7 +2,7 @@ import * as vscode from "vscode"
 import { v4 as uuidv4 } from "uuid"
 import fs from "fs"
 import { DocumentLink, DocumentStatus } from "../../shared/experts"
-import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
+import { CrawlResult, UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
 import { getAllExtensionState } from "../storage/state"
 import { buildApiHandler } from "../../api"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
@@ -17,6 +17,17 @@ export class DocumentProcessor {
 	private workspaceId: string
 	private systemPrompt: string
 	private fileManager: ExpertFileManager
+	private urlContentFetcher: UrlContentFetcher
+	onCrawlComplete:
+		| ((
+				markdown: string,
+				expertName: string,
+				workspacePath: string,
+				url: string,
+				suburl: string,
+				title?: string,
+		  ) => Promise<void>)
+		| undefined = undefined
 
 	/**
 	 * Create a new DocumentProcessor
@@ -26,6 +37,7 @@ export class DocumentProcessor {
 		this.workspaceId = workspaceId
 		this.systemPrompt = HaiBuildDefaults.defaultMarkDownSummarizer
 		this.fileManager = new ExpertFileManager()
+		this.urlContentFetcher = new UrlContentFetcher(this.extensionContext)
 	}
 
 	/**
@@ -37,11 +49,13 @@ export class DocumentProcessor {
 		documentLinks: DocumentLink[],
 		workspacePath: string,
 		deepCrawl: boolean = false,
-		maxRequestsPerCrawl: number = 10,
+		maxDepth: number = 10,
+		maxPages: number = 20,
+		crawlTimeout: number = 10_0000,
 	): Promise<void> {
 		// Simple dispatcher based on type
 		if (deepCrawl) {
-			await this.processDeepCrawlLinks(documentLinks, expertName, workspacePath, maxRequestsPerCrawl)
+			await this.processDeepCrawlLinks(documentLinks, expertName, workspacePath, maxDepth, maxPages, crawlTimeout)
 		} else {
 			await this.processRegularLinks(expertName, expertDir, documentLinks, workspacePath)
 		}
@@ -62,10 +76,9 @@ export class DocumentProcessor {
 		}
 
 		const { docsDir, statusFilePath } = this.fileManager.getExpertPaths(workspacePath, expertName)
-		const urlContentFetcher = new UrlContentFetcher(this.extensionContext)
 
 		try {
-			await urlContentFetcher.launchBrowser()
+			await this.urlContentFetcher.launchBrowser()
 
 			// Read existing status data
 			let existingStatusData = await this.fileManager.readStatusFile(statusFilePath)
@@ -88,7 +101,12 @@ export class DocumentProcessor {
 
 				await this.fileManager.writeStatusFile(statusFilePath, existingStatusData)
 
-				const updatedLink = await this.processSingleDocumentLink(expertName, docsDir, processingLink, urlContentFetcher)
+				const updatedLink = await this.processSingleDocumentLink(
+					expertName,
+					docsDir,
+					processingLink,
+					this.urlContentFetcher,
+				)
 
 				existingStatusData[linkIndex] = updatedLink
 
@@ -97,7 +115,7 @@ export class DocumentProcessor {
 		} catch (error) {
 			console.error(`Error processing document links for expert ${expertName}:`, error)
 		} finally {
-			await urlContentFetcher.closeBrowser()
+			await this.urlContentFetcher.closeBrowser()
 		}
 	}
 
@@ -108,11 +126,13 @@ export class DocumentProcessor {
 		documentLinks: DocumentLink[],
 		expertName: string,
 		workspacePath: string,
-		maxRequestsPerCrawl: number,
+		maxDepth: number,
+		maxPages: number,
+		crawlTimeout: number,
 	): Promise<void> {
 		// For deep crawl, we just need to crawl each URL
 		for (const link of documentLinks) {
-			await this.crawlAndConvertToMarkdown(link.url, expertName, workspacePath, maxRequestsPerCrawl)
+			await this.crawlAndConvertToMarkdown(link.url, expertName, workspacePath, maxDepth, maxPages, crawlTimeout)
 		}
 	}
 
@@ -208,7 +228,9 @@ export class DocumentProcessor {
 		url: string,
 		expertName: string,
 		workspacePath: string,
-		maxRequestsPerCrawl: number = 10,
+		maxDepth: number = 10,
+		maxPages: number = 20,
+		crawlTimeout: number = 10_0000,
 	): Promise<void> {
 		const { faissStatusFilePath } = this.fileManager.getExpertPaths(workspacePath, expertName)
 
@@ -233,26 +255,23 @@ export class DocumentProcessor {
 		// Update status file before crawling
 		await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 
+		// Store reference to this instance for use in the crawler
+		const self = this
+
 		try {
-			const extensionPath = this.extensionContext.extensionPath
-			const crawlerMainPath = path.join(extensionPath, "crawler", "dist", "main.js")
+			await this.urlContentFetcher.launchBrowser()
 
-			if (!fs.existsSync(crawlerMainPath)) {
-				throw new Error(`Crawler not found at ${crawlerMainPath}`)
-			}
-
-			// Import from crawler's own built file
-			const { crawlWebsite } = await import(crawlerMainPath)
-
-			const crawlResults = await crawlWebsite(url, {
-				maxRequestsPerCrawl,
-				headless: true,
+			await this.urlContentFetcher.deepCrawl(url, {
+				maxDepth,
+				maxPages,
+				timeout: crawlTimeout,
+				onPageCrawlComplete: async (data: CrawlResult) => {
+					// Forward to vector store manager using the instance reference
+					if (self.onCrawlComplete) {
+						await self.onCrawlComplete(data.content, expertName, workspacePath, data.url, data.parentUrl || "")
+					}
+				},
 			})
-
-			// Process each crawled page
-			for (const result of crawlResults) {
-				await this.onCrawlComplete(result.markdown, expertName, workspacePath, url, result.suburl, result.title)
-			}
 
 			// Update status to COMPLETED after successful crawl
 			faissStatusData[linkIndex].status = DocumentStatus.COMPLETED
@@ -269,6 +288,8 @@ export class DocumentProcessor {
 			faissStatusData[linkIndex].error = error instanceof Error ? error.message : String(error)
 
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
+		} finally {
+			await this.urlContentFetcher.closeBrowser()
 		}
 	}
 	/**
@@ -282,21 +303,5 @@ export class DocumentProcessor {
 			processedAt: new Date().toISOString(),
 			error: null,
 		}
-	}
-
-	/**
-	 * Handler for crawler completion
-	 */
-	private async onCrawlComplete(
-		markdown: string,
-		expertName: string,
-		workspacePath: string,
-		url: string,
-		suburl: string,
-		title?: string,
-	): Promise<void> {
-		// This is a placeholder for the vectorization step
-		// This will be implemented in VectorStoreManager
-		console.log(`Processed content for ${suburl}`)
 	}
 }

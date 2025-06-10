@@ -75,7 +75,9 @@ export class ExpertManager {
 			createdAt: parsedExpert.createdAt || new Date().toISOString(),
 			documentLinks: parsedExpert.documentLinks || [],
 			deepCrawl: isDeepCrawl,
-			maxRequestsPerCrawl: parsedExpert.maxRequestsPerCrawl || 10,
+			maxDepth: parsedExpert.maxDepth || 10,
+			maxPages: parsedExpert.maxPages || 20,
+			crawlTimeout: parsedExpert.crawlTimeout || 10_0000,
 		}
 		await this.fileManager.writeExpertMetadata(metadataFilePath, metadata)
 
@@ -110,7 +112,9 @@ export class ExpertManager {
 				statusData,
 				workspacePath,
 				isDeepCrawl,
-				parsedExpert.maxRequestsPerCrawl,
+				parsedExpert.maxDepth,
+				parsedExpert.maxPages,
+				parsedExpert.crawlTimeout,
 			)
 		}
 	}
@@ -122,7 +126,7 @@ export class ExpertManager {
 	async connectProcessorToVectorStore(): Promise<void> {
 		// Add the onCrawlComplete handler to pass data from DocumentProcessor to VectorStoreManager
 		// This injects the handleCrawledContent method from the DocumentProcessor class
-		this.documentProcessor["onCrawlComplete"] = async (
+		this.documentProcessor.onCrawlComplete = async (
 			markdown: string,
 			expertName: string,
 			workspacePath: string,
@@ -166,7 +170,9 @@ export class ExpertManager {
 				linkUrl,
 				expertName,
 				workspacePath,
-				metadata.maxRequestsPerCrawl || 10,
+				metadata.maxDepth || 10,
+				metadata.maxPages || 20,
+				metadata.crawlTimeout || 10_0000,
 			)
 			return
 		}
@@ -261,7 +267,9 @@ export class ExpertManager {
 				linkUrl,
 				expertName,
 				workspacePath,
-				metadata.maxRequestsPerCrawl || 10,
+				metadata.maxDepth || 10,
+				metadata.maxPages || 20,
+				metadata.crawlTimeout || 10_0000,
 			)
 		} else {
 			// For regular experts, use docs status file
@@ -288,7 +296,9 @@ export class ExpertManager {
 				[newLink],
 				workspacePath,
 				isDeepCrawl,
-				metadata.maxRequestsPerCrawl,
+				metadata.maxDepth,
+				metadata.maxPages,
+				metadata.crawlTimeout,
 			)
 		}
 	}
@@ -400,7 +410,9 @@ export class ExpertManager {
 							documentLinks,
 							metadata.name,
 							workspacePath,
-							metadata.maxRequestsPerCrawl || 10,
+							metadata.maxDepth || 10,
+							metadata.maxPages || 20,
+							metadata.crawlTimeout || 10_0000,
 						)
 					} else {
 						documentLinks = await this.syncRegularLinks(
@@ -429,7 +441,9 @@ export class ExpertManager {
 						createdAt: metadata.createdAt,
 						documentLinks,
 						deepCrawl: isDeepCrawl,
-						maxRequestsPerCrawl: metadata.maxRequestsPerCrawl,
+						maxDepth: metadata.maxDepth,
+						maxPages: metadata.maxPages,
+						crawlTimeout: metadata.crawlTimeout,
 						status: expertStatus,
 					}
 
@@ -466,7 +480,9 @@ export class ExpertManager {
 		documentLinks: DocumentLink[],
 		expertName: string,
 		workspacePath: string,
-		maxRequestsPerCrawl: number,
+		maxDepth: number,
+		maxPages: number,
+		crawlTimeout: number,
 	): Promise<DocumentLink[]> {
 		try {
 			// Read faiss status or initialize it
@@ -491,7 +507,9 @@ export class ExpertManager {
 						link.url,
 						expertName,
 						workspacePath,
-						maxRequestsPerCrawl,
+						maxDepth,
+						maxPages,
+						crawlTimeout,
 					)
 				}
 

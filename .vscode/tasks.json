@@ -29,49 +29,8 @@
 			}
 		},
 		{
-			"type": "npm",
-			"script": "build:crawler",
-			"group": "build",
-			"problemMatcher": ["$tsc"],
-			"isBackground": false,
-			"label": "npm: build:crawler",
-			"presentation": {
-				"group": "build",
-				"reveal": "always"
-			},
-			"options": {
-				"env": {
-					"IS_DEV": "true"
-				}
-			}
-		},
-		{
-			"type": "npm",
-			"script": "watch:crawler",
-			"group": "build",
-			"problemMatcher": ["$tsc-watch"],
-			"isBackground": true,
-			"label": "npm: watch:crawler",
-			"presentation": {
-				"group": "watch",
-				"reveal": "always"
-			},
-			"options": {
-				"env": {
-					"IS_DEV": "true"
-				}
-			}
-		},
-		{
 			"label": "watch",
-			"dependsOn": [
-				"npm: protos",
-				"npm: build:crawler",
-				"npm: build:webview",
-				"npm: dev:webview",
-				"npm: watch:tsc",
-				"npm: watch:esbuild"
-			],
+			"dependsOn": ["npm: protos", "npm: build:webview", "npm: dev:webview", "npm: watch:tsc", "npm: watch:esbuild"],
 			"presentation": {
 				"reveal": "always"
 			},
@@ -87,8 +46,7 @@
 				"npm: build:webview:test",
 				"npm: dev:webview",
 				"npm: watch:tsc",
-				"npm: watch:esbuild:test",
-				"npm: watch:crawler"
+				"npm: watch:esbuild:test"
 			],
 			"presentation": {
 				"reveal": "always"

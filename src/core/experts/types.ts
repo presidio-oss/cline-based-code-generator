@@ -27,7 +27,9 @@ export interface ExpertMetadata {
 	createdAt: string
 	documentLinks: { url: string }[]
 	deepCrawl: boolean
-	maxRequestsPerCrawl: number
+	maxDepth: number
+	maxPages?: number
+	crawlTimeout?: number
 }
 
 /**
@@ -39,7 +41,9 @@ export interface DocumentProcessOptions {
 	docsDir: string
 	extensionContext: vscode.ExtensionContext
 	deepCrawl?: boolean
-	maxRequestsPerCrawl?: number
+	maxDepth?: number
+	maxPages?: number
+	crawlTimeout?: number
 }
 
 /**
@@ -49,7 +53,9 @@ export interface CrawlerOptions {
 	url: string
 	expertName: string
 	workspacePath: string
-	maxRequestsPerCrawl: number
+	maxDepth: number
+	maxPages?: number
+	crawlTimeout?: number
 }
 
 /**

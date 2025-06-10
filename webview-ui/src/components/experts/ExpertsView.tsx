@@ -41,7 +41,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		linkUrl: string
 	} | null>(null)
 	const [deepCrawl, setDeepCrawl] = useState(false)
-	const [maxRequestsPerCrawl, setMaxRequestsPerCrawl] = useState(10)
+	const [maxDepth, setMaxDepth] = useState(10)
+	const [maxPages, setMaxPages] = useState(20)
+	const [crawlTimeout, setCrawlTimeout] = useState(10_0000)
 	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
 	const { vscodeWorkspacePath, embeddingConfiguration } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -114,7 +116,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setIsFormReadOnly(false)
 		setNameError(null)
 		setDeepCrawl(false)
-		setMaxRequestsPerCrawl(10)
+		setMaxDepth(10)
+		setMaxPages(20)
+		setCrawlTimeout(10_0000)
 	}
 
 	const handleSelectExpert = (expert: ExpertData) => {
@@ -167,7 +171,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			createdAt: new Date().toISOString(),
 			documentLinks: documentLinks.length > 0 ? documentLinks : undefined,
 			deepCrawl: deepCrawl,
-			maxRequestsPerCrawl: deepCrawl ? maxRequestsPerCrawl : undefined,
+			maxDepth: deepCrawl ? maxDepth : undefined,
+			maxPages: deepCrawl ? maxPages : undefined,
+			crawlTimeout: deepCrawl ? crawlTimeout : undefined,
 		}
 		vscode.postMessage({
 			type: "saveExpert",
@@ -689,18 +695,48 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									Enabling deep crawl can explore websites beyond a single page by following internal links.
 								</p>
 							</FormGroup>
-							<FormGroup>
-								<label htmlFor="max-requests">MaxRequestsPerCrawl</label>
-								<VSCodeTextField
-									id="max-requests"
-									value={maxRequestsPerCrawl.toString()}
-									onChange={(e) => setMaxRequestsPerCrawl(parseInt((e.target as HTMLInputElement).value) || 10)}
-									placeholder="10"
-									disabled={isFormReadOnly || !deepCrawl || !isEmbeddingValid}
-									style={{ width: "100%" }}
-								/>
-								<p className="description-text">Sets the maximum number of pages to crawl.</p>
-							</FormGroup>
+							{deepCrawl && (
+								<>
+									<FormGroup>
+										<label htmlFor="max-depth">Link Depth</label>
+										<VSCodeTextField
+											id="max-depth"
+											value={maxDepth.toString()}
+											onChange={(e) => setMaxDepth(parseInt((e.target as HTMLInputElement).value) || 10)}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the maximum link depth for the crawl.</p>
+									</FormGroup>
+									<FormGroup>
+										<label htmlFor="max-pages">Page Limit</label>
+										<VSCodeTextField
+											id="max-pages"
+											value={maxPages.toString()}
+											onChange={(e) => setMaxPages(parseInt((e.target as HTMLInputElement).value) || 20)}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the maximum number of unique pages to crawl.</p>
+									</FormGroup>
+									<FormGroup>
+										<label htmlFor="max-timeout">Timeout</label>
+										<VSCodeTextField
+											id="max-timeout"
+											value={crawlTimeout.toString()}
+											onChange={(e) =>
+												setCrawlTimeout(parseInt((e.target as HTMLInputElement).value) || 10_0000)
+											}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the crawl timeout for each page.</p>
+									</FormGroup>
+								</>
+							)}
 							{!isEmbeddingValid && (
 								<div
 									className="warning-message"

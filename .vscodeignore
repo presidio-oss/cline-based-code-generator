@@ -71,12 +71,6 @@ docs/**
 !node_modules/bindings/**
 !node_modules/file-uri-to-path/**
 
-# exclude crawler dist and include others
-crawler/**
-!crawler/dist/**
-!crawler/node_modules/**
-
-
 .github/**
 scripts/**
 

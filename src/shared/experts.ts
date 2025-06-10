@@ -31,7 +31,9 @@ export const ExpertDataSchema = z.object({
 	iconComponent: z.unknown().optional(),
 	documentLinks: z.array(DocumentLinkSchema).optional(),
 	deepCrawl: z.boolean().optional(),
-	maxRequestsPerCrawl: z.number().min(1).optional(),
+	maxDepth: z.number().min(1).optional(),
+	maxPages: z.number().min(1).optional(),
+	crawlTimeout: z.number().min(1).optional(),
 	status: z.nativeEnum(DocumentStatus).optional(),
 })
 
@@ -48,6 +50,8 @@ export interface ExpertData {
 	iconComponent?: any
 	documentLinks?: DocumentLink[]
 	deepCrawl?: boolean
-	maxRequestsPerCrawl?: number
+	maxDepth?: number
+	maxPages?: number
+	crawlTimeout?: number
 	status?: DocumentStatus
 }
