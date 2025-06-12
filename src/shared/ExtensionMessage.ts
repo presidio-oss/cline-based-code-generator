@@ -14,6 +14,7 @@ import { ClineRulesToggles } from "./cline-rules"
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
 import { IHaiStory } from "./hai-task"
 import { EmbeddingConfiguration } from "./embeddings"
+import { ExpertData } from "./experts"
 
 // webview will hold state
 export interface ExtensionMessage {
@@ -132,6 +133,7 @@ export interface ExtensionMessage {
 	haiTaskData?: { folder: string; tasks: IHaiStory[]; ts: string }
 	haiConfig?: {}
 	experts?: any[] // Expert data array
+	selectedExpert?: ExpertData | null // Selected expert
 	documentLinks?: any[] // Document links with status
 	expertName?: string // Expert name for document links status
 	writeTaskStatusResult?: {
@@ -272,6 +274,7 @@ export interface ClineSayTool {
 		// TAG:HAI
 		| "findRelevantFiles"
 		| "codeSecurityScan"
+		| "customExpertContext"
 	path?: string
 	diff?: string
 	content?: string

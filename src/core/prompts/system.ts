@@ -22,6 +22,8 @@ export const SYSTEM_PROMPT = async (
 	// TAG:HAI
 	supportsCodeIndex: boolean,
 	expertPrompt?: string,
+	isDeepCrawlEnabled?: boolean,
+	expertName?: string,
 ) => `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
 
 ====
@@ -50,7 +52,7 @@ Always adhere to this format for the tool use to ensure proper parsing and execu
 
 # Tools
 
-${customToolsPrompt(supportsCodeIndex)}
+${customToolsPrompt(supportsCodeIndex, isDeepCrawlEnabled, expertName)}
 
 ## execute_command
 Description: Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: ${cwd.toPosix()}
@@ -628,7 +630,7 @@ RULES
 		? " Then if you want to test your work, you might use browser_action to launch the site, wait for the user's response confirming the site was launched along with a screenshot, then perhaps e.g., click a button to test functionality if needed, wait for the user's response confirming the button was clicked along with a screenshot of the new state, before finally closing the browser."
 		: ""
 }
-${customRulesPrompt(supportsCodeIndex)}
+${customRulesPrompt(supportsCodeIndex, isDeepCrawlEnabled)}
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
 
 ====

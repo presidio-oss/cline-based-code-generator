@@ -42,7 +42,8 @@ export interface WebviewMessage {
 		| "toggleWorkflow"
 
 		// TAG:HAI
-		| "expertPrompt"
+		| "selectExpert"
+		| "viewExpertPrompt"
 		| "saveExpert"
 		| "deleteExpert"
 		| "loadExperts"
@@ -133,6 +134,7 @@ export interface WebviewMessage {
 	buildContextOptions?: HaiBuildContextOptions
 	embeddingConfiguration?: EmbeddingConfiguration
 	toast?: { message: string; toastType: "error" | "warning" | "info" }
+	isDeepCrawlEnabled?: boolean
 	guard?: Guard
 	guards?: Guard[]
 }

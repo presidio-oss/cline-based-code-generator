@@ -1,6 +1,12 @@
 import React, { useState, useEffect, memo, useMemo } from "react"
 import styled from "styled-components"
-import { VSCodeButton, VSCodeTextField, VSCodeTextArea, VSCodeProgressRing } from "@vscode/webview-ui-toolkit/react"
+import {
+	VSCodeButton,
+	VSCodeTextField,
+	VSCodeTextArea,
+	VSCodeProgressRing,
+	VSCodeCheckbox,
+} from "@vscode/webview-ui-toolkit/react"
 import { vscode } from "../../utils/vscode"
 import { DocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
@@ -34,8 +40,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		expertName: string
 		linkUrl: string
 	} | null>(null)
-
-	const { vscodeWorkspacePath } = useExtensionState()
+	const [deepCrawl, setDeepCrawl] = useState(false)
+	const [maxDepth, setMaxDepth] = useState(10)
+	const [maxPages, setMaxPages] = useState(20)
+	const [crawlTimeout, setCrawlTimeout] = useState(10_0000)
+	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
+	const { vscodeWorkspacePath, embeddingConfiguration } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
 
 	const allExperts = useMemo(() => [...defaultExperts, ...customExperts], [defaultExperts, customExperts])
@@ -56,6 +66,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						setCustomExperts(message.experts)
 					}
 					break
+				case "embeddingConfigValidation":
+					setIsEmbeddingValid(!!message.bool)
+					break
 
 				default:
 					console.warn(`Unhandled message type: ${message.type}`)
@@ -64,6 +77,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		window.addEventListener("message", messageHandler)
 		vscode.postMessage({ type: "loadDefaultExperts" })
 		vscode.postMessage({ type: "loadExperts" })
+		vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
 		return () => {
 			window.removeEventListener("message", messageHandler)
 		}
@@ -101,6 +115,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		setSelectedExpert(null)
 		setIsFormReadOnly(false)
 		setNameError(null)
+		setDeepCrawl(false)
+		setMaxDepth(10)
+		setMaxPages(20)
+		setCrawlTimeout(10_0000)
 	}
 
 	const handleSelectExpert = (expert: ExpertData) => {
@@ -128,6 +146,15 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			})
 			return
 		}
+
+		if (deepCrawl && documentLinks.length === 0) {
+			vscode.postMessage({
+				type: "showToast",
+				toast: { message: "At least one document link is required when DeepCrawl is enabled", toastType: "error" },
+			})
+			return
+		}
+
 		const expertExists = allExperts.some((expert) => expert.name.toLowerCase() === newExpertName.toLowerCase())
 		if (expertExists) {
 			setNameError("An expert with this name already exists")
@@ -143,6 +170,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			isDefault: false,
 			createdAt: new Date().toISOString(),
 			documentLinks: documentLinks.length > 0 ? documentLinks : undefined,
+			deepCrawl: deepCrawl,
+			maxDepth: deepCrawl ? maxDepth : undefined,
+			maxPages: deepCrawl ? maxPages : undefined,
+			crawlTimeout: deepCrawl ? crawlTimeout : undefined,
 		}
 		vscode.postMessage({
 			type: "saveExpert",
@@ -189,11 +220,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		const expertToOpen = allExperts.find((expert) => expert.name === expertName)
 		if (expertToOpen) {
 			vscode.postMessage({
-				type: "expertPrompt",
+				type: "viewExpertPrompt",
 				text: expertName.trim(),
-				category: "viewExpert",
 				isDefault: expertToOpen.isDefault,
 				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
+				isDeepCrawlEnabled: expertToOpen.deepCrawl,
 			})
 		}
 	}
@@ -313,11 +344,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																	<StatusIcon
 																		status={link.status}
 																		title={capitalizeFirstLetter(link.status)}>
-																		{link.status.toLowerCase() === "completed" ? (
+																		{link.status.toLowerCase() ===
+																		DocumentStatus.COMPLETED ? (
 																			<span className="codicon codicon-check" />
-																		) : link.status.toLowerCase() === "failed" ? (
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.FAILED ? (
 																			<span className="codicon codicon-error" />
-																		) : link.status.toLowerCase() === "processing" ? (
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.PROCESSING ? (
 																			<div
 																				style={{
 																					transform: "scale(0.8)",
@@ -650,6 +684,73 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									</div>
 								)}
 							</FormGroup>
+							<FormGroup>
+								<VSCodeCheckbox
+									checked={deepCrawl}
+									onChange={(e) => setDeepCrawl((e.target as HTMLInputElement).checked)}
+									disabled={isFormReadOnly || !isEmbeddingValid}>
+									DeepCrawl
+								</VSCodeCheckbox>
+								<p className="description-text">
+									Enabling deep crawl can explore websites beyond a single page by following internal links.
+								</p>
+							</FormGroup>
+							{deepCrawl && (
+								<>
+									<FormGroup>
+										<label htmlFor="max-depth">Link Depth</label>
+										<VSCodeTextField
+											id="max-depth"
+											value={maxDepth.toString()}
+											onChange={(e) => setMaxDepth(parseInt((e.target as HTMLInputElement).value) || 10)}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the maximum link depth for the crawl.</p>
+									</FormGroup>
+									<FormGroup>
+										<label htmlFor="max-pages">Page Limit</label>
+										<VSCodeTextField
+											id="max-pages"
+											value={maxPages.toString()}
+											onChange={(e) => setMaxPages(parseInt((e.target as HTMLInputElement).value) || 20)}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the maximum number of unique pages to crawl.</p>
+									</FormGroup>
+									<FormGroup>
+										<label htmlFor="max-timeout">Timeout</label>
+										<VSCodeTextField
+											id="max-timeout"
+											value={crawlTimeout.toString()}
+											onChange={(e) =>
+												setCrawlTimeout(parseInt((e.target as HTMLInputElement).value) || 10_0000)
+											}
+											placeholder="10"
+											disabled={isFormReadOnly || !isEmbeddingValid}
+											style={{ width: "100%" }}
+										/>
+										<p className="description-text">Sets the crawl timeout for each page.</p>
+									</FormGroup>
+								</>
+							)}
+							{!isEmbeddingValid && (
+								<div
+									className="warning-message"
+									style={{
+										display: "flex",
+										alignItems: "center",
+										gap: "8px",
+										color: "var(--vscode-editorWarning-foreground)",
+										fontSize: "11px",
+									}}>
+									<i className="codicon codicon-warning" style={{ fontSize: "14px" }} />
+									<span>Valid embedding configuration required for deep crawling</span>
+								</div>
+							)}
 							{!isFormReadOnly && (
 								<ActionButtons>
 									<VSCodeButton appearance="secondary" onClick={resetForm}>

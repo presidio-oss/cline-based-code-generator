@@ -102,6 +102,8 @@ export type GlobalStateKey =
 
 	// TAG:HAI
 	| "expertPrompt"
+	| "expertName"
+	| "isDeepCrawlEnabled"
 	// Embedding specific keys
 	| "embeddingProvider"
 	| "embeddingModelId"

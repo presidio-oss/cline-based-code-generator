@@ -77,6 +77,7 @@ import { getStarCount } from "../../services/github/github"
 import { openFile } from "@integrations/misc/open-file"
 import { Guardrails, GuardrailsConfig } from "@integrations/guardrails"
 import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
+import { ExpertFileManager } from "../experts/ExpertFileManager"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -105,7 +106,7 @@ export class Controller {
 	private vsCodeWorkSpaceFolderFsPath!: string
 	private codeIndexAbortController: AbortController
 	private isSideBar: boolean
-	private expertManager: ExpertManager
+	private expertManager: ExpertManager | undefined
 	private isCodeIndexInProgress: boolean = false
 	private guardrails: Guardrails
 
@@ -142,7 +143,6 @@ export class Controller {
 		// TAG:HAI
 		this.codeIndexAbortController = new AbortController()
 		this.workspaceId = getWorkspaceID() || ""
-		this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		this.isSideBar = isSideBar
 		this.vsCodeWorkSpaceFolderFsPath = (getWorkspacePath() || "").trim()
 		if (this.vsCodeWorkSpaceFolderFsPath) {
@@ -156,6 +156,15 @@ export class Controller {
 			this.expertPromptProvider,
 		)
 		this.disposables.push(registration)
+	}
+
+	// TAG:HAI
+	private async getExpertManager(): Promise<ExpertManager> {
+		if (!this.expertManager) {
+			const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+			this.expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
+		}
+		return this.expertManager
 	}
 
 	/*
@@ -212,6 +221,8 @@ export class Controller {
 			taskHistory,
 			embeddingConfiguration,
 			expertPrompt,
+			expertName,
+			isDeepCrawlEnabled,
 			buildContextOptions,
 		} = await getAllExtensionState(this.context, this.workspaceId)
 
@@ -248,6 +259,8 @@ export class Controller {
 			enableCheckpointsSetting ?? true,
 			customInstructions,
 			expertPrompt,
+			expertName,
+			isDeepCrawlEnabled,
 			buildContextOptions,
 			task,
 			images,
@@ -1996,6 +2009,7 @@ Commit message:`
 	}
 
 	async customWebViewMessageHandlers(message: WebviewMessage) {
+		const expertManager = await this.getExpertManager()
 		switch (message.type) {
 			case "requestOllamaEmbeddingModels":
 				const ollamaEmbeddingModels = await this.getOllamaEmbeddingModels(message.text)
@@ -2017,49 +2031,65 @@ Commit message:`
 						break
 				}
 				break
-			case "expertPrompt":
+			case "selectExpert":
 				const expertName = message.text || ""
-				if (message.category === "viewExpert") {
-					if (message.isDefault && message.prompt) {
-						try {
-							// Create a unique URI for this expert prompt
-							const encodedContent = Buffer.from(message.prompt).toString("base64")
-							const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${expertName}.md?${encodedContent}`)
+				const expertPrompt = message.prompt || ""
+				const isDeepCrawlEnabled = !!message.isDeepCrawlEnabled
+				await customUpdateState(this.context, "expertPrompt", expertPrompt || undefined)
+				await customUpdateState(this.context, "expertName", expertName || undefined)
+				await customUpdateState(this.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
+				if (!isDeepCrawlEnabled) {
+					await this.updateExpertPrompt(message.prompt, expertName)
+				}
+				break
+			case "viewExpertPrompt":
+				const viewExpertName = message.text || ""
 
-							// Open the document
-							const document = await vscode.workspace.openTextDocument(uri)
-							await vscode.window.showTextDocument(document, { preview: false })
-						} catch (error) {
-							console.error("Error creating or opening the virtual document:", error)
-						}
-					} else {
-						// For custom experts, use the existing path
-						const promptPath = await this.expertManager.getExpertPromptPath(
-							this.vsCodeWorkSpaceFolderFsPath,
-							expertName,
-						)
-						if (promptPath) {
-							openFile(promptPath)
-						} else {
-							vscode.window.showErrorMessage(`Could not find prompt file for expert: ${expertName}`)
-						}
+				if (message.isDefault && message.prompt) {
+					try {
+						const encodedContent = Buffer.from(message.prompt).toString("base64")
+						const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${viewExpertName}.md?${encodedContent}`)
+						const document = await vscode.workspace.openTextDocument(uri)
+						await vscode.window.showTextDocument(document, { preview: false })
+					} catch (error) {
+						console.error("Error creating or opening the virtual document:", error)
 					}
 				} else {
-					await this.updateExpertPrompt(message.prompt, expertName)
+					const expertManager = await this.getExpertManager()
+					const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, viewExpertName)
+					if (promptPath) {
+						openFile(promptPath)
+					} else {
+						vscode.window.showErrorMessage(`Could not find prompt file for expert: ${viewExpertName}`)
+					}
 				}
 				break
 			case "saveExpert":
 				if (message.text) {
 					const expert = JSON.parse(message.text) as ExpertData
-					await this.expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
+					await expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
 					await this.loadExperts()
 				}
 				break
 			case "deleteExpert":
 				if (message.text) {
-					const expertName = message.text
-					await this.expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertName)
+					const expertToDelete = message.text
+					const { expertName } = await getAllExtensionState(this.context, this.workspaceId)
+
+					// Delete the expert
+					const expertManager = await this.getExpertManager()
+					await expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertToDelete)
+
+					// Clear selected expert state if the deleted expert was selected
+					if (expertName === expertToDelete) {
+						await customUpdateState(this.context, "expertName", undefined)
+						await customUpdateState(this.context, "expertPrompt", undefined)
+						await customUpdateState(this.context, "isDeepCrawlEnabled", false)
+					}
+
+					// Reload experts to update the UI
 					await this.loadExperts()
+					await this.loadDefaultExperts()
 				}
 				break
 			case "loadExperts":
@@ -2070,18 +2100,14 @@ Commit message:`
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
-					await this.expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+					await expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 				}
 				await this.loadExperts()
 				break
 			case "deleteDocumentLink":
 				if (message.text && message.expert) {
 					try {
-						await this.expertManager.deleteDocumentLink(
-							this.vsCodeWorkSpaceFolderFsPath,
-							message.expert,
-							message.text,
-						)
+						await expertManager.deleteDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
@@ -2092,7 +2118,7 @@ Commit message:`
 			case "addDocumentLink":
 				if (message.text && message.expert) {
 					try {
-						await this.expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
+						await expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {
 						console.error(`Failed to add document link for expert ${message.expert}:`, error)
@@ -2299,18 +2325,22 @@ Commit message:`
 	}
 
 	async loadExperts() {
-		const experts = await this.expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
+		const expertManager = await this.getExpertManager()
+		const { experts, selectedExpert } = await expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
 		await this.postMessageToWebview({
 			type: "expertsUpdated",
 			experts,
+			selectedExpert,
 		})
 	}
 
 	async loadDefaultExperts() {
-		const experts = await this.expertManager.loadDefaultExperts()
+		const expertManager = await this.getExpertManager()
+		const { experts, selectedExpert } = await expertManager.loadDefaultExperts()
 		await this.postMessageToWebview({
 			type: "defaultExpertsLoaded",
 			experts,
+			selectedExpert,
 		})
 	}
 
@@ -2323,14 +2353,15 @@ Commit message:`
 	}
 
 	private async getExpertDocumentsContent(expertName: string): Promise<string> {
-		const expertPath = await this.expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
+		const expertManager = await this.getExpertManager()
+		const expertPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, expertName)
 
 		if (!expertPath) {
 			return ""
 		}
 
-		const docsDir = path.join(path.dirname(expertPath), ExpertManager.DOCS_DIR)
-		const statusFilePath = path.join(docsDir, ExpertManager.STATUS_FILE)
+		const docsDir = path.join(path.dirname(expertPath), ExpertFileManager.DOCS_DIR)
+		const statusFilePath = path.join(docsDir, ExpertFileManager.STATUS_FILE)
 
 		if (!(await fileExistsAtPath(statusFilePath))) {
 			return ""

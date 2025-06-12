@@ -258,6 +258,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 
 		// TAG:HAI
 		expertPrompt,
+		expertName,
+		isDeepCrawlEnabled,
 		buildContextOptions,
 		buildIndexProgress,
 		isApiConfigurationValid,
@@ -374,6 +376,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 
 		// TAG:HAI
 		customGetState(context, "expertPrompt") as Promise<string | undefined>,
+		customGetState(context, "expertName") as Promise<string | undefined>,
+		customGetState(context, "isDeepCrawlEnabled") as Promise<boolean | undefined>,
 		customGetState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		customGetState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 		customGetState(context, "isApiConfigurationValid") as Promise<boolean | undefined>,
@@ -538,6 +542,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			ollamaModelId: embeddingOllamaModelId,
 		},
 		expertPrompt,
+		expertName,
+		isDeepCrawlEnabled,
 		guardrailsConfig: guardrailsConfig ?? Default_GuardsConfig,
 		buildContextOptions: buildContextOptions
 			? {

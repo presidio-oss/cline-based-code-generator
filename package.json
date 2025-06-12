@@ -171,7 +171,7 @@
 			{
 				"command": "hai.expertsButtonClicked",
 				"title": "Experts",
-				"icon": "$(gist)",
+				"icon": "$(robot)",
 				"category": "HAI Build"
 			}
 		],
