@@ -1724,7 +1724,7 @@ Commit message:`
 				if (buildContextOptions.useIndex) {
 					if (!isManualTrigger && (!buildIndexProgress || !buildIndexProgress.progress)) {
 						const userConfirmation = await vscode.window.showWarningMessage(
-							"hAI performs best with a code index. Would you like to navigate to Settings to start indexing for this workspace?",
+							"HAI performs best with a code index. Would you like to navigate to Settings to start indexing for this workspace?",
 							"Open Settings",
 							"No",
 						)
