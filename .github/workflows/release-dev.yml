@@ -63,7 +63,7 @@ jobs:
 
                   # Build the VSIX package
                   echo "Output Package Name: $PACKAGE_NAME-$BUILD_VERSION.vsix"
-                  npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix"
+                  npx @vscode/vsce package --out "$PACKAGE_NAME-$BUILD_VERSION.vsix" --allow-package-secrets sendgrid
               env:
                   LANGFUSE_API_URL: ${{ secrets.LANGFUSE_API_URL }}
                   LANGFUSE_API_KEY: ${{ secrets.LANGFUSE_API_KEY }}

@@ -70,6 +70,28 @@ const ChatRowExtra: React.FC<ChatRowExtraProps> = ({ headerStyle, toolIcon, mess
 					/>
 				</>
 			)
+		case "customExpertContext":
+			return (
+				<>
+					<div style={headerStyle}>
+						{toolIcon("book")}
+						<span style={{ fontWeight: "bold" }}>
+							{message.type === "ask" ? (
+								<>HAI is querying the "{tool.path}" expert:</>
+							) : (
+								<>Expert context from "{tool.path}":</>
+							)}
+						</span>
+					</div>
+					<CodeAccordian
+						code={tool.content!}
+						path={tool.path || ""}
+						language="markdown"
+						isExpanded={message.type === "ask" ? false : isExpanded}
+						onToggleExpand={onToggleExpand}
+					/>
+				</>
+			)
 		default:
 			return null
 	}

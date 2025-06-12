@@ -21,10 +21,14 @@ import { BrowserSettings } from "../../shared/BrowserSettings"
 export const SYSTEM_PROMPT = async (
 	cwd: string,
 	supportsBrowserUse: boolean,
-	supportsCodeIndex: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
+
+	// TAG:HAI
+	supportsCodeIndex: boolean,
 	expertPrompt?: string,
+	isDeepCrawlEnabled?: boolean,
+	expertName?: string,
 ) => `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
 
 ====
@@ -53,7 +57,7 @@ Always adhere to this format for the tool use to ensure proper parsing and execu
 
 # Tools
 
-${customToolsPrompt(supportsCodeIndex)}
+${customToolsPrompt(supportsCodeIndex, isDeepCrawlEnabled, expertName)}
 
 ## execute_command
 Description: Request to execute a CLI command on the system. Use this when you need to perform system operations or run specific commands to accomplish any step in the user's task. You must tailor your command to the user's system and provide a clear explanation of what the command does. For command chaining, use the appropriate chaining syntax for the user's shell. Prefer to execute complex CLI commands over creating executable scripts, as they are more flexible and easier to run. Commands will be executed in the current working directory: ${cwd.toPosix()}
@@ -598,7 +602,7 @@ RULES
 - **Images & Environment Details:**
   - Analyze images for meaningful insights when provided.  
   - \`environment_details\` provides context but does not replace user requests. Use it for guidance, not assumptions.  
-${customRulesPrompt(supportsCodeIndex)}
+${customRulesPrompt(supportsCodeIndex, isDeepCrawlEnabled)}
 - MCP operations should be used one at a time, similar to other tool usage. Wait for confirmation of success before proceeding with additional operations.
 
 ====

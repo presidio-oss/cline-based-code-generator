@@ -30,6 +30,11 @@ export const ExpertDataSchema = z.object({
 	iconPath: z.string().trim().optional(),
 	iconComponent: z.unknown().optional(),
 	documentLinks: z.array(DocumentLinkSchema).optional(),
+	deepCrawl: z.boolean().optional(),
+	maxDepth: z.number().min(1).optional(),
+	maxPages: z.number().min(1).optional(),
+	crawlTimeout: z.number().min(1).optional(),
+	status: z.nativeEnum(DocumentStatus).optional(),
 })
 
 export type ExpertDataType = z.infer<typeof ExpertDataSchema>
@@ -44,4 +49,9 @@ export interface ExpertData {
 	iconPath?: string
 	iconComponent?: any
 	documentLinks?: DocumentLink[]
+	deepCrawl?: boolean
+	maxDepth?: number
+	maxPages?: number
+	crawlTimeout?: number
+	status?: DocumentStatus
 }

@@ -28,7 +28,13 @@ class HaiFileSystemWatcher {
 			this.ig.add(
 				content
 					.split("\n")
-					.filter((line) => line.trim() && !line.startsWith("#") && !line.includes(GlobalFileNames.haiConfig)),
+					.filter(
+						(line) =>
+							line.trim() &&
+							!line.startsWith("#") &&
+							!line.includes(GlobalFileNames.haiConfig) &&
+							!line.includes(GlobalFileNames.experts),
+					),
 			)
 		} catch (error) {
 			console.log("HaiFileSystemWatcher No .gitignore found, using default exclusions.")

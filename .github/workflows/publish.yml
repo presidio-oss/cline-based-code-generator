@@ -88,7 +88,7 @@ jobs:
                   POST_HOG_HOST: ${{ secrets.POST_HOG_API_URL }}
               run: |
                   # Required to generate the .vsix
-                  vsce package --out "hai-build-code-generator-${{ steps.get_version.outputs.version }}.vsix"
+                  vsce package --out "hai-build-code-generator-${{ steps.get_version.outputs.version }}.vsix" --allow-package-secrets sendgrid
 
                   if [ "${{ github.event.inputs.release-type }}" = "pre-release" ]; then
                     npm run publish:marketplace:prerelease
