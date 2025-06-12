@@ -44,7 +44,7 @@ export class InlineEditingProvider {
 				provideCodeActions(document, range) {
 					const editor = vscode.window.activeTextEditor
 					if (editor && editor.document === document && !range.isEmpty) {
-						const action = new vscode.CodeAction("Edit with hAI", vscode.CodeActionKind.RefactorRewrite)
+						const action = new vscode.CodeAction("Edit with HAI", vscode.CodeActionKind.RefactorRewrite)
 						action.command = {
 							command: "hai.editSelectedWithAI",
 							title: "Edit with HAI",
@@ -160,7 +160,7 @@ export class InlineEditingProvider {
 					this.activeCodeLensProvider?.dispose()
 					this.isEditing = true
 
-					const systemPrompt = `You are hAI, an AI coding assistant. You are an AI programming assistant who is an expert in adding new code by following instructions.
+					const systemPrompt = `You are HAI, an AI coding assistant. You are an AI programming assistant who is an expert in adding new code by following instructions.
                     
                         - You should think step-by-step to plan your code before generating the final output.
                         - You should ensure your code matches the indentation and whitespace of the preceding code in the users' file
@@ -354,7 +354,7 @@ export class InlineEditingProvider {
 				) {
 					return [
 						new vscode.CodeLens(editor.selection, {
-							title: "⌥⇧K Edit with hAI",
+							title: "⌥⇧K Edit with HAI",
 							command: "hai.editSelectedWithAI",
 							tooltip: "Edit selected code with HAI",
 						}),
