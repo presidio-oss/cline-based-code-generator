@@ -203,6 +203,7 @@ export class DiffViewProvider {
 		userEdits: string | undefined
 		autoFormattingEdits: string | undefined
 		finalContent: string | undefined
+		lineDiffs: diff.Change[] | undefined
 	}> {
 		if (!this.relPath || !this.newContent || !this.activeDiffEditor) {
 			return {
@@ -210,6 +211,7 @@ export class DiffViewProvider {
 				userEdits: undefined,
 				autoFormattingEdits: undefined,
 				finalContent: undefined,
+				lineDiffs: undefined,
 			}
 		}
 		const absolutePath = path.resolve(this.cwd, this.relPath)
@@ -291,6 +293,12 @@ export class DiffViewProvider {
 			userEdits,
 			autoFormattingEdits,
 			finalContent: normalizedPostSaveContent,
+			lineDiffs: diff.diffLines(
+				(this.originalContent || "")
+					.replace(/\r\n|\n/g, newContentEOL) // align EOLs
+					.trimEnd() + newContentEOL,
+				normalizedPostSaveContent,
+			),
 		}
 	}
 

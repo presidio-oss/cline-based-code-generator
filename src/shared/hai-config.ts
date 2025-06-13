@@ -19,6 +19,13 @@ export const haiConfigSchema = z.object({
 			apiKey: z.string().trim().optional(),
 		})
 		.optional(),
+	cormatrix: z
+		.object({
+			baseURL: z.string().trim().optional(),
+			token: z.string().trim().optional(),
+			workspaceId: z.string().trim().optional(),
+		})
+		.optional(),
 })
 
 export class HaiConfig {
@@ -82,5 +89,10 @@ export class HaiConfig {
 	static getLangfuseConfig(workspacePath?: string) {
 		const config = HaiConfig.getConfig(workspacePath)
 		return config?.langfuse
+	}
+
+	static getCorMatrixConfig(workspacePath?: string) {
+		const config = HaiConfig.getConfig(workspacePath)
+		return config?.cormatrix
 	}
 }
