@@ -111,5 +111,7 @@ export type GlobalStateKey =
 	| "embeddingOpenAiBaseUrl"
 	| "embeddingOpenAiModelId"
 	| "guardrailsConfig"
+	| "embeddingAwsUseProfile"
+	| "embeddingAwsProfile"
 
 export type LocalStateKey = "localClineRulesToggles"

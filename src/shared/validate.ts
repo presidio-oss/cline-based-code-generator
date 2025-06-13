@@ -128,8 +128,14 @@ export function validateEmbeddingConfiguration(config?: EmbeddingConfiguration):
 				}
 				break
 			case "bedrock":
-				if (!config.awsRegion || !config.awsAccessKey || !config.awsSecretKey) {
-					return "You must provide a valid Access Key, Secret Key and Region to use AWS Bedrock."
+				if (config.awsUseProfile) {
+					if (!config.awsRegion) {
+						return "You must provide a valid Region to use AWS Bedrock with profile."
+					}
+				} else {
+					if (!config.awsRegion || !config.awsAccessKey || !config.awsSecretKey) {
+						return "You must provide a valid Access Key, Secret Key and Region to use AWS Bedrock."
+					}
 				}
 				break
 			case "openai":
