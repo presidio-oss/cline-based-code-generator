@@ -293,7 +293,12 @@ export class DiffViewProvider {
 			userEdits,
 			autoFormattingEdits,
 			finalContent: normalizedPostSaveContent,
-			lineDiffs: diff.diffLines(this.originalContent || "", normalizedPostSaveContent),
+			lineDiffs: diff.diffLines(
+				(this.originalContent || "")
+					.replace(/\r\n|\n/g, newContentEOL) // align EOLs
+					.trimEnd() + newContentEOL,
+				normalizedPostSaveContent,
+			),
 		}
 	}
 

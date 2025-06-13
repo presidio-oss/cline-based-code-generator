@@ -30,10 +30,10 @@ export class CorMatrixService {
 	static track(metrics: ToolMetrics): void {
 		const instance = this.getInstance()
 		if (metrics.diff && metrics.path) {
-			for (const diff of metrics.diff) {
-				if (diff.added) {
+			for (const change of metrics.diff) {
+				if (change.added) {
 					instance.addCodeOriginRecord({
-						code: diff.value,
+						code: change.value,
 						path: metrics.path,
 					})
 				}
