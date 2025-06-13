@@ -284,6 +284,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		embeddingOllamaModelId,
 		//Guardrails
 		guardrailsConfig,
+		embeddingAwsUseProfile,
+		embeddingAwsProfile,
 	] = await Promise.all([
 		customGetState(context, "isNewUser") as Promise<boolean | undefined>,
 		customGetState(context, "apiProvider") as Promise<ApiProvider | undefined>,
@@ -401,6 +403,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		customGetState(context, "embeddingOllamaBaseUrl") as Promise<string | undefined>,
 		customGetState(context, "embeddingOllamaModelId") as Promise<string | undefined>,
 		customGetState(context, "guardrailsConfig") as Promise<GuardrailsConfig | undefined>,
+		customGetState(context, "embeddingAwsUseProfile") as Promise<boolean | undefined>,
+		customGetState(context, "embeddingAwsProfile") as Promise<string | undefined>,
 		fetch,
 	])
 
@@ -540,6 +544,8 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			isEmbeddingConfigurationValid,
 			ollamaBaseUrl: embeddingOllamaBaseUrl,
 			ollamaModelId: embeddingOllamaModelId,
+			awsUseProfile: embeddingAwsUseProfile,
+			awsProfile: embeddingAwsProfile
 		},
 		expertPrompt,
 		expertName,
@@ -547,16 +553,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		guardrailsConfig: guardrailsConfig ?? Default_GuardsConfig,
 		buildContextOptions: buildContextOptions
 			? {
-					...buildContextOptions,
-					systemPromptVersion: buildContextOptions.systemPromptVersion ?? "v3",
-				}
+				...buildContextOptions,
+				systemPromptVersion: buildContextOptions.systemPromptVersion ?? "v3",
+			}
 			: {
-					useIndex: true, // Enable Indexing by default
-					useContext: true, // Enable Use Context by default
-					useSyncWithApi: true, // Enable Sync with API by default
-					useSecretScanning: true, // Enable Secret Scanning by default
-					systemPromptVersion: "v3", // Setting v3 as default prompt
-				},
+				useIndex: true, // Enable Indexing by default
+				useContext: true, // Enable Use Context by default
+				useSyncWithApi: true, // Enable Sync with API by default
+				useSecretScanning: true, // Enable Secret Scanning by default
+				systemPromptVersion: "v3", // Setting v3 as default prompt
+			},
 		buildIndexProgress: buildIndexProgress,
 		enableInlineEdit: enableInlineEdit ?? true,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
@@ -737,6 +743,8 @@ export async function updateEmbeddingConfiguration(
 		azureOpenAIApiVersion,
 		ollamaBaseUrl,
 		ollamaModelId,
+		awsProfile,
+		awsUseProfile
 	} = embeddingConfiguration
 
 	// Update Global State
@@ -750,6 +758,8 @@ export async function updateEmbeddingConfiguration(
 	await customUpdateState(context, "embeddingAzureOpenAIApiEmbeddingsDeploymentName", azureOpenAIApiEmbeddingsDeploymentName)
 	await customUpdateState(context, "embeddingOllamaBaseUrl", ollamaBaseUrl)
 	await customUpdateState(context, "embeddingOllamaModelId", ollamaModelId)
+	await customUpdateState(context, "embeddingAwsProfile", awsProfile)
+	await customUpdateState(context, "embeddingAwsUseProfile", awsUseProfile)
 	// Update Secrets
 	await customStoreSecret(context, "embeddingAwsAccessKey", workspaceId, awsAccessKey, true)
 	await customStoreSecret(context, "embeddingAwsSecretKey", workspaceId, awsSecretKey, true)

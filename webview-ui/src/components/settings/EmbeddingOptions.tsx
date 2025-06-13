@@ -1,4 +1,4 @@
-import { VSCodeCheckbox, VSCodeDropdown, VSCodeLink, VSCodeOption, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeCheckbox, VSCodeDropdown, VSCodeLink, VSCodeOption, VSCodeRadioGroup, VSCodeTextField, VSCodeRadio } from "@vscode/webview-ui-toolkit/react"
 import { memo, useEffect, useMemo, useState, useCallback } from "react"
 import {
 	EmbeddingConfiguration,
@@ -52,6 +52,8 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 				awsSecretKey: apiConfiguration.awsSecretKey,
 				awsSessionToken: apiConfiguration.awsSessionToken,
 				awsRegion: apiConfiguration.awsRegion,
+				awsProfile: apiConfiguration.awsProfile,
+				awsUseProfile: apiConfiguration.awsUseProfile,
 			})
 		} else if (apiConfiguration.apiProvider === "openai") {
 			setEmbeddingConfiguration({
@@ -72,6 +74,10 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 		}
 
 		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }
+		if (field === "awsProfile") {
+			// Make sure to preserve the awsUseProfile setting
+			newEmbeddingConfiguration.awsUseProfile = embeddingConfiguration?.awsUseProfile || false
+		}
 		setEmbeddingConfiguration(newEmbeddingConfiguration)
 	}
 
@@ -209,34 +215,70 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 
 			{selectedProvider === "bedrock" && (
 				<div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-					<VSCodeTextField
-						value={embeddingConfiguration?.awsAccessKey || ""}
-						style={{ width: "100%" }}
-						type="password"
-						onInput={handleInputChange("awsAccessKey")}
-						placeholder="Enter Access Key...">
-						<span style={{ fontWeight: 500 }}>
-							AWS Access Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
-						</span>
-					</VSCodeTextField>
-					<VSCodeTextField
-						value={embeddingConfiguration?.awsSecretKey || ""}
-						style={{ width: "100%" }}
-						type="password"
-						onInput={handleInputChange("awsSecretKey")}
-						placeholder="Enter Secret Key...">
-						<span style={{ fontWeight: 500 }}>
-							AWS Secret Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
-						</span>
-					</VSCodeTextField>
-					<VSCodeTextField
-						value={embeddingConfiguration?.awsSessionToken || ""}
-						style={{ width: "100%" }}
-						type="password"
-						onInput={handleInputChange("awsSessionToken")}
-						placeholder="Enter Session Token (optional)...">
-						<span style={{ fontWeight: 500 }}>AWS Session Token</span>
-					</VSCodeTextField>
+					<VSCodeRadioGroup
+						value={embeddingConfiguration?.awsUseProfile ? "profile" : "credentials"}
+						onChange={(e) => {
+							const value = (e.target as HTMLInputElement)?.value
+							const useProfile = value === "profile"
+							setEmbeddingConfiguration({
+								...embeddingConfiguration,
+								awsUseProfile: useProfile,
+							})
+						}}>
+						<VSCodeRadio value="credentials">AWS Credentials</VSCodeRadio>
+						<VSCodeRadio value="profile">AWS Profile</VSCodeRadio>
+					</VSCodeRadioGroup>
+					{embeddingConfiguration?.awsUseProfile ? (<>
+						<VSCodeTextField
+							value={embeddingConfiguration?.awsProfile || ""}
+							style={{ width: "100%" }}
+							type="text"
+							onInput={handleInputChange("awsProfile")}
+							placeholder="Enter profile name (default if empty)">
+							<span style={{ fontWeight: 500 }}>AWS Profile Name</span>
+						</VSCodeTextField>
+					</>) : (
+						<>
+							<VSCodeTextField
+								value={embeddingConfiguration?.awsAccessKey || ""}
+								style={{ width: "100%" }}
+								type="password"
+								onInput={handleInputChange("awsAccessKey")}
+								placeholder="Enter Access Key...">
+								<span style={{ fontWeight: 500 }}>
+									AWS Access Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
+								</span>
+							</VSCodeTextField>
+							<VSCodeTextField
+								value={embeddingConfiguration?.awsSecretKey || ""}
+								style={{ width: "100%" }}
+								type="password"
+								onInput={handleInputChange("awsSecretKey")}
+								placeholder="Enter Secret Key...">
+								<span style={{ fontWeight: 500 }}>
+									AWS Secret Key <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
+								</span>
+							</VSCodeTextField>
+							<VSCodeTextField
+								value={embeddingConfiguration?.awsSessionToken || ""}
+								style={{ width: "100%" }}
+								type="password"
+								onInput={handleInputChange("awsSessionToken")}
+								placeholder="Enter Session Token (optional)...">
+								<span style={{ fontWeight: 500 }}>AWS Session Token</span>
+							</VSCodeTextField>
+							<p
+								style={{
+									fontSize: "12px",
+									marginTop: "5px",
+									color: "var(--vscode-descriptionForeground)",
+								}}>
+								Authenticate by either providing the keys above or use the default AWS credential providers, i.e.
+								~/.aws/credentials or environment variables. These credentials are only used locally to make API requests
+								from this extension.
+							</p>
+						</>
+					)}
 					<div className="dropdown-container">
 						<label htmlFor="aws-region-dropdown">
 							<span style={{ fontWeight: 500 }}>
@@ -274,16 +316,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 							{/* <VSCodeOption value="us-gov-east-1">us-gov-east-1</VSCodeOption> */}
 						</VSCodeDropdown>
 					</div>
-					<p
-						style={{
-							fontSize: "12px",
-							marginTop: "5px",
-							color: "var(--vscode-descriptionForeground)",
-						}}>
-						Authenticate by either providing the keys above or use the default AWS credential providers, i.e.
-						~/.aws/credentials or environment variables. These credentials are only used locally to make API requests
-						from this extension.
-					</p>
+
 				</div>
 			)}
 

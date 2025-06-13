@@ -19,6 +19,8 @@ export interface EmbeddingHandlerOptions {
 	maxRetries?: number
 	ollamaBaseUrl?: string
 	ollamaModelId?: string
+	awsProfile?: string
+	awsUseProfile?: boolean
 }
 
 export type EmbeddingConfiguration = EmbeddingHandlerOptions & {
