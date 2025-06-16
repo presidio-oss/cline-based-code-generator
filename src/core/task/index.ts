@@ -112,6 +112,8 @@ import { FindFilesToEditAgent } from "../../integrations/code-prep/FindFilesToEd
 import { buildTreeString } from "@utils/customFs"
 import { CodeScanner } from "../../integrations/security/code-scan"
 import { ExpertManager } from "@core/experts/ExpertManager"
+import type { Change as DiffChange } from "diff"
+import { CorMatrixService } from "@/integrations/cor-matrix"
 
 export const cwd =
 	vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0) ?? path.join(os.homedir(), "Desktop") // may or may not exist but fs checking existence would immediately ask for permission which would be bad UX, need to come up with a better solution
@@ -2061,6 +2063,13 @@ export class Task {
 							this.diffViewProvider.editType = fileExists ? "modify" : "create"
 						}
 
+						let fileDiff:
+							| {
+									diff: DiffChange[] | undefined
+									path: string
+							  }
+							| undefined = undefined
+
 						try {
 							// Construct newContent from diff
 							let newContent: string
@@ -2266,9 +2275,13 @@ export class Task {
 								// Mark the file as edited by Cline to prevent false "recently modified" warnings
 								this.fileContextTracker.markFileAsEditedByCline(relPath)
 
-								const { newProblemsMessage, userEdits, autoFormattingEdits, finalContent } =
+								const { newProblemsMessage, userEdits, autoFormattingEdits, finalContent, lineDiffs } =
 									await this.diffViewProvider.saveChanges()
 								this.didEditFile = true // used to determine if we should wait for busy terminal to update before sending api request
+								fileDiff = {
+									diff: lineDiffs,
+									path: relPath,
+								}
 
 								// Track file edit operation
 								await this.fileContextTracker.trackFileContext(relPath, "cline_edited")
@@ -2320,7 +2333,12 @@ export class Task {
 							await this.diffViewProvider.revertChanges()
 							await this.diffViewProvider.reset()
 							await this.saveCheckpoint()
+							fileDiff = undefined
 							break
+						} finally {
+							if (fileDiff) {
+								CorMatrixService.track(fileDiff)
+							}
 						}
 					}
 					case "read_file": {

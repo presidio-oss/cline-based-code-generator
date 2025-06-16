@@ -32,3 +32,4 @@ src/core/controller/*/index.ts
 src/core/controller/grpc-service-config.ts
 webview-ui/src/services/grpc-client.ts
 src/standalone/server-setup.ts
+.hai.config
