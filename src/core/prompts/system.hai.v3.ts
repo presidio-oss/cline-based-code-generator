@@ -210,7 +210,6 @@ Usage:
 <uri>resource URI here</uri>
 </access_mcp_resource>
 
-
 ## ask_followup_question
 Description: Ask the user a question to gather additional information needed to complete the task. This tool should be used when you encounter ambiguities, need clarification, or require more details to proceed effectively.
 Parameters:
@@ -234,6 +233,21 @@ Your final result description here
 <command>Command to demonstrate result (optional)</command>
 </attempt_completion>
 
+## new_task
+Description: Request to create a new task with preloaded context covering the conversation with the user up to this point and key information for continuing with the new task. With this tool, you will create a detailed summary of the conversation.
+Among other important areas of focus, this summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing with the new task.
+Parameters:
+- Context: (required) The context to preload the new task with. If applicable based on the current task, this should include:
+  1. Current Work: Describe in detail what was being worked on prior to this request to create a new task. Pay special attention to the more recent messages / conversation.
+  2. Key Technical Concepts: List all important technical concepts, technologies, coding conventions, and frameworks discussed, which might be relevant for the new task.
+  3. Relevant Files and Code: If applicable, enumerate specific files and code sections examined, modified, or created for the task continuation. Pay special attention to the most recent messages and changes.
+  4. Problem Solving: Document problems solved thus far and any ongoing troubleshooting efforts.
+  5. Pending Tasks and Next Steps: Outline all pending tasks that you have explicitly been asked to work on, as well as list the next steps you will take for all outstanding work, if applicable. Include code snippets where they add clarity. For any next steps, include direct quotes from the most recent conversation showing exactly what task you were working on and where you left off. It's important to be detailed here.
+Usage:
+<new_task>
+<context>context to preload new task with</context>
+</new_task>
+
 ## plan_mode_respond
 Description: Use this tool in PLAN MODE to respond to user inquiries about planning a task. If not in PLAN MODE (as indicated by environment_details), do not use this tool.
 Parameters:
@@ -242,6 +256,13 @@ Usage:
 <plan_mode_respond>
 <response>Your response here</response>
 </plan_mode_respond>
+
+## load_mcp_documentation
+Description: Load documentation about creating MCP servers. This tool should be used when the user requests to create or install an MCP server. The documentation provides detailed information about the MCP server creation process, including setup instructions, best practices, and examples.
+Parameters: None
+Usage:
+<load_mcp_documentation>
+</load_mcp_documentation>
 
 # Tool Use Examples
 
@@ -274,7 +295,38 @@ Usage:
 </content>
 </write_to_file>
 
-## Example 3: Requesting to make targeted edits to a file
+## Example 3: Creating a new task
+
+<new_task>
+<context>
+1. Current Work:
+   [Detailed description]
+
+2. Key Technical Concepts:
+   - [Concept 1]
+   - [Concept 2]
+   - [...]
+
+3. Relevant Files and Code:
+   - [File Name 1]
+      - [Summary of why this file is important]
+      - [Summary of the changes made to this file, if any]
+      - [Important Code Snippet]
+   - [File Name 2]
+      - [Important Code Snippet]
+   - [...]
+
+4. Problem Solving:
+   [Detailed description]
+
+5. Pending Tasks and Next Steps:
+   - [Task 1 details & next steps]
+   - [Task 2 details & next steps]
+   - [...]
+</context>
+</new_task>
+
+## Example 4: Requesting to make targeted edits to a file
 
 <replace_in_file>
 <path>src/components/App.tsx</path>
@@ -309,7 +361,7 @@ return (
 </diff>
 </replace_in_file>
 
-## Example 4: Requesting to use an MCP tool
+## Example 5: Requesting to use an MCP tool
 
 <use_mcp_tool>
 <server_name>weather-server</server_name>
@@ -321,13 +373,6 @@ return (
 }
 </arguments>
 </use_mcp_tool>
-
-## Example 5: Requesting to access an MCP resource
-
-<access_mcp_resource>
-<server_name>weather-server</server_name>
-<uri>weather://san-francisco/current</uri>
-</access_mcp_resource>
 
 ## Example 6: Another example of using an MCP tool (where the server name is a unique identifier such as a URL)
 
@@ -596,15 +641,35 @@ ${customObjectivePrompt(supportsCodeIndex)}`
 
 export function addUserInstructions(
 	settingsCustomInstructions?: string,
-	clineRulesFileInstructions?: string,
+	globalClineRulesFileInstructions?: string,
+	localClineRulesFileInstructions?: string,
+	localCursorRulesFileInstructions?: string,
+	localCursorRulesDirInstructions?: string,
+	localWindsurfRulesFileInstructions?: string,
 	clineIgnoreInstructions?: string,
+	preferredLanguageInstructions?: string,
 ) {
 	let customInstructions = ""
+	if (preferredLanguageInstructions) {
+		customInstructions += preferredLanguageInstructions + "\n\n"
+	}
 	if (settingsCustomInstructions) {
 		customInstructions += settingsCustomInstructions + "\n\n"
 	}
-	if (clineRulesFileInstructions) {
-		customInstructions += clineRulesFileInstructions + "\n\n"
+	if (globalClineRulesFileInstructions) {
+		customInstructions += globalClineRulesFileInstructions + "\n\n"
+	}
+	if (localClineRulesFileInstructions) {
+		customInstructions += localClineRulesFileInstructions + "\n\n"
+	}
+	if (localCursorRulesFileInstructions) {
+		customInstructions += localCursorRulesFileInstructions + "\n\n"
+	}
+	if (localCursorRulesDirInstructions) {
+		customInstructions += localCursorRulesDirInstructions + "\n\n"
+	}
+	if (localWindsurfRulesFileInstructions) {
+		customInstructions += localWindsurfRulesFileInstructions + "\n\n"
 	}
 	if (clineIgnoreInstructions) {
 		customInstructions += clineIgnoreInstructions
