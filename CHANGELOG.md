@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.7.0]
+
+### Added
+
+-   Add optional CorMatrix integration for AI code origin tracking
+-   Added DeepCrawl and `custom_expert_context` tool for expert-specific RAG by recursively retrieving and storing sublinks in the vector DB
+
+### Fixed
+
+-  Fixed an issue where the `find_relevant_files` tool was not triggered even when indexing was enabled
+
 ## [3.6.0]
 
 ### Added
