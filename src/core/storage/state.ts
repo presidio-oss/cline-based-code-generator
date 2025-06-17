@@ -553,16 +553,16 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		guardrailsConfig: guardrailsConfig ?? Default_GuardsConfig,
 		buildContextOptions: buildContextOptions
 			? {
-				...buildContextOptions,
-				systemPromptVersion: buildContextOptions.systemPromptVersion ?? "v3",
-			}
+					...buildContextOptions,
+					systemPromptVersion: buildContextOptions.systemPromptVersion ?? "v3",
+				}
 			: {
-				useIndex: true, // Enable Indexing by default
-				useContext: true, // Enable Use Context by default
-				useSyncWithApi: true, // Enable Sync with API by default
-				useSecretScanning: true, // Enable Secret Scanning by default
-				systemPromptVersion: "v3", // Setting v3 as default prompt
-			},
+					useIndex: true, // Enable Indexing by default
+					useContext: true, // Enable Use Context by default
+					useSyncWithApi: true, // Enable Sync with API by default
+					useSecretScanning: true, // Enable Secret Scanning by default
+					systemPromptVersion: "v3", // Setting v3 as default prompt
+				},
 		buildIndexProgress: buildIndexProgress,
 		enableInlineEdit: enableInlineEdit ?? true,
 		autoApprovalSettings: autoApprovalSettings || DEFAULT_AUTO_APPROVAL_SETTINGS, // default value can be 0 or empty string
