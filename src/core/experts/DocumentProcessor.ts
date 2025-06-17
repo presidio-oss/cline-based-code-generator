@@ -265,6 +265,7 @@ export class DocumentProcessor {
 				maxDepth,
 				maxPages,
 				timeout: crawlTimeout,
+				urlFilter: (link) => link.startsWith(url),
 				onPageCrawlComplete: async (data: CrawlResult) => {
 					// Forward to vector store manager using the instance reference
 					if (self.onCrawlComplete) {
