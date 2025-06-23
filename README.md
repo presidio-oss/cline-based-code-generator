@@ -27,7 +27,7 @@
 - [📝 HAI Tasks](#-hai-tasks) : Integrate AI-generated user stories and tasks seamlessly into your workflow  
 - [🔍 File Identification](#-file-identification) : Discover and contextualize code files with intelligent indexing  
 - [⚙️ Settings Interface](#-settings-interface) : Easily configure LLMs and embedding models for tailored performance
-- [📊 CorMatrix Integration](#-cormatrix-integration) : Track AI code retention patterns and analyze code origin over time
+- [📊 COR-Matrix Integration](#-cormatrix-integration) : Track AI code retention patterns and analyze code origin over time
 
 <br>
 
@@ -171,7 +171,7 @@ Customize and seamlessly integrate advanced language and embedding models into y
 
 ---
 
-### 📊 CorMatrix Integration
+### 📊 COR-Matrix Integration
 Track AI code retention patterns and analyze how much AI-generated code remains in your codebase over time.
 
 - **Code Origin Tracking**: Monitor AI-generated code longevity and evolution patterns
@@ -179,7 +179,7 @@ Track AI code retention patterns and analyze how much AI-generated code remains 
 - **Optional Integration**: Activate through workspace configuration when needed
 - **Zero Performance Impact**: Background processing with graceful degradation
 
-For detailed setup and configuration, see our [CorMatrix Integration Guide](docs/features/cormatrix-integration.md).
+For detailed setup and configuration, see our [COR-Matrix Integration Guide](docs/features/cormatrix-integration.md).
 
 ---
 
