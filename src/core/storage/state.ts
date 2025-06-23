@@ -545,7 +545,7 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 			ollamaBaseUrl: embeddingOllamaBaseUrl,
 			ollamaModelId: embeddingOllamaModelId,
 			awsUseProfile: embeddingAwsUseProfile,
-			awsProfile: embeddingAwsProfile
+			awsProfile: embeddingAwsProfile,
 		},
 		expertPrompt,
 		expertName,
@@ -744,7 +744,7 @@ export async function updateEmbeddingConfiguration(
 		ollamaBaseUrl,
 		ollamaModelId,
 		awsProfile,
-		awsUseProfile
+		awsUseProfile,
 	} = embeddingConfiguration
 
 	// Update Global State

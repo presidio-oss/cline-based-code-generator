@@ -1,7 +1,7 @@
 import { EmbeddingHandler } from "../"
 import { BedrockEmbeddings } from "@langchain/aws"
 import { EmbeddingHandlerOptions } from "../../shared/embeddings"
-import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime";
+import { BedrockRuntimeClient } from "@aws-sdk/client-bedrock-runtime"
 
 export class AwsBedrockEmbeddingHandler implements EmbeddingHandler {
 	private options: EmbeddingHandlerOptions
@@ -10,7 +10,7 @@ export class AwsBedrockEmbeddingHandler implements EmbeddingHandler {
 	constructor(options: EmbeddingHandlerOptions) {
 		this.options = options
 
-		let bedrockRuntimeClient: BedrockRuntimeClient;
+		let bedrockRuntimeClient: BedrockRuntimeClient
 
 		if (this.options.awsUseProfile) {
 			bedrockRuntimeClient = new BedrockRuntimeClient({
@@ -29,15 +29,16 @@ export class AwsBedrockEmbeddingHandler implements EmbeddingHandler {
 		}
 
 		this.client = new BedrockEmbeddings({
-			client: bedrockRuntimeClient, onFailedAttempt: (error) => {
-				console.error("Failed attempt in Bedrock Embeddings:", error);
-				throw error;
-			}
+			client: bedrockRuntimeClient,
+			onFailedAttempt: (error) => {
+				console.error("Failed attempt in Bedrock Embeddings:", error)
+				throw error
+			},
 		})
 	}
 
 	getClient() {
-		return this.client!;
+		return this.client!
 	}
 
 	async validateAPIKey(): Promise<boolean> {

@@ -1,4 +1,12 @@
-import { VSCodeCheckbox, VSCodeDropdown, VSCodeLink, VSCodeOption, VSCodeRadioGroup, VSCodeTextField, VSCodeRadio } from "@vscode/webview-ui-toolkit/react"
+import {
+	VSCodeCheckbox,
+	VSCodeDropdown,
+	VSCodeLink,
+	VSCodeOption,
+	VSCodeRadioGroup,
+	VSCodeTextField,
+	VSCodeRadio,
+} from "@vscode/webview-ui-toolkit/react"
 import { memo, useEffect, useMemo, useState, useCallback } from "react"
 import {
 	EmbeddingConfiguration,
@@ -228,16 +236,18 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 						<VSCodeRadio value="credentials">AWS Credentials</VSCodeRadio>
 						<VSCodeRadio value="profile">AWS Profile</VSCodeRadio>
 					</VSCodeRadioGroup>
-					{embeddingConfiguration?.awsUseProfile ? (<>
-						<VSCodeTextField
-							value={embeddingConfiguration?.awsProfile || ""}
-							style={{ width: "100%" }}
-							type="text"
-							onInput={handleInputChange("awsProfile")}
-							placeholder="Enter profile name (default if empty)">
-							<span style={{ fontWeight: 500 }}>AWS Profile Name</span>
-						</VSCodeTextField>
-					</>) : (
+					{embeddingConfiguration?.awsUseProfile ? (
+						<>
+							<VSCodeTextField
+								value={embeddingConfiguration?.awsProfile || ""}
+								style={{ width: "100%" }}
+								type="text"
+								onInput={handleInputChange("awsProfile")}
+								placeholder="Enter profile name (default if empty)">
+								<span style={{ fontWeight: 500 }}>AWS Profile Name</span>
+							</VSCodeTextField>
+						</>
+					) : (
 						<>
 							<VSCodeTextField
 								value={embeddingConfiguration?.awsAccessKey || ""}
@@ -274,8 +284,8 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 									color: "var(--vscode-descriptionForeground)",
 								}}>
 								Authenticate by either providing the keys above or use the default AWS credential providers, i.e.
-								~/.aws/credentials or environment variables. These credentials are only used locally to make API requests
-								from this extension.
+								~/.aws/credentials or environment variables. These credentials are only used locally to make API
+								requests from this extension.
 							</p>
 						</>
 					)}
@@ -316,7 +326,6 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 							{/* <VSCodeOption value="us-gov-east-1">us-gov-east-1</VSCodeOption> */}
 						</VSCodeDropdown>
 					</div>
-
 				</div>
 			)}
 
