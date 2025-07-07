@@ -156,7 +156,9 @@ export class ExpertManager {
 			suburl: string,
 			title?: string,
 		): Promise<void> => {
-			if (!this.vectorStoreManager) return
+			if (!this.vectorStoreManager) {
+				return
+			}
 
 			await this.vectorStoreManager.chunkAndStore({
 				markdown,
@@ -820,7 +822,9 @@ export class ExpertManager {
 	 * Search for a query in the expert's vector store
 	 */
 	async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
-		if (!this.vectorStoreManager) return ""
+		if (!this.vectorStoreManager) {
+			return ""
+		}
 
 		return this.vectorStoreManager.search(query, expertName, workspacePath, k)
 	}
