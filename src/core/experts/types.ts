@@ -30,6 +30,8 @@ export interface ExpertMetadata {
 	maxDepth: number
 	maxPages?: number
 	crawlTimeout?: number
+	embeddingProvider?: string
+	embeddingModelId?: string
 }
 
 /**

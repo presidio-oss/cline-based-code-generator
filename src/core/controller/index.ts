@@ -157,9 +157,16 @@ export class Controller {
 
 	// TAG:HAI
 	private async getExpertManager(): Promise<ExpertManager> {
-		if (!this.expertManager) {
-			const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+		const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+		const embeddingHandler = buildEmbeddingHandler({
+			...embeddingConfiguration,
+			maxRetries: 0,
+		})
+		const isEmbeddingValid = await embeddingHandler.validateAPIKey()
+		if (validateEmbeddingConfiguration(embeddingConfiguration) === undefined && isEmbeddingValid) {
 			this.expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
+		} else {
+			this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		}
 		return this.expertManager
 	}
@@ -2006,7 +2013,6 @@ Commit message:`
 	}
 
 	async customWebViewMessageHandlers(message: WebviewMessage) {
-		const expertManager = await this.getExpertManager()
 		switch (message.type) {
 			case "requestOllamaEmbeddingModels":
 				const ollamaEmbeddingModels = await this.getOllamaEmbeddingModels(message.text)
@@ -2063,6 +2069,7 @@ Commit message:`
 				break
 			case "saveExpert":
 				if (message.text) {
+					const expertManager = await this.getExpertManager()
 					const expert = JSON.parse(message.text) as ExpertData
 					await expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
 					await this.loadExperts()
@@ -2097,6 +2104,7 @@ Commit message:`
 				break
 			case "refreshDocumentLink":
 				if (message.text && message.expert) {
+					const expertManager = await this.getExpertManager()
 					await expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 				}
 				await this.loadExperts()
@@ -2104,6 +2112,7 @@ Commit message:`
 			case "deleteDocumentLink":
 				if (message.text && message.expert) {
 					try {
+						const expertManager = await this.getExpertManager()
 						await expertManager.deleteDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {
@@ -2115,6 +2124,7 @@ Commit message:`
 			case "addDocumentLink":
 				if (message.text && message.expert) {
 					try {
+						const expertManager = await this.getExpertManager()
 						await expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
 						await this.loadExperts()
 					} catch (error) {

@@ -11,6 +11,7 @@ import { ExpertFileManager } from "./ExpertFileManager"
 import { DocumentProcessor } from "./DocumentProcessor"
 import { VectorStoreManager } from "./VectorStoreManager"
 import { getAllExtensionState } from "../storage/state"
+import { ExpertMetadata } from "./types"
 
 /**
  * Manages experts, coordinating between file operations, document processing,
@@ -21,26 +22,28 @@ export class ExpertManager {
 	private workspaceId: string
 	private fileManager: ExpertFileManager
 	private documentProcessor: DocumentProcessor
-	private vectorStoreManager: VectorStoreManager
+	private vectorStoreManager?: VectorStoreManager
 
 	/**
 	 * Create a new ExpertManager
 	 */
-	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, embeddingConfig: EmbeddingConfiguration) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, embeddingConfig?: EmbeddingConfiguration) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
 		this.fileManager = new ExpertFileManager()
 		this.documentProcessor = new DocumentProcessor(extensionContext, workspaceId)
 
-		// Initialize embedding client and vector store manager
-		const embeddings = VectorStoreManager.initializeEmbeddings(embeddingConfig)
-		this.vectorStoreManager = new VectorStoreManager({
-			embeddings,
-			embeddingConfig,
-			workspaceId,
-		})
+		// Initialize embedding client and vector store manager only if embeddingConfig is provided
+		if (embeddingConfig) {
+			const embeddings = VectorStoreManager.initializeEmbeddings(embeddingConfig)
+			this.vectorStoreManager = new VectorStoreManager({
+				embeddings,
+				embeddingConfig,
+				workspaceId,
+			})
 
-		this.connectProcessorToVectorStore()
+			this.connectProcessorToVectorStore()
+		}
 	}
 
 	/**
@@ -60,6 +63,15 @@ export class ExpertManager {
 		const parsedExpert = validationResult.data
 		const isDeepCrawl = parsedExpert.deepCrawl || false
 
+		// Check if vectorStoreManager is available for deepCrawl experts
+		if (isDeepCrawl && !this.vectorStoreManager) {
+			vscode.window.showErrorMessage(
+				"Cannot create an expert with deepCrawl enabled without valid embedding configuration. " +
+					"Please configure embedding settings before creating a deepCrawl-enabled expert.",
+			)
+			throw new Error("DeepCrawl requires valid embedding configuration")
+		}
+
 		const { expertDir, docsDir, statusFilePath, faissStatusFilePath, metadataFilePath } = this.fileManager.getExpertPaths(
 			workspacePath,
 			parsedExpert.name,
@@ -69,7 +81,7 @@ export class ExpertManager {
 		await this.fileManager.createExpertDirectoryStructure(expertDir)
 
 		// Prepare and write metadata
-		const metadata = {
+		const metadata: ExpertMetadata = {
 			name: parsedExpert.name,
 			isDefault: parsedExpert.isDefault,
 			createdAt: parsedExpert.createdAt || new Date().toISOString(),
@@ -78,6 +90,16 @@ export class ExpertManager {
 			maxDepth: parsedExpert.maxDepth || 10,
 			maxPages: parsedExpert.maxPages || 20,
 			crawlTimeout: parsedExpert.crawlTimeout || 10_0000,
+		}
+
+		// If deepCrawl is enabled, store embedding configuration details to prevent dimension mismatch errors
+		if (isDeepCrawl && this.vectorStoreManager) {
+			// Get the current embedding configuration from the context
+			const { embeddingConfiguration } = await getAllExtensionState(this.extensionContext, this.workspaceId)
+			if (embeddingConfiguration) {
+				metadata.embeddingProvider = embeddingConfiguration.provider
+				metadata.embeddingModelId = embeddingConfiguration.modelId
+			}
 		}
 		await this.fileManager.writeExpertMetadata(metadataFilePath, metadata)
 
@@ -134,6 +156,8 @@ export class ExpertManager {
 			suburl: string,
 			title?: string,
 		): Promise<void> => {
+			if (!this.vectorStoreManager) return
+
 			await this.vectorStoreManager.chunkAndStore({
 				markdown,
 				expertName,
@@ -164,8 +188,12 @@ export class ExpertManager {
 		const isDeepCrawl = metadata.deepCrawl || false
 
 		if (isDeepCrawl) {
+			if (!(await this.validateDeepCrawlConfiguration(metadata))) {
+				return
+			}
+
 			// For deepcrawl experts, delete chunks and re-crawl
-			await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
+			await this.vectorStoreManager!.deleteChunk(linkUrl, expertName, workspacePath)
 			await this.documentProcessor.crawlAndConvertToMarkdown(
 				linkUrl,
 				expertName,
@@ -245,6 +273,10 @@ export class ExpertManager {
 		const newLink = this.documentProcessor.createDocumentLink(linkUrl)
 
 		if (isDeepCrawl) {
+			if (!(await this.validateDeepCrawlConfiguration(metadata))) {
+				return
+			}
+
 			// For deepcrawl experts, use faiss status file
 			let faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
 
@@ -321,7 +353,9 @@ export class ExpertManager {
 		const isDeepCrawl = metadata.deepCrawl || false
 
 		// Delete from vector DB regardless (since the URL might have been crawled before)
-		await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
+		if (this.vectorStoreManager) {
+			await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
+		}
 
 		// Update regular status.json if it exists
 		if (await this.fileManager.readStatusFile(statusFilePath)) {
@@ -339,6 +373,9 @@ export class ExpertManager {
 
 		// Update faiss status.json if it exists for deepcrawl experts
 		if (isDeepCrawl) {
+			if (!(await this.validateDeepCrawlConfiguration(metadata))) {
+				return
+			}
 			const faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
 			const updatedFaissStatusData = faissStatusData.filter((link) => link.url !== linkUrl)
 			await this.fileManager.updateFaissStatusFile(faissStatusFilePath, updatedFaissStatusData)
@@ -783,6 +820,37 @@ export class ExpertManager {
 	 * Search for a query in the expert's vector store
 	 */
 	async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
+		if (!this.vectorStoreManager) return ""
+
 		return this.vectorStoreManager.search(query, expertName, workspacePath, k)
+	}
+
+	private async validateDeepCrawlConfiguration(metadata: ExpertMetadata): Promise<boolean> {
+		if (!this.vectorStoreManager) {
+			vscode.window.showErrorMessage(
+				"This expert is configured with deepCrawl enabled, which requires valid embedding configuration. " +
+					"Please configure embedding settings before performing this operation.",
+			)
+			return false
+		}
+
+		// Check if the current embedding configuration matches what was used to create the expert
+		if (metadata.embeddingProvider || metadata.embeddingModelId) {
+			const { embeddingConfiguration } = await getAllExtensionState(this.extensionContext, this.workspaceId)
+			if (
+				embeddingConfiguration?.provider !== metadata.embeddingProvider ||
+				embeddingConfiguration?.modelId !== metadata.embeddingModelId
+			) {
+				vscode.window.showErrorMessage(
+					`This expert was created with ${metadata.embeddingProvider}/${metadata.embeddingModelId} ` +
+						`but current configuration uses ${embeddingConfiguration?.provider}/${embeddingConfiguration?.modelId}. ` +
+						"Using different embedding models can cause dimension mismatch errors. " +
+						"Please configure the same embedding model that was used to create this expert.",
+				)
+				return false
+			}
+		}
+
+		return true
 	}
 }
