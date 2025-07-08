@@ -759,9 +759,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												}}
 											/>
 											<span>
-												Important: Experts created with specific embedding configurations must use the
-												same embedding settings. Using different embeddings will prevent the experts from
-												working.
+												Important: If you change the embedding configuration, any experts with DeepCrawl
+												enabled must be deleted and recreated using the updated settings. Experts rely on
+												a consistent embedding setup — using different configurations can prevent them
+												from functioning properly.
 											</span>
 										</div>
 									)}
