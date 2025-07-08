@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.7.1]
+
+### Fixed
+
+-  Fixed an issue where LLM validation could become stuck in the welcome state, preventing further progress.
+
 ## [3.7.0]
 
 ### Added
