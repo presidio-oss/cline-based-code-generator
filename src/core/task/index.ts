@@ -4646,7 +4646,8 @@ export class Task {
 						this.consecutiveMistakeCount = 0
 
 						// Create ExpertManager instance and search for the query
-						const expertManager = new ExpertManager(this.context, this.taskId, this.embeddingConfiguration)
+						const expertManager = new ExpertManager(this.context, this.taskId)
+						expertManager.initializeEmbeddings(this.embeddingConfiguration)
 						const searchResults = await expertManager.search(query, expertName, cwd)
 
 						// Format the complete message with search results

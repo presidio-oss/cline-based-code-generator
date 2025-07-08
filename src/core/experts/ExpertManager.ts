@@ -21,23 +21,29 @@ export class ExpertManager {
 	private workspaceId: string
 	private fileManager: ExpertFileManager
 	private documentProcessor: DocumentProcessor
-	private vectorStoreManager: VectorStoreManager
+	private vectorStoreManager?: VectorStoreManager
 
 	/**
 	 * Create a new ExpertManager
 	 */
-	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, embeddingConfig: EmbeddingConfiguration) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
 		this.fileManager = new ExpertFileManager()
 		this.documentProcessor = new DocumentProcessor(extensionContext, workspaceId)
 
-		// Initialize embedding client and vector store manager
+		// No embedding initialization here
+	}
+
+	/**
+	 * Initialize embedding client and vector store manager
+	 */
+	public initializeEmbeddings(embeddingConfig: EmbeddingConfiguration): void {
 		const embeddings = VectorStoreManager.initializeEmbeddings(embeddingConfig)
 		this.vectorStoreManager = new VectorStoreManager({
 			embeddings,
 			embeddingConfig,
-			workspaceId,
+			workspaceId: this.workspaceId,
 		})
 
 		this.connectProcessorToVectorStore()
@@ -134,6 +140,9 @@ export class ExpertManager {
 			suburl: string,
 			title?: string,
 		): Promise<void> => {
+			if (!this.vectorStoreManager) {
+				throw new Error("Vector store manager not initialized. Please initialize embeddings first.")
+			}
 			await this.vectorStoreManager.chunkAndStore({
 				markdown,
 				expertName,
@@ -165,6 +174,9 @@ export class ExpertManager {
 
 		if (isDeepCrawl) {
 			// For deepcrawl experts, delete chunks and re-crawl
+			if (!this.vectorStoreManager) {
+				throw new Error("Vector store manager not initialized. Please initialize embeddings first.")
+			}
 			await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
 			await this.documentProcessor.crawlAndConvertToMarkdown(
 				linkUrl,
@@ -321,7 +333,9 @@ export class ExpertManager {
 		const isDeepCrawl = metadata.deepCrawl || false
 
 		// Delete from vector DB regardless (since the URL might have been crawled before)
-		await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
+		if (this.vectorStoreManager) {
+			await this.vectorStoreManager.deleteChunk(linkUrl, expertName, workspacePath)
+		}
 
 		// Update regular status.json if it exists
 		if (await this.fileManager.readStatusFile(statusFilePath)) {
@@ -783,6 +797,9 @@ export class ExpertManager {
 	 * Search for a query in the expert's vector store
 	 */
 	async search(query: string, expertName: string, workspacePath: string, k?: number): Promise<string> {
+		if (!this.vectorStoreManager) {
+			throw new Error("Vector store manager not initialized. Please initialize embeddings first.")
+		}
 		return this.vectorStoreManager.search(query, expertName, workspacePath, k)
 	}
 }
