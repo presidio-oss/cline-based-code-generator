@@ -735,6 +735,36 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										/>
 										<p className="description-text">Sets the crawl timeout for each page.</p>
 									</FormGroup>
+									{deepCrawl && (
+										<div
+											className="info-message"
+											style={{
+												display: "flex",
+												alignItems: "flex-start",
+												gap: "8px",
+												color: "var(--vscode-foreground)",
+												fontSize: "12px",
+												padding: "8px",
+												backgroundColor: "var(--vscode-editorWidget-background)",
+												border: "1px solid var(--vscode-widget-border)",
+												borderRadius: "4px",
+												marginBottom: "16px",
+											}}>
+											<i
+												className="codicon codicon-info"
+												style={{
+													fontSize: "14px",
+													marginTop: "2px",
+													color: "var(--vscode-textLink-foreground)",
+												}}
+											/>
+											<span>
+												Important: Experts created with specific embedding configurations must use the
+												same embedding settings. Using different embeddings will prevent the experts from
+												working.
+											</span>
+										</div>
+									)}
 								</>
 							)}
 							{!isEmbeddingValid && (
