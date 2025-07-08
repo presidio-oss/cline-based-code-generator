@@ -158,10 +158,27 @@ export class Controller {
 	// TAG:HAI
 	private async getExpertManager(): Promise<ExpertManager> {
 		if (!this.expertManager) {
-			const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
-			this.expertManager = new ExpertManager(this.context, this.workspaceId, embeddingConfiguration)
+			this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		}
 		return this.expertManager
+	}
+
+	/**
+	 * Initialize embeddings in ExpertManager
+	 */
+	public async initializeExpertManagerEmbeddings(): Promise<void> {
+		if (!this.expertManager) {
+			this.expertManager = new ExpertManager(this.context, this.workspaceId)
+		}
+		const { embeddingConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+		const embeddingHandler = buildEmbeddingHandler({
+			...embeddingConfiguration,
+			maxRetries: 0,
+		})
+		const isEmbeddingValid = await embeddingHandler.validateAPIKey()
+		if (isEmbeddingValid) {
+			this.expertManager.initializeEmbeddings(embeddingConfiguration)
+		}
 	}
 
 	/*

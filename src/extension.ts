@@ -217,6 +217,7 @@ export async function activate(context: vscode.ExtensionContext) {
 			WebviewProvider.getAllInstances().forEach((instance) => {
 				const openExperts = async (instance?: WebviewProvider) => {
 					await instance?.controller.postStateToWebview()
+					instance?.controller.initializeExpertManagerEmbeddings()
 					instance?.controller.postMessageToWebview({
 						type: "action",
 						action: "expertsButtonClicked",
