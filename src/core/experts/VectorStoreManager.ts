@@ -95,7 +95,7 @@ export class VectorStoreManager {
 				pageContent: text,
 				id: data.url.trim(),
 				metadata: {
-					source: data.suburl.trim(),
+					source: data.suburl.trim() || data.url.trim(),
 					title: data.title || "Untitled",
 					expertName: data.expertName,
 				},
@@ -189,7 +189,7 @@ export class VectorStoreManager {
 
 		// Iterate through the Map entries
 		docStore.forEach((doc, id) => {
-			if (doc?.id === url) {
+			if (doc?.metadata?.source === url) {
 				ids.push(id)
 			}
 		})
