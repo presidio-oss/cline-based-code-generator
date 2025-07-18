@@ -1,4 +1,4 @@
-export type EmbeddingProvider = "bedrock" | "openai-native" | "openai" | "ollama"
+export type EmbeddingProvider = "none" | "bedrock" | "openai-native" | "openai" | "ollama"
 
 export interface EmbeddingHandlerOptions {
 	modelId?: string
@@ -78,6 +78,7 @@ export const openAiNativeEmbeddingModels = {
 } as const
 
 export const embeddingProviderModels = {
+	none: {},
 	bedrock: bedrockEmbeddingModels,
 	"openai-native": openAiNativeEmbeddingModels,
 	openai: {},
@@ -85,6 +86,9 @@ export const embeddingProviderModels = {
 } as const
 
 export const defaultEmbeddingConfigs: Record<EmbeddingProvider, { defaultModel: string }> = {
+	none: {
+		defaultModel: "",
+	},
 	bedrock: {
 		defaultModel: "amazon.titan-embed-text-v1",
 	},
