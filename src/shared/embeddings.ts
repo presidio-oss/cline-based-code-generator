@@ -46,6 +46,11 @@ export const bedrockEmbeddingModels = {
 		pricePerMillion: 0.0004,
 		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks.",
 	},
+	"amazon.titan-embed-text-v2:0": {
+		maxDimensions: 1024,
+		pricePerMillion: 0.02,
+		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks with larger context.",
+	},
 } as const
 
 // OpenAI Native
