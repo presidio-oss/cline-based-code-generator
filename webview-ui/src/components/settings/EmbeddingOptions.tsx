@@ -70,6 +70,14 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 		if (field === "provider") {
 			// Reset the validation message
 			setIsEmbeddingValid(null)
+
+			// If provider is set to "none", uncheck "Same as LLM API configuration"
+			if (event.target.value === "none" && buildContextOptions?.useSyncWithApi) {
+				setBuildContextOptions({
+					...buildContextOptions,
+					useSyncWithApi: false,
+				})
+			}
 		}
 
 		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }
@@ -77,6 +85,12 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	}
 
 	useDeepCompareEffect(() => {
+		// If provider is "none", skip validation and set as valid directly
+		if (embeddingConfiguration?.provider === "none") {
+			setIsEmbeddingValid(null)
+			return
+		}
+
 		const error = validateEmbeddingConfiguration(embeddingConfiguration)
 
 		if (error) {
@@ -90,6 +104,12 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	useDebounce(
 		() => {
 			if (validateEmbedding) {
+				// Skip validation for "none" provider
+				if (validateEmbedding.provider === "none") {
+					setIsEmbeddingValid(null)
+					return
+				}
+
 				setIsEmbeddingValid(false)
 				setIsLoading(true)
 				vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration: validateEmbedding })
