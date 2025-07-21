@@ -77,6 +77,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		window.addEventListener("message", messageHandler)
 		vscode.postMessage({ type: "loadDefaultExperts" })
 		vscode.postMessage({ type: "loadExperts" })
+		if (embeddingConfiguration?.provider === "none") {
+			setIsEmbeddingValid(null)
+			return
+		}
 		vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
 		return () => {
 			window.removeEventListener("message", messageHandler)

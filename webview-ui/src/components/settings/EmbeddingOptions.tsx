@@ -104,12 +104,6 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	useDebounce(
 		() => {
 			if (validateEmbedding) {
-				// Skip validation for "none" provider
-				if (validateEmbedding.provider === "none") {
-					setIsEmbeddingValid(null)
-					return
-				}
-
 				setIsEmbeddingValid(false)
 				setIsLoading(true)
 				vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration: validateEmbedding })
@@ -166,7 +160,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	useEffect(() => {
 		setEmbeddingConfiguration({
 			...embeddingConfiguration,
-			provider: selectedProvider,
+			provider: selectedProvider as EmbeddingProvider,
 			modelId: selectedModelId,
 		})
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -520,9 +514,9 @@ export function normalizeEmbeddingConfiguration(embeddingConfiguration?: Embeddi
 	switch (provider) {
 		case "none":
 			return {
-				selectedProvider: "none" as EmbeddingProvider,
+				selectedProvider: "none",
 				selectedModelId: "",
-				selectedModelInfo: undefined as unknown as EmbeddingModelInfo,
+				selectedModelInfo: undefined,
 			}
 		case "bedrock":
 			return getProviderData(bedrockEmbeddingModels, bedrockeEmbeddingDefaultModelId)
