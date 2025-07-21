@@ -575,6 +575,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 															color: "var(--vscode-editorWarning-foreground)",
 															fontSize: "11px",
 															marginTop: "8px",
+															marginLeft: "20px",
 														}}>
 														<i className="codicon codicon-warning" style={{ fontSize: "14px" }} />
 														<span>

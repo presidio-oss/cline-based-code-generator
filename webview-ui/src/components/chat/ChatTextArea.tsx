@@ -1968,12 +1968,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											{/* Custom experts without icons */}
 											{customExperts.map((expert) => {
 												const isProcessing = expert.status === DocumentStatus.PROCESSING
+												const isDisabled = isProcessing || (expert.deepCrawl && !isEmbeddingValid)
 												return (
 													<ExpertItem
 														key={expert.name}
 														isSelected={selectedExpert?.name === expert.name}
-														isDisabled={isProcessing || (expert.deepCrawl && !isEmbeddingValid)}
-														onClick={() => handleExpertSelect(expert)}>
+														isDisabled={isDisabled}
+														title={
+															isDisabled
+																? "Expert cannot be accessed due to an invalid embedding configuration."
+																: ""
+														}
+														onClick={() => !isDisabled && handleExpertSelect(expert)}>
 														{expert.name}
 														{isProcessing && (
 															<ExpertTag
