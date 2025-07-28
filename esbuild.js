@@ -127,6 +127,9 @@ const baseConfig = {
 	logLevel: "silent",
 	define: {
 		"process.env.IS_DEV": JSON.stringify(!production),
+		"process.env.LANGFUSE_API_KEY": JSON.stringify(process.env.LANGFUSE_API_KEY || ""),
+		"process.env.LANGFUSE_PUBLIC_KEY": JSON.stringify(process.env.LANGFUSE_PUBLIC_KEY || ""),
+		"process.env.LANGFUSE_API_URL": JSON.stringify(process.env.LANGFUSE_API_URL || "https://us.cloud.langfuse.com"),
 	},
 	tsconfig: path.resolve(__dirname, "tsconfig.json"),
 	plugins: [
@@ -146,11 +149,6 @@ const extensionConfig = {
 	entryPoints: ["src/extension.ts"],
 	outfile: `${destDir}/extension.js`,
 	external: ["vscode", "faiss-node"],
-	define: {
-		"process.env.LANGFUSE_API_KEY": JSON.stringify(process.env.LANGFUSE_API_KEY || ""),
-		"process.env.LANGFUSE_PUBLIC_KEY": JSON.stringify(process.env.LANGFUSE_PUBLIC_KEY || ""),
-		"process.env.LANGFUSE_API_URL": JSON.stringify(process.env.LANGFUSE_API_URL || "https://us.cloud.langfuse.com"),
-	},
 }
 
 // Standalone-specific configuration
