@@ -461,6 +461,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const expertsButtonRef = useRef<HTMLDivElement>(null)
 		const [expertsArrowPosition, setExpertsArrowPosition] = useState(0)
 		const [expertsMenuPosition, setExpertsMenuPosition] = useState(0)
+		const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
+		const { embeddingConfiguration } = useExtensionState()
 
 		// Fetch git commits when Git is selected or when typing a hash
 		useEffect(() => {
@@ -536,7 +538,9 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						}
 						break
 					}
-
+					case "embeddingConfigValidation":
+						setIsEmbeddingValid(!!message.bool)
+						break
 					default:
 						console.warn(`Unhandled message type: ${message.type}`)
 				}
@@ -547,11 +551,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			// Load experts data on component mount
 			vscode.postMessage({ type: "loadExperts" })
 			vscode.postMessage({ type: "loadDefaultExperts" })
+			if (embeddingConfiguration?.provider === "none") {
+				setIsEmbeddingValid(null)
+				return
+			}
+			vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
 
 			return () => {
 				window.removeEventListener("message", messageHandler)
 			}
-		}, [customExperts, defaultExperts])
+		}, [customExperts, defaultExperts, embeddingConfiguration])
 
 		const queryItems = useMemo(() => {
 			return [
@@ -1959,12 +1968,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											{/* Custom experts without icons */}
 											{customExperts.map((expert) => {
 												const isProcessing = expert.status === DocumentStatus.PROCESSING
+												const isDisabled = isProcessing || (expert.deepCrawl && !isEmbeddingValid)
 												return (
 													<ExpertItem
 														key={expert.name}
 														isSelected={selectedExpert?.name === expert.name}
-														isDisabled={isProcessing}
-														onClick={() => handleExpertSelect(expert)}>
+														isDisabled={isDisabled}
+														title={
+															isDisabled
+																? "Expert cannot be accessed due to an invalid embedding configuration."
+																: ""
+														}
+														onClick={() => !isDisabled && handleExpertSelect(expert)}>
 														{expert.name}
 														{isProcessing && (
 															<ExpertTag

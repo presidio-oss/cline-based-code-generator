@@ -1,4 +1,4 @@
-export type EmbeddingProvider = "bedrock" | "openai-native" | "openai" | "ollama"
+export type EmbeddingProvider = "none" | "bedrock" | "openai-native" | "openai" | "ollama"
 
 export interface EmbeddingHandlerOptions {
 	modelId?: string
@@ -46,6 +46,11 @@ export const bedrockEmbeddingModels = {
 		pricePerMillion: 0.0004,
 		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks.",
 	},
+	"amazon.titan-embed-text-v2:0": {
+		maxDimensions: 1024,
+		pricePerMillion: 0.02,
+		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks with larger context.",
+	},
 } as const
 
 // OpenAI Native
@@ -73,6 +78,7 @@ export const openAiNativeEmbeddingModels = {
 } as const
 
 export const embeddingProviderModels = {
+	none: {},
 	bedrock: bedrockEmbeddingModels,
 	"openai-native": openAiNativeEmbeddingModels,
 	openai: {},
@@ -80,6 +86,9 @@ export const embeddingProviderModels = {
 } as const
 
 export const defaultEmbeddingConfigs: Record<EmbeddingProvider, { defaultModel: string }> = {
+	none: {
+		defaultModel: "",
+	},
 	bedrock: {
 		defaultModel: "amazon.titan-embed-text-v1",
 	},

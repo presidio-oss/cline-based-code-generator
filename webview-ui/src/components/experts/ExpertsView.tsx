@@ -77,6 +77,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		window.addEventListener("message", messageHandler)
 		vscode.postMessage({ type: "loadDefaultExperts" })
 		vscode.postMessage({ type: "loadExperts" })
+		if (embeddingConfiguration?.provider === "none") {
+			setIsEmbeddingValid(null)
+			return
+		}
 		vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
 		return () => {
 			window.removeEventListener("message", messageHandler)
@@ -388,7 +392,13 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																				text: link.url,
 																				expert: exp.name,
 																			})
-																		}}>
+																		}}
+																		disabled={exp.deepCrawl && !isEmbeddingValid}
+																		title={
+																			exp.deepCrawl && !isEmbeddingValid
+																				? "Document operations are disabled due to invalid embedding configuration"
+																				: undefined
+																		}>
 																		<span className="codicon codicon-refresh" />
 																	</VSCodeButton>
 																	{documentLinkInDeleteConfirmation?.expertName === exp.name &&
@@ -425,7 +435,13 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																					expertName: exp.name,
 																					linkUrl: link.url,
 																				})
-																			}}>
+																			}}
+																			disabled={exp.deepCrawl && !isEmbeddingValid}
+																			title={
+																				exp.deepCrawl && !isEmbeddingValid
+																					? "Document operations are disabled due to invalid embedding configuration"
+																					: undefined
+																			}>
 																			<span className="codicon codicon-trash" />
 																		</VSCodeButton>
 																	)}
@@ -538,10 +554,35 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
 																setInlineDocLinkError(null) // Reset error when starting inline editing
 															}}
+															disabled={exp.deepCrawl && !isEmbeddingValid}
+															title={
+																exp.deepCrawl && !isEmbeddingValid
+																	? "Document operations are disabled due to invalid embedding configuration"
+																	: undefined
+															}
 															style={{ width: "100%", marginTop: "8px" }}>
 															+ Add Doc
 														</VSCodeButton>
 													)
+												)}
+												{exp.deepCrawl && !isEmbeddingValid && (
+													<div
+														className="warning-message"
+														style={{
+															display: "flex",
+															alignItems: "center",
+															gap: "8px",
+															color: "var(--vscode-editorWarning-foreground)",
+															fontSize: "11px",
+															marginTop: "8px",
+															marginLeft: "20px",
+														}}>
+														<i className="codicon codicon-warning" style={{ fontSize: "14px" }} />
+														<span>
+															Document operations are disabled due to invalid embedding
+															configuration
+														</span>
+													</div>
 												)}
 											</AccordionContainer>
 										)}
@@ -779,7 +820,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 										fontSize: "11px",
 									}}>
 									<i className="codicon codicon-warning" style={{ fontSize: "14px" }} />
-									<span>Valid embedding configuration required for deep crawling</span>
+									<span>Please provide a valid embedding configuration to enable deep crawling.</span>
 								</div>
 							)}
 							{!isFormReadOnly && (
