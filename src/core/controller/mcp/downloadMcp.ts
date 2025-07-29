@@ -1,3 +1,4 @@
+import { getLocalMcpDetails, isLocalMcp } from "@/utils/local-mcp-registry"
 import { Controller } from ".."
 import { Empty, StringRequest } from "../../../shared/proto/common"
 import { McpServer, McpDownloadResponse } from "@shared/mcp"
@@ -22,28 +23,35 @@ export async function downloadMcp(controller: Controller, request: StringRequest
 		// Check if we already have this MCP server installed
 		const servers = controller.mcpHub?.getServers() || []
 		const isInstalled = servers.some((server: McpServer) => server.name === mcpId)
+		let mcpDetails: McpDownloadResponse
 
 		if (isInstalled) {
 			throw new Error("This MCP server is already installed")
 		}
 
-		// Fetch server details from marketplace
-		const response = await axios.post<McpDownloadResponse>(
-			"https://api.cline.bot/v1/mcp/download",
-			{ mcpId },
-			{
-				headers: { "Content-Type": "application/json" },
-				timeout: 10000,
-			},
-		)
+		// Check if this is a local MCP
+		if (isLocalMcp(mcpId)) {
+			// Get details from local registry
+			mcpDetails = await getLocalMcpDetails(mcpId)
+			console.log("[downloadMcp] Using local data for MCP server", { mcpDetails })
+		} else {
+			// Fetch server details from marketplace
+			const response = await axios.post<McpDownloadResponse>(
+				"https://api.cline.bot/v1/mcp/download",
+				{ mcpId },
+				{
+					headers: { "Content-Type": "application/json" },
+					timeout: 10000,
+				},
+			)
+			if (!response.data) {
+				throw new Error("Invalid response from MCP marketplace API")
+			}
 
-		if (!response.data) {
-			throw new Error("Invalid response from MCP marketplace API")
+			console.log("[downloadMcp] Response from download API", { response })
+
+			mcpDetails = response.data
 		}
-
-		console.log("[downloadMcp] Response from download API", { response })
-
-		const mcpDetails = response.data
 
 		// Validate required fields
 		if (!mcpDetails.githubUrl) {
