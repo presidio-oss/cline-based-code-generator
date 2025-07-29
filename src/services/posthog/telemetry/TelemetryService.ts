@@ -146,6 +146,11 @@ class PostHogClient {
 	}
 
 	private createLangfuseTraceClient(taskId: string, isNew: boolean = false) {
+		// Only create traces if telemetry is enabled
+		if (!this.telemetryEnabled) {
+			return
+		}
+
 		// Start / Re-Create a new trace in Langfuse
 		this.langfuseTraceClient = this.langfuse.trace({
 			id: taskId,
@@ -384,7 +389,8 @@ class PostHogClient {
 			},
 		})
 
-		if (tokensIn > 0 || tokensOut > 0) {
+		// Only send to Langfuse if telemetry is enabled
+		if (this.telemetryEnabled && (tokensIn > 0 || tokensOut > 0)) {
 			this.langfuseTraceClient?.generation({
 				model: model,
 				startTime: startTime,
