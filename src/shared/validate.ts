@@ -122,6 +122,8 @@ export function validateApiConfiguration(apiConfiguration?: ApiConfiguration): s
 export function validateEmbeddingConfiguration(config?: EmbeddingConfiguration): string | undefined {
 	if (config) {
 		switch (config.provider) {
+			case "none":
+				break
 			case "openai-native":
 				if (!config.openAiNativeApiKey) {
 					return "You must provide a valid API key."
@@ -136,6 +138,12 @@ export function validateEmbeddingConfiguration(config?: EmbeddingConfiguration):
 				if (!config.openAiApiKey || !config.openAiBaseUrl || !config.openAiModelId) {
 					return "You must provide a valid API key, Model ID and base URL."
 				}
+				break
+			case "ollama":
+				if (!config.ollamaModelId) {
+					return "You must provide a valid model ID."
+				}
+				break
 		}
 	}
 	return undefined

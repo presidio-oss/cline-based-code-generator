@@ -9,6 +9,7 @@ import {
 	bedrockeEmbeddingDefaultModelId,
 	bedrockEmbeddingModels,
 	azureOpenAIApiVersion,
+	EmbeddingProvider,
 } from "../../../../src/shared/embeddings"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
@@ -69,6 +70,14 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 		if (field === "provider") {
 			// Reset the validation message
 			setIsEmbeddingValid(null)
+
+			// If provider is set to "none", uncheck "Same as LLM API configuration"
+			if (event.target.value === "none" && buildContextOptions?.useSyncWithApi) {
+				setBuildContextOptions({
+					...buildContextOptions,
+					useSyncWithApi: false,
+				})
+			}
 		}
 
 		const newEmbeddingConfiguration = { ...embeddingConfiguration, [field]: event.target.value }
@@ -76,6 +85,12 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	}
 
 	useDeepCompareEffect(() => {
+		// If provider is "none", skip validation and set as valid directly
+		if (embeddingConfiguration?.provider === "none") {
+			setIsEmbeddingValid(null)
+			return
+		}
+
 		const error = validateEmbeddingConfiguration(embeddingConfiguration)
 
 		if (error) {
@@ -145,17 +160,20 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 	useEffect(() => {
 		setEmbeddingConfiguration({
 			...embeddingConfiguration,
-			provider: selectedProvider,
+			provider: selectedProvider as EmbeddingProvider,
 			modelId: selectedModelId,
 		})
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selectedModelId, selectedProvider])
 
 	const availableModels = useMemo(() => {
-		if (!selectedProvider) {
+		if (!selectedProvider || selectedProvider === "none") {
 			return {} as Record<string, EmbeddingModelInfo>
 		}
-		return embeddingProviderModels[selectedProvider] as Record<string, EmbeddingModelInfo>
+		return embeddingProviderModels[selectedProvider as keyof typeof embeddingProviderModels] as Record<
+			string,
+			EmbeddingModelInfo
+		>
 	}, [selectedProvider])
 
 	return (
@@ -170,6 +188,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 					onChange={handleInputChange("provider")}
 					disabled={isLoading}
 					style={{ minWidth: 130, position: "relative", width: "100%" }}>
+					<VSCodeOption value="none">None</VSCodeOption>
 					<VSCodeOption value="bedrock">AWS Bedrock</VSCodeOption>
 					<VSCodeOption value="openai-native">OpenAI</VSCodeOption>
 					<VSCodeOption value="openai">OpenAI Compatible</VSCodeOption>
@@ -476,7 +495,7 @@ const EmbeddingOptions = ({ showModelOptions, showModelError = true, onValid }: 
 }
 
 export function normalizeEmbeddingConfiguration(embeddingConfiguration?: EmbeddingConfiguration) {
-	const provider = embeddingConfiguration?.provider || "openai-native"
+	const provider = embeddingConfiguration?.provider || ("openai-native" as EmbeddingProvider)
 	const modelId = embeddingConfiguration?.modelId
 
 	const getProviderData = (models: Record<string, EmbeddingModelInfo>, defaultId: string) => {
@@ -493,6 +512,12 @@ export function normalizeEmbeddingConfiguration(embeddingConfiguration?: Embeddi
 	}
 
 	switch (provider) {
+		case "none":
+			return {
+				selectedProvider: "none",
+				selectedModelId: "",
+				selectedModelInfo: undefined,
+			}
 		case "bedrock":
 			return getProviderData(bedrockEmbeddingModels, bedrockeEmbeddingDefaultModelId)
 		case "openai-native":
