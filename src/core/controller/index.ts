@@ -953,13 +953,36 @@ export class Controller {
 				throw new Error("Invalid response from MCP marketplace API")
 			}
 
+			// Create an array to hold all local MCPs with their star counts
+			const localMcpItems = []
+
+			// Get all local MCPs from registry
+			const localMcpIds = Object.keys(getAllLocalMcps())
+
+			// Fetch GitHub stars for each local MCP
+			for (const mcpId of localMcpIds) {
+				const mcp = getLocalMcp(mcpId)
+				if (mcp) {
+					// Update star count for this MCP and add isLocal flag
+					const gitHubStars = await getStarCount(mcp.githubUrl)
+					localMcpItems.push({
+						...mcp,
+						githubStars: gitHubStars || 0,
+						isLocal: true, // Add isLocal flag to identify local MCPs
+					})
+				}
+			}
 			const catalog: McpMarketplaceCatalog = {
-				items: (response.data || []).map((item: any) => ({
-					...item,
-					githubStars: item.githubStars ?? 0,
-					downloadCount: item.downloadCount ?? 0,
-					tags: item.tags ?? [],
-				})),
+				items: [
+					...localMcpItems,
+					...(response.data || []).map((item: any) => ({
+						...item,
+						githubStars: item.githubStars ?? 0,
+						downloadCount: item.downloadCount ?? 0,
+						tags: item.tags ?? [],
+						isLocal: false, // Mark remote MCPs explicitly
+					})),
+				],
 			}
 
 			// Store in global state
