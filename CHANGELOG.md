@@ -1,10 +1,24 @@
 # Changelog
 
+## [3.7.2]
+
+### Added
+
+-   Added support for the Amazon Titan Embed Text V2 model.
+-   Made the embedding configuration optional with the new `none` attribute.
+-   Introduced new expert integrations: AWS CDK, CloudFormation, Docker, GitHub Actions, Helm, Kubernetes, and Serverless Framework.
+
+### Fixed
+
+-   Resolved an issue where the Specifai MCP Server was not visible in the marketplace after being uninstalled.
+-   Fixed problems with default Langfuse tracing not functioning correctly.
+-   Ensured proper removal of expert document links from the vector store.
+
 ## [3.7.1]
 
 ### Fixed
 
--  Fixed an issue where LLM validation could become stuck in the welcome state, preventing further progress.
+-   Fixed an issue where LLM validation could become stuck in the welcome state, preventing further progress.
 
 ## [3.7.0]
 
@@ -15,7 +29,7 @@
 
 ### Fixed
 
--  Fixed an issue where the `find_relevant_files` tool was not triggered even when indexing was enabled
+-   Fixed an issue where the `find_relevant_files` tool was not triggered even when indexing was enabled
 
 ## [3.6.0]
 
