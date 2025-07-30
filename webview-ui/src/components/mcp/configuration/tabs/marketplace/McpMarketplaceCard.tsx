@@ -172,28 +172,34 @@ const McpMarketplaceCard = ({ item, installedServers }: McpMarketplaceCardProps)
 									</span>
 								</div>
 							</a>
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "4px",
-									minWidth: 0,
-									flexShrink: 0,
-								}}>
-								<span className="codicon codicon-star-full" />
-								<span style={{ wordBreak: "break-all" }}>{item.githubStars?.toLocaleString() ?? 0}</span>
-							</div>
-							<div
-								style={{
-									display: "flex",
-									alignItems: "center",
-									gap: "4px",
-									minWidth: 0,
-									flexShrink: 0,
-								}}>
-								<span className="codicon codicon-cloud-download" />
-								<span style={{ wordBreak: "break-all" }}>{item.downloadCount?.toLocaleString() ?? 0}</span>
-							</div>
+							{!item.isLocal && (
+								<>
+									<div
+										style={{
+											display: "flex",
+											alignItems: "center",
+											gap: "4px",
+											minWidth: 0,
+											flexShrink: 0,
+										}}>
+										<span className="codicon codicon-star-full" />
+										<span style={{ wordBreak: "break-all" }}>{item.githubStars?.toLocaleString() ?? 0}</span>
+									</div>
+									<div
+										style={{
+											display: "flex",
+											alignItems: "center",
+											gap: "4px",
+											minWidth: 0,
+											flexShrink: 0,
+										}}>
+										<span className="codicon codicon-cloud-download" />
+										<span style={{ wordBreak: "break-all" }}>
+											{item.downloadCount?.toLocaleString() ?? 0}
+										</span>
+									</div>
+								</>
+							)}
 							{item.requiresApiKey && (
 								<span className="codicon codicon-key" title="Requires API key" style={{ flexShrink: 0 }} />
 							)}
