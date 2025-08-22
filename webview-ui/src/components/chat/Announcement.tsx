@@ -42,19 +42,12 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 			<h3 style={h3TitleStyle}>
 				🎉{"  "}New in v{minorVersion}
 			</h3>
-			<ul style={ulStyle}>
-				<li>
-					<b>Claude 4 Models:</b> Now with support for Anthropic Claude Sonnet 4 and Claude Opus 4 in both Anthropic and
-					Vertex providers.
-				</li>
-				<li>
-					<b>New Settings Page:</b> Redesigned settings, now split into tabs for easier navigation and a cleaner
-					experience.
-				</li>
-				<li>
-					<b>Nebius AI Studio:</b> Added Nebius AI Studio as a new provider. (Thanks @Aktsvigun!)
-				</li>
-			</ul>
+			<b>1M Context Window:</b> Claude Sonnet 4 now supports a 1 million token context window to handle larger codebases and
+			more complex tasks. Cline/OpenRouter users get instant access, Anthropic users with Tier 4 access can select the{" "}
+			<code>
+				claude-sonnet-4-20250514<b>:1m</b>
+			</code>{" "}
+			model.
 			<Accordion isCompact className="pl-0">
 				<AccordionItem
 					key="1"
