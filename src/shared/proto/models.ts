@@ -23,6 +23,36 @@ export interface VsCodeLmModel {
   id: string;
 }
 
+/** Price tier for tiered pricing models */
+export interface PriceTier {
+  /** Upper limit (inclusive) of input tokens for this price */
+  tokenLimit: number;
+  /** Price per million tokens for this tier */
+  price: number;
+}
+
+export interface ThinkingConfig {
+  /** Max allowed thinking budget tokens */
+  maxBudget?:
+    | number
+    | undefined;
+  /** Output price per million tokens when budget > 0 */
+  outputPrice?:
+    | number
+    | undefined;
+  /** Optional: Tiered output price when budget > 0 */
+  outputPriceTiers: PriceTier[];
+}
+
+/** Model tier for tiered pricing structures */
+export interface ModelTier {
+  contextWindow: number;
+  inputPrice?: number | undefined;
+  outputPrice?: number | undefined;
+  cacheWritesPrice?: number | undefined;
+  cacheReadsPrice?: number | undefined;
+}
+
 /** For OpenRouterCompatibleModelInfo structure in OpenRouterModels */
 export interface OpenRouterModelInfo {
   maxTokens: number;
@@ -34,6 +64,9 @@ export interface OpenRouterModelInfo {
   cacheWritesPrice: number;
   cacheReadsPrice: number;
   description: string;
+  thinkingConfig?: ThinkingConfig | undefined;
+  supportsGlobalEndpoint?: boolean | undefined;
+  tiers: ModelTier[];
 }
 
 /** Shared response message for model information */
@@ -221,6 +254,306 @@ export const VsCodeLmModel: MessageFns<VsCodeLmModel> = {
   },
 };
 
+function createBasePriceTier(): PriceTier {
+  return { tokenLimit: 0, price: 0 };
+}
+
+export const PriceTier: MessageFns<PriceTier> = {
+  encode(message: PriceTier, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.tokenLimit !== 0) {
+      writer.uint32(8).int32(message.tokenLimit);
+    }
+    if (message.price !== 0) {
+      writer.uint32(17).double(message.price);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PriceTier {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePriceTier();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.tokenLimit = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 17) {
+            break;
+          }
+
+          message.price = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PriceTier {
+    return {
+      tokenLimit: isSet(object.tokenLimit) ? globalThis.Number(object.tokenLimit) : 0,
+      price: isSet(object.price) ? globalThis.Number(object.price) : 0,
+    };
+  },
+
+  toJSON(message: PriceTier): unknown {
+    const obj: any = {};
+    if (message.tokenLimit !== 0) {
+      obj.tokenLimit = Math.round(message.tokenLimit);
+    }
+    if (message.price !== 0) {
+      obj.price = message.price;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PriceTier>, I>>(base?: I): PriceTier {
+    return PriceTier.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PriceTier>, I>>(object: I): PriceTier {
+    const message = createBasePriceTier();
+    message.tokenLimit = object.tokenLimit ?? 0;
+    message.price = object.price ?? 0;
+    return message;
+  },
+};
+
+function createBaseThinkingConfig(): ThinkingConfig {
+  return { maxBudget: undefined, outputPrice: undefined, outputPriceTiers: [] };
+}
+
+export const ThinkingConfig: MessageFns<ThinkingConfig> = {
+  encode(message: ThinkingConfig, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.maxBudget !== undefined) {
+      writer.uint32(8).int32(message.maxBudget);
+    }
+    if (message.outputPrice !== undefined) {
+      writer.uint32(17).double(message.outputPrice);
+    }
+    for (const v of message.outputPriceTiers) {
+      PriceTier.encode(v!, writer.uint32(26).fork()).join();
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ThinkingConfig {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseThinkingConfig();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.maxBudget = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 17) {
+            break;
+          }
+
+          message.outputPrice = reader.double();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.outputPriceTiers.push(PriceTier.decode(reader, reader.uint32()));
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ThinkingConfig {
+    return {
+      maxBudget: isSet(object.maxBudget) ? globalThis.Number(object.maxBudget) : undefined,
+      outputPrice: isSet(object.outputPrice) ? globalThis.Number(object.outputPrice) : undefined,
+      outputPriceTiers: globalThis.Array.isArray(object?.outputPriceTiers)
+        ? object.outputPriceTiers.map((e: any) => PriceTier.fromJSON(e))
+        : [],
+    };
+  },
+
+  toJSON(message: ThinkingConfig): unknown {
+    const obj: any = {};
+    if (message.maxBudget !== undefined) {
+      obj.maxBudget = Math.round(message.maxBudget);
+    }
+    if (message.outputPrice !== undefined) {
+      obj.outputPrice = message.outputPrice;
+    }
+    if (message.outputPriceTiers?.length) {
+      obj.outputPriceTiers = message.outputPriceTiers.map((e) => PriceTier.toJSON(e));
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ThinkingConfig>, I>>(base?: I): ThinkingConfig {
+    return ThinkingConfig.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ThinkingConfig>, I>>(object: I): ThinkingConfig {
+    const message = createBaseThinkingConfig();
+    message.maxBudget = object.maxBudget ?? undefined;
+    message.outputPrice = object.outputPrice ?? undefined;
+    message.outputPriceTiers = object.outputPriceTiers?.map((e) => PriceTier.fromPartial(e)) || [];
+    return message;
+  },
+};
+
+function createBaseModelTier(): ModelTier {
+  return {
+    contextWindow: 0,
+    inputPrice: undefined,
+    outputPrice: undefined,
+    cacheWritesPrice: undefined,
+    cacheReadsPrice: undefined,
+  };
+}
+
+export const ModelTier: MessageFns<ModelTier> = {
+  encode(message: ModelTier, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.contextWindow !== 0) {
+      writer.uint32(8).int32(message.contextWindow);
+    }
+    if (message.inputPrice !== undefined) {
+      writer.uint32(17).double(message.inputPrice);
+    }
+    if (message.outputPrice !== undefined) {
+      writer.uint32(25).double(message.outputPrice);
+    }
+    if (message.cacheWritesPrice !== undefined) {
+      writer.uint32(33).double(message.cacheWritesPrice);
+    }
+    if (message.cacheReadsPrice !== undefined) {
+      writer.uint32(41).double(message.cacheReadsPrice);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): ModelTier {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    let end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBaseModelTier();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.contextWindow = reader.int32();
+          continue;
+        }
+        case 2: {
+          if (tag !== 17) {
+            break;
+          }
+
+          message.inputPrice = reader.double();
+          continue;
+        }
+        case 3: {
+          if (tag !== 25) {
+            break;
+          }
+
+          message.outputPrice = reader.double();
+          continue;
+        }
+        case 4: {
+          if (tag !== 33) {
+            break;
+          }
+
+          message.cacheWritesPrice = reader.double();
+          continue;
+        }
+        case 5: {
+          if (tag !== 41) {
+            break;
+          }
+
+          message.cacheReadsPrice = reader.double();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): ModelTier {
+    return {
+      contextWindow: isSet(object.contextWindow) ? globalThis.Number(object.contextWindow) : 0,
+      inputPrice: isSet(object.inputPrice) ? globalThis.Number(object.inputPrice) : undefined,
+      outputPrice: isSet(object.outputPrice) ? globalThis.Number(object.outputPrice) : undefined,
+      cacheWritesPrice: isSet(object.cacheWritesPrice) ? globalThis.Number(object.cacheWritesPrice) : undefined,
+      cacheReadsPrice: isSet(object.cacheReadsPrice) ? globalThis.Number(object.cacheReadsPrice) : undefined,
+    };
+  },
+
+  toJSON(message: ModelTier): unknown {
+    const obj: any = {};
+    if (message.contextWindow !== 0) {
+      obj.contextWindow = Math.round(message.contextWindow);
+    }
+    if (message.inputPrice !== undefined) {
+      obj.inputPrice = message.inputPrice;
+    }
+    if (message.outputPrice !== undefined) {
+      obj.outputPrice = message.outputPrice;
+    }
+    if (message.cacheWritesPrice !== undefined) {
+      obj.cacheWritesPrice = message.cacheWritesPrice;
+    }
+    if (message.cacheReadsPrice !== undefined) {
+      obj.cacheReadsPrice = message.cacheReadsPrice;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<ModelTier>, I>>(base?: I): ModelTier {
+    return ModelTier.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<ModelTier>, I>>(object: I): ModelTier {
+    const message = createBaseModelTier();
+    message.contextWindow = object.contextWindow ?? 0;
+    message.inputPrice = object.inputPrice ?? undefined;
+    message.outputPrice = object.outputPrice ?? undefined;
+    message.cacheWritesPrice = object.cacheWritesPrice ?? undefined;
+    message.cacheReadsPrice = object.cacheReadsPrice ?? undefined;
+    return message;
+  },
+};
+
 function createBaseOpenRouterModelInfo(): OpenRouterModelInfo {
   return {
     maxTokens: 0,
@@ -232,6 +565,9 @@ function createBaseOpenRouterModelInfo(): OpenRouterModelInfo {
     cacheWritesPrice: 0,
     cacheReadsPrice: 0,
     description: "",
+    thinkingConfig: undefined,
+    supportsGlobalEndpoint: undefined,
+    tiers: [],
   };
 }
 
@@ -263,6 +599,15 @@ export const OpenRouterModelInfo: MessageFns<OpenRouterModelInfo> = {
     }
     if (message.description !== "") {
       writer.uint32(74).string(message.description);
+    }
+    if (message.thinkingConfig !== undefined) {
+      ThinkingConfig.encode(message.thinkingConfig, writer.uint32(82).fork()).join();
+    }
+    if (message.supportsGlobalEndpoint !== undefined) {
+      writer.uint32(88).bool(message.supportsGlobalEndpoint);
+    }
+    for (const v of message.tiers) {
+      ModelTier.encode(v!, writer.uint32(98).fork()).join();
     }
     return writer;
   },
@@ -346,6 +691,30 @@ export const OpenRouterModelInfo: MessageFns<OpenRouterModelInfo> = {
           message.description = reader.string();
           continue;
         }
+        case 10: {
+          if (tag !== 82) {
+            break;
+          }
+
+          message.thinkingConfig = ThinkingConfig.decode(reader, reader.uint32());
+          continue;
+        }
+        case 11: {
+          if (tag !== 88) {
+            break;
+          }
+
+          message.supportsGlobalEndpoint = reader.bool();
+          continue;
+        }
+        case 12: {
+          if (tag !== 98) {
+            break;
+          }
+
+          message.tiers.push(ModelTier.decode(reader, reader.uint32()));
+          continue;
+        }
       }
       if ((tag & 7) === 4 || tag === 0) {
         break;
@@ -366,6 +735,11 @@ export const OpenRouterModelInfo: MessageFns<OpenRouterModelInfo> = {
       cacheWritesPrice: isSet(object.cacheWritesPrice) ? globalThis.Number(object.cacheWritesPrice) : 0,
       cacheReadsPrice: isSet(object.cacheReadsPrice) ? globalThis.Number(object.cacheReadsPrice) : 0,
       description: isSet(object.description) ? globalThis.String(object.description) : "",
+      thinkingConfig: isSet(object.thinkingConfig) ? ThinkingConfig.fromJSON(object.thinkingConfig) : undefined,
+      supportsGlobalEndpoint: isSet(object.supportsGlobalEndpoint)
+        ? globalThis.Boolean(object.supportsGlobalEndpoint)
+        : undefined,
+      tiers: globalThis.Array.isArray(object?.tiers) ? object.tiers.map((e: any) => ModelTier.fromJSON(e)) : [],
     };
   },
 
@@ -398,6 +772,15 @@ export const OpenRouterModelInfo: MessageFns<OpenRouterModelInfo> = {
     if (message.description !== "") {
       obj.description = message.description;
     }
+    if (message.thinkingConfig !== undefined) {
+      obj.thinkingConfig = ThinkingConfig.toJSON(message.thinkingConfig);
+    }
+    if (message.supportsGlobalEndpoint !== undefined) {
+      obj.supportsGlobalEndpoint = message.supportsGlobalEndpoint;
+    }
+    if (message.tiers?.length) {
+      obj.tiers = message.tiers.map((e) => ModelTier.toJSON(e));
+    }
     return obj;
   },
 
@@ -415,6 +798,11 @@ export const OpenRouterModelInfo: MessageFns<OpenRouterModelInfo> = {
     message.cacheWritesPrice = object.cacheWritesPrice ?? 0;
     message.cacheReadsPrice = object.cacheReadsPrice ?? 0;
     message.description = object.description ?? "";
+    message.thinkingConfig = (object.thinkingConfig !== undefined && object.thinkingConfig !== null)
+      ? ThinkingConfig.fromPartial(object.thinkingConfig)
+      : undefined;
+    message.supportsGlobalEndpoint = object.supportsGlobalEndpoint ?? undefined;
+    message.tiers = object.tiers?.map((e) => ModelTier.fromPartial(e)) || [];
     return message;
   },
 };
