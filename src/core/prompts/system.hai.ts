@@ -8,9 +8,12 @@ import { SYSTEM_PROMPT as haiDefaultSystemPrompt } from "./system"
 export const haiSystemPrompt = (
 	cwd: string,
 	supportsBrowserUse: boolean,
-	supportsCodeIndex: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
+	isNextGenModel: boolean = false,
+
+	// TAG:HAI
+	supportsCodeIndex: boolean,
 	version?: string,
 	expertPrompt?: string,
 	isDeepCrawlEnabled?: boolean,
@@ -23,6 +26,9 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
+				isNextGenModel,
+
+				// TAG:HAI
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
@@ -34,6 +40,9 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
+				isNextGenModel,
+
+				// TAG:HAI
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
@@ -45,6 +54,9 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
+				isNextGenModel,
+
+				// TAG:HAI
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
@@ -56,6 +68,9 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
+				isNextGenModel,
+
+				// TAG:HAI
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,

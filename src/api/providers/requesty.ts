@@ -7,6 +7,14 @@ import { convertToOpenAiMessages } from "@api/transform/openai-format"
 import { calculateApiCostOpenAI } from "@utils/cost"
 import { ApiStream } from "@api/transform/stream"
 
+interface RequestyHandlerOptions {
+	requestyApiKey?: string
+	reasoningEffort?: string
+	thinkingBudgetTokens?: number
+	requestyModelId?: string
+	requestyModelInfo?: ModelInfo
+}
+
 // Requesty usage includes an extra field for Anthropic use cases.
 // Safely cast the prompt token details section to the appropriate structure.
 interface RequestyUsage extends OpenAI.CompletionUsage {
@@ -18,24 +26,37 @@ interface RequestyUsage extends OpenAI.CompletionUsage {
 }
 
 export class RequestyHandler implements ApiHandler {
-	private options: ApiHandlerOptions
-	private client: OpenAI
+	private options: RequestyHandlerOptions
+	private client: OpenAI | undefined
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: RequestyHandlerOptions) {
 		this.options = options
-		this.client = new OpenAI({
-			baseURL: "https://router.requesty.ai/v1",
-			apiKey: this.options.requestyApiKey,
-			defaultHeaders: {
-				"HTTP-Referer": "https://cline.bot",
-				"X-Title": "Cline",
-			},
-			maxRetries: this.options.maxRetries,
-		})
+	}
+
+	private ensureClient(): OpenAI {
+		if (!this.client) {
+			if (!this.options.requestyApiKey) {
+				throw new Error("Requesty API key is required")
+			}
+			try {
+				this.client = new OpenAI({
+					baseURL: "https://router.requesty.ai/v1",
+					apiKey: this.options.requestyApiKey,
+					defaultHeaders: {
+						"HTTP-Referer": "https://cline.bot",
+						"X-Title": "HAI",
+					},
+				})
+			} catch (error: any) {
+				throw new Error(`Error creating Requesty client: ${error.message}`)
+			}
+		}
+		return this.client
 	}
 
 	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const client = this.ensureClient()
 		const model = this.getModel()
 
 		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -58,7 +79,7 @@ export class RequestyHandler implements ApiHandler {
 				: {}
 
 		// @ts-ignore-next-line
-		const stream = await this.client.chat.completions.create({
+		const stream = await client.chat.completions.create({
 			model: model.id,
 			max_tokens: model.info.maxTokens || undefined,
 			messages: openAiMessages,
@@ -122,7 +143,8 @@ export class RequestyHandler implements ApiHandler {
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.chat.completions.create({
+			const client = this.ensureClient()
+			await client.chat.completions.create({
 				model: this.getModel().id,
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],

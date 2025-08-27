@@ -1,36 +1,53 @@
 import { Controller } from ".."
-import { Empty, EmptyRequest } from "../../../shared/proto/common"
-import { resetExtensionState } from "../../../core/storage/state"
-import * as vscode from "vscode"
+import { Empty } from "@shared/proto/cline/common"
+import { ResetStateRequest } from "@shared/proto/cline/state"
+import { resetGlobalState, resetWorkspaceState } from "../../../core/storage/state"
+import { sendChatButtonClickedEvent } from "../ui/subscribeToChatButtonClicked"
+import { ShowMessageRequest, ShowMessageType } from "@/shared/proto/host/window"
+import { HostProvider } from "@/hosts/host-provider"
 
 /**
  * Resets the extension state to its defaults
  * @param controller The controller instance
- * @param request An empty request (no parameters needed)
+ * @param request The reset state request containing the global flag
  * @returns An empty response
  */
-export async function resetState(controller: Controller, request: EmptyRequest): Promise<Empty> {
+export async function resetState(controller: Controller, request: ResetStateRequest): Promise<Empty> {
 	try {
-		vscode.window.showInformationMessage("Resetting state...")
-		await resetExtensionState(controller.context, controller.workspaceId)
+		if (request.global) {
+			HostProvider.window.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: "Resetting global state...",
+			})
+			await resetGlobalState(controller.context)
+		} else {
+			HostProvider.window.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: "Resetting workspace state...",
+			})
+			await resetWorkspaceState(controller.context)
+		}
 
 		if (controller.task) {
 			controller.task.abortTask()
 			controller.task = undefined
 		}
 
-		vscode.window.showInformationMessage("State reset")
+		HostProvider.window.showMessage({
+			type: ShowMessageType.INFORMATION,
+			message: "State reset",
+		})
 		await controller.postStateToWebview()
 
-		await controller.postMessageToWebview({
-			type: "action",
-			action: "chatButtonClicked",
-		})
+		await sendChatButtonClickedEvent(controller.id)
 
 		return Empty.create()
 	} catch (error) {
 		console.error("Error resetting state:", error)
-		vscode.window.showErrorMessage(`Failed to reset state: ${error instanceof Error ? error.message : String(error)}`)
+		HostProvider.window.showMessage({
+			type: ShowMessageType.ERROR,
+			message: `Failed to reset state: ${error instanceof Error ? error.message : String(error)}`,
+		})
 		throw error
 	}
 }

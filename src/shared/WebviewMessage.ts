@@ -1,77 +1,27 @@
 import { ApiConfiguration } from "./api"
 import { BrowserSettings } from "./BrowserSettings"
-import { ChatSettings } from "./ChatSettings"
 import { UserInfo } from "./UserInfo"
 import { ChatContent } from "./ChatContent"
 import { TelemetrySetting } from "./TelemetrySetting"
 import { McpViewTab } from "./mcp"
 
-// TAG:HAI
-import { HaiBuildContextOptions } from "./customApi"
-import { EmbeddingConfiguration } from "./embeddings"
-
 export interface WebviewMessage {
 	type:
-		| "apiConfiguration"
-		| "webviewDidLaunch"
-		| "newTask"
-		| "condense"
-		| "reportBug"
-		| "openInBrowser"
-		| "showChatView"
-		| "openMcpSettings"
-		| "openExtensionSettings"
 		| "requestVsCodeLmModels"
-		| "showAccountViewClicked"
-		| "authStateChanged"
-		| "authCallback"
 		| "fetchMcpMarketplace"
 		| "searchCommits"
-		| "fetchLatestMcpServersFromHub"
 		| "telemetrySetting"
-		| "invoke"
-		| "updateSettings"
-		| "clearAllTaskHistory"
-		| "fetchUserCreditsData"
-		| "optionsResponse"
-		| "requestTotalTasksSize"
-		| "searchFiles"
 		| "grpc_request"
 		| "grpc_request_cancel"
-		| "toggleWorkflow"
-
-		// TAG:HAI
-		| "selectExpert"
-		| "viewExpertPrompt"
-		| "saveExpert"
-		| "deleteExpert"
-		| "loadExperts"
-		| "loadDefaultExperts"
-		| "refreshDocumentLink"
-		| "deleteDocumentLink"
-		| "addDocumentLink"
-		| "onHaiConfigure"
-		| "buildContextOptions"
-		| "embeddingConfiguration"
-		| "validateLLMConfig"
-		| "validateEmbeddingConfig"
-		| "openHistory"
-		| "openHaiTasks"
-		| "showToast"
-		| "requestOllamaEmbeddingModels"
-		| "stopIndex"
-		| "startIndex"
-		| "resetIndex"
-		| "writeTaskStatus"
 
 	text?: string
 	disabled?: boolean
 	apiConfiguration?: ApiConfiguration
 	images?: string[]
+	files?: string[]
 	bool?: boolean
 	number?: number
 	browserSettings?: BrowserSettings
-	chatSettings?: ChatSettings
 	chatContent?: ChatContent
 	mcpId?: string
 	timeout?: number
@@ -85,13 +35,12 @@ export interface WebviewMessage {
 	// For auth
 	user?: UserInfo | null
 	customToken?: string
-	// For openInBrowser
-	url?: string
 	planActSeparateModelsSetting?: boolean
 	enableCheckpointsSetting?: boolean
 	mcpMarketplaceEnabled?: boolean
+	mcpResponsesCollapsed?: boolean
 	telemetrySetting?: TelemetrySetting
-	customInstructionsSetting?: string
+	mcpRichDisplayEnabled?: boolean
 	mentionsRequestId?: string
 	query?: string
 	// For toggleFavoriteModel
@@ -115,20 +64,8 @@ export interface WebviewMessage {
 
 	offset?: number
 	shellIntegrationTimeout?: number
-
-	// TAG:HAI
-	expert?: string
-	isDefault?: boolean
-	prompt?: string
-	category?: string
-	folder?: string
-	taskId?: string
-	status?: string
-	enableInlineEdit?: boolean
-	buildContextOptions?: HaiBuildContextOptions
-	embeddingConfiguration?: EmbeddingConfiguration
-	toast?: { message: string; toastType: "error" | "warning" | "info" }
-	isDeepCrawlEnabled?: boolean
+	terminalReuseEnabled?: boolean
+	defaultTerminalProfile?: string
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

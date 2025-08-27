@@ -1,12 +1,11 @@
 import { Controller } from ".."
-import { EmptyRequest } from "../../../shared/proto/common"
-import { OpenRouterCompatibleModelInfo, OpenRouterModelInfo } from "../../../shared/proto/models"
+import { EmptyRequest } from "@shared/proto/cline/common"
+import { OpenRouterCompatibleModelInfo, OpenRouterModelInfo } from "@shared/proto/cline/models"
 import axios from "axios"
 import path from "path"
 import fs from "fs/promises"
 import { fileExistsAtPath } from "@utils/fs"
 import { GlobalFileNames } from "@core/storage/disk"
-import { CLAUDE_SONNET_4_1M_TIERS } from "@/shared/api"
 
 /**
  * Refreshes the OpenRouter models and returns the updated model list
@@ -16,11 +15,11 @@ import { CLAUDE_SONNET_4_1M_TIERS } from "@/shared/api"
  */
 export async function refreshOpenRouterModels(
 	controller: Controller,
-	request: EmptyRequest,
+	_request: EmptyRequest,
 ): Promise<OpenRouterCompatibleModelInfo> {
 	const openRouterModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.openRouterModels)
 
-	let models: Record<string, Partial<OpenRouterModelInfo>> = {}
+	let models: Record<string, OpenRouterModelInfo> = {}
 	try {
 		const response = await axios.get("https://openrouter.ai/api/v1/models")
 
@@ -33,23 +32,24 @@ export async function refreshOpenRouterModels(
 				return undefined
 			}
 			for (const rawModel of rawModels) {
-				const modelInfo: Partial<OpenRouterModelInfo> = {
-					maxTokens: rawModel.top_provider?.max_completion_tokens,
-					contextWindow: rawModel.context_length,
-					supportsImages: rawModel.architecture?.modality?.includes("image"),
+				const modelInfo = OpenRouterModelInfo.create({
+					maxTokens: rawModel.top_provider?.max_completion_tokens ?? 0,
+					contextWindow: rawModel.context_length ?? 0,
+					supportsImages: rawModel.architecture?.modality?.includes("image") ?? false,
 					supportsPromptCache: false,
-					inputPrice: parsePrice(rawModel.pricing?.prompt),
-					outputPrice: parsePrice(rawModel.pricing?.completion),
-					description: rawModel.description,
-				}
+					inputPrice: parsePrice(rawModel.pricing?.prompt) ?? 0,
+					outputPrice: parsePrice(rawModel.pricing?.completion) ?? 0,
+					cacheWritesPrice: 0,
+					cacheReadsPrice: 0,
+					description: rawModel.description ?? "",
+					thinkingConfig: rawModel.thinking_config ?? undefined,
+					supportsGlobalEndpoint: rawModel.supports_global_endpoint ?? undefined,
+					tiers: rawModel.tiers ?? [],
+				})
+
 				switch (rawModel.id) {
 					case "anthropic/claude-sonnet-4":
-						modelInfo.supportsPromptCache = true
-						modelInfo.cacheWritesPrice = 3.75
-						modelInfo.cacheReadsPrice = 0.3
-						modelInfo.contextWindow = 1_000_000 // limiting providers to those that support 1m context window
-						modelInfo.tiers = CLAUDE_SONNET_4_1M_TIERS
-						break
+					case "anthropic/claude-opus-4":
 					case "anthropic/claude-3-7-sonnet":
 					case "anthropic/claude-3-7-sonnet:beta":
 					case "anthropic/claude-3.7-sonnet":
@@ -61,12 +61,6 @@ export async function refreshOpenRouterModels(
 						modelInfo.supportsPromptCache = true
 						modelInfo.cacheWritesPrice = 3.75
 						modelInfo.cacheReadsPrice = 0.3
-						break
-					case "anthropic/claude-opus-4.1":
-					case "anthropic/claude-opus-4":
-						modelInfo.supportsPromptCache = true
-						modelInfo.cacheWritesPrice = 18.75
-						modelInfo.cacheReadsPrice = 1.5
 						break
 					case "anthropic/claude-3.5-sonnet-20240620":
 					case "anthropic/claude-3.5-sonnet-20240620:beta":
@@ -116,12 +110,6 @@ export async function refreshOpenRouterModels(
 						modelInfo.outputPrice = 3
 						modelInfo.contextWindow = 131_000
 						break
-					case "openai/gpt-5":
-					case "openai/gpt-5-chat":
-					case "openai/gpt-5-mini":
-					case "openai/gpt-5-nano":
-						modelInfo.maxTokens = 8_192 // 128000 breaks context window truncation
-						break
 					default:
 						if (rawModel.id.startsWith("openai/")) {
 							modelInfo.cacheReadsPrice = parsePrice(rawModel.pricing?.input_cache_read)
@@ -146,7 +134,7 @@ export async function refreshOpenRouterModels(
 			console.error("Invalid response from OpenRouter API")
 		}
 		await fs.writeFile(openRouterModelsFilePath, JSON.stringify(models))
-		console.log("OpenRouter models fetched and saved", models)
+		console.log("OpenRouter models fetched and saved", JSON.stringify(models).slice(0, 300))
 	} catch (error) {
 		console.error("Error fetching OpenRouter models:", error)
 
@@ -157,31 +145,13 @@ export async function refreshOpenRouterModels(
 		}
 	}
 
-	// Convert the Record<string, Partial<OpenRouterModelInfo>> to Record<string, OpenRouterModelInfo>
-	// by filling in any missing required fields with defaults
-	const typedModels: Record<string, OpenRouterModelInfo> = {}
-	for (const [key, model] of Object.entries(models)) {
-		typedModels[key] = {
-			maxTokens: model.maxTokens ?? 0,
-			contextWindow: model.contextWindow ?? 0,
-			supportsImages: model.supportsImages ?? false,
-			supportsPromptCache: model.supportsPromptCache ?? false,
-			inputPrice: model.inputPrice ?? 0,
-			outputPrice: model.outputPrice ?? 0,
-			cacheWritesPrice: model.cacheWritesPrice ?? 0,
-			cacheReadsPrice: model.cacheReadsPrice ?? 0,
-			description: model.description ?? "",
-			tiers: model.tiers ?? [],
-		}
-	}
-
-	return OpenRouterCompatibleModelInfo.create({ models: typedModels })
+	return OpenRouterCompatibleModelInfo.create({ models })
 }
 
 /**
  * Reads cached OpenRouter models from disk
  */
-async function readOpenRouterModels(controller: Controller): Promise<Record<string, Partial<OpenRouterModelInfo>> | undefined> {
+async function readOpenRouterModels(controller: Controller): Promise<Record<string, OpenRouterModelInfo> | undefined> {
 	const openRouterModelsFilePath = path.join(await ensureCacheDirectoryExists(controller), GlobalFileNames.openRouterModels)
 	const fileExists = await fileExistsAtPath(openRouterModelsFilePath)
 	if (fileExists) {

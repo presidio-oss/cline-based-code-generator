@@ -1,7 +1,7 @@
 {
 	"$schema": "https://mintlify.com/docs.json",
 	"theme": "linden",
-	"name": "HAI",
+	"name": "Cline",
 	"description": "AI-powered coding assistant for VSCode",
 	"colors": {
 		"primary": "#9D4EDD",
@@ -39,13 +39,17 @@
 		"links": [
 			{
 				"label": "GitHub",
-				"href": "https://github.com/presidio-oss/cline-based-code-generator"
+				"href": "https://github.com/cline/cline"
+			},
+			{
+				"label": "Discord",
+				"href": "https://discord.gg/cline"
 			}
 		],
 		"primary": {
 			"type": "button",
-			"label": "Install HAI",
-			"href": "https://marketplace.visualstudio.com/items?itemName=presidio-inc.hai-build-code-generator"
+			"label": "Install Cline",
+			"href": "https://cline.bot/install?utm_source=website&utm_medium=header"
 		}
 	},
 	"navigation": {
@@ -54,25 +58,24 @@
 				"group": "Getting Started",
 				"pages": [
 					"getting-started/for-new-coders",
-					"getting-started/installing-hai",
+					"getting-started/installing-cline",
 					"getting-started/installing-dev-essentials",
 					"getting-started/model-selection-guide",
-					"getting-started/our-favorite-tech-stack",
 					"getting-started/task-management",
 					"getting-started/understanding-context-management",
-					"getting-started/what-is-hai"
+					"getting-started/what-is-cline"
 				]
 			},
 			{
 				"group": "Improving Your Prompting Skills",
-				"pages": ["prompting/prompt-engineering-guide", "prompting/hai-memory-bank"]
+				"pages": ["prompting/prompt-engineering-guide", "prompting/cline-memory-bank"]
 			},
 			{
 				"group": "Features",
 				"pages": [
 					"features/auto-approve",
 					"features/checkpoints",
-					"features/hai-rules",
+					"features/cline-rules",
 					"features/drag-and-drop",
 					"features/plan-and-act",
 					"features/slash-commands/workflows",
@@ -110,11 +113,11 @@
 				]
 			},
 			{
-				"group": "Exploring HAI's Tools",
+				"group": "Exploring Cline's Tools",
 				"pages": [
-					"exploring-hai-tools/hai-tools-guide",
-					"exploring-hai-tools/new-task-tool",
-					"exploring-hai-tools/remote-browser-support"
+					"exploring-clines-tools/cline-tools-guide",
+					"exploring-clines-tools/new-task-tool",
+					"exploring-clines-tools/remote-browser-support"
 				]
 			},
 			{
@@ -139,12 +142,25 @@
 				]
 			},
 			{
-				"group": "Custom Model Configurations",
+				"group": "Provider Configuration",
 				"pages": [
-					"custom-model-configs/aws-bedrock-with-credentials-authentication",
-					"custom-model-configs/aws-bedrock-with-profile-authentication",
-					"custom-model-configs/gcp-vertex-ai",
-					"custom-model-configs/litellm-and-hai-using-codestral"
+					"provider-config/anthropic",
+					"provider-config/claude-code",
+					"provider-config/aws-bedrock-with-apikey-authentication",
+					"provider-config/aws-bedrock-with-credentials-authentication",
+					"provider-config/aws-bedrock-with-profile-authentication",
+					"provider-config/gcp-vertex-ai",
+					"provider-config/litellm-and-cline-using-codestral",
+					"provider-config/vscode-language-model-api",
+					"provider-config/xai-grok",
+					"provider-config/mistral-ai",
+					"provider-config/deepseek",
+					"provider-config/ollama",
+					"provider-config/openai",
+					"provider-config/openai-compatible",
+					"provider-config/openrouter",
+					"provider-config/requesty",
+					"provider-config/sap-aicore"
 				]
 			},
 			{
@@ -156,6 +172,10 @@
 				]
 			},
 			{
+				"group": "Troubleshooting",
+				"pages": ["troubleshooting/terminal-quick-fixes", "troubleshooting/terminal-integration-guide"]
+			},
+			{
 				"group": "More Info",
 				"pages": ["more-info/telemetry"]
 			}
@@ -163,11 +183,13 @@
 	},
 	"footer": {
 		"socials": {
-			"github": "https://github.com/presidio-oss/cline-based-code-generator"
+			"x": "https://x.com/cline",
+			"github": "https://github.com/cline/cline",
+			"discord": "https://discord.gg/cline"
 		}
 	},
 	"search": {
-		"prompt": "Search HAI documentation..."
+		"prompt": "Search Cline documentation..."
 	},
 	"contextual": {
 		"options": ["copy"]

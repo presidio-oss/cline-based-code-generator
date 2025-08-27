@@ -1,11 +1,11 @@
 import { memo } from "react"
-import { vscode } from "../../utils/vscode"
 import { IHaiClineTask } from "@shared/hai-task"
 import { FEATURE_TILES, MAIN_CARDS } from "../../utils/constants"
 import QuickActionTile from "./QuickActionTile"
 
 interface QuickActionProps {
 	onTaskSelect: (task: IHaiClineTask) => void
+	showHistoryView: () => void
 }
 
 const createHaiTask = (title: string, description: string, context: string): IHaiClineTask => ({
@@ -16,16 +16,15 @@ const createHaiTask = (title: string, description: string, context: string): IHa
 	status: "",
 })
 
-const QuickActions = ({ onTaskSelect }: QuickActionProps) => {
+const QuickActions = ({ onTaskSelect, showHistoryView }: QuickActionProps) => {
 	const handleCardClick = (cardName: string) => {
 		const messageTypes = {
 			"View Conversation": "openHistory",
-			"View Hai Tasks": "openHaiTasks",
 		} as const
 
 		const messageType = messageTypes[cardName as keyof typeof messageTypes]
 		if (messageType) {
-			vscode.postMessage({ type: messageType })
+			showHistoryView()
 		}
 	}
 

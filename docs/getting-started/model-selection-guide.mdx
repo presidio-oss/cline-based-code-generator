@@ -20,25 +20,25 @@ Context windows are measured in tokens (roughly 3/4 of a word in English). Diffe
 
 When you reach the limit of your context window, older information needs to be removed to make room for new information - just like clearing RAM to run new programs. This is why sometimes AI assistants might seem to "forget" earlier parts of your conversation.
 
-HAI helps you manage this limitation with its Context Window Progress Bar, which shows:
+Cline helps you manage this limitation with its Context Window Progress Bar, which shows:
 
 -   Input tokens (what you've sent to the model)
 -   Output tokens (what the model has generated)
 -   A visual representation of how much of your context window you've used
 -   The total capacity for your chosen model
 
-<Frame caption="Visual representation of the context window usage in HAI">
+<Frame caption="Visual representation of the context window usage in Cline">
 	<img
 		src="https://storage.googleapis.com/cline_public_images/docs/assets/image%20(11).png"
 		alt="Context window progress bar example"
 	/>
 </Frame>
 
-This visibility helps you work more effectively with HAI by letting you know when you might need to start fresh or break tasks into smaller chunks.
+This visibility helps you work more effectively with Cline by letting you know when you might need to start fresh or break tasks into smaller chunks.
 
 ### Model Comparison
 
-## LLM Model Comparison for HAI (Feb 2025)
+## LLM Model Comparison for Cline (Feb 2025)
 
 | Model             | Input Cost\* | Output Cost\* | Context Window | Best For                            |
 | ----------------- | ------------ | ------------- | -------------- | ----------------------------------- |
@@ -98,7 +98,7 @@ This visibility helps you work more effectively with HAI by letting you know whe
 
 1. **Claude 3.5 Sonnet**
     - Best code quality
-    - Most reliable with HAI tools
+    - Most reliable with Cline tools
     - Worth the premium for critical code
 2. **DeepSeek V3**
     - Nearly Sonnet-level code quality
@@ -113,14 +113,14 @@ This visibility helps you work more effectively with HAI by letting you know whe
 
 ### A Note on Local Models
 
-While running models locally might seem appealing for cost savings, we currently don't recommend any local models for use with HAI. [Local models are significantly less reliable](https://docs.cline.bot/running-models-locally/read-me-first) at using HAI's essential tools and typically retain only 1-26% of the original model's capabilities. The full cloud version of DeepSeek-R1, for example, is 671B parameters - local versions are drastically simplified copies that struggle with complex tasks and tool usage. Even with high-end hardware (RTX 3070+, 32GB+ RAM), you'll experience slower responses, less reliable tool execution, and reduced capabilities. For the best development experience, we recommend sticking with the cloud models listed above.
+While running models locally might seem appealing for cost savings, we currently don't recommend any local models for use with Cline. [Local models are significantly less reliable](https://docs.cline.bot/running-models-locally/read-me-first) at using Cline's essential tools and typically retain only 1-26% of the original model's capabilities. The full cloud version of DeepSeek-R1, for example, is 671B parameters - local versions are drastically simplified copies that struggle with complex tasks and tool usage. Even with high-end hardware (RTX 3070+, 32GB+ RAM), you'll experience slower responses, less reliable tool execution, and reduced capabilities. For the best development experience, we recommend sticking with the cloud models listed above.
 
 ### Key Takeaways
 
 1. **Plan vs Act Matters**: Choose models based on task type
-2. **Real Performance > Benchmarks**: Focus on actual HAI performance
+2. **Real Performance > Benchmarks**: Focus on actual Cline performance
 3. **Mix & Match**: Use different models for planning and implementation
 4. **Cost vs Quality**: Premium models worth it for critical code
 5. **Keep Backups**: Have alternatives ready for API issues
 
-_\*Note: Based on real usage patterns and community feedback rather than just benchmarks. Your experience may vary. This is not an exhaustive list of all the models available for use within HAI._
+_\*Note: Based on real usage patterns and community feedback rather than just benchmarks. Your experience may vary. This is not an exhaustive list of all the models available for use within Cline._

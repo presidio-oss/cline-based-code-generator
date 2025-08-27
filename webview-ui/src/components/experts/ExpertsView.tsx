@@ -7,23 +7,28 @@ import {
 	VSCodeProgressRing,
 	VSCodeCheckbox,
 } from "@vscode/webview-ui-toolkit/react"
-import { vscode } from "../../utils/vscode"
-import { DocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
+import { DocumentLink as LocalDocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { capitalizeFirstLetter, formatTimestamp } from "../../utils/format"
+import { manageExperts } from "../settings/utils/settingsHandlers"
+import { showErrorToast, showWarningToast } from "../../utils/toast"
+import { validateEmbeddingConfiguration } from "@/utils/validate"
+import { convertEmbeddingConfigurationToProto } from "@shared/proto-conversions/models/embedding-configuration-conversion"
+import { UpdateEmbeddingConfigurationRequest } from "@shared/proto/cline/models"
+import { ModelsServiceClient } from "@/services/grpc-client"
+import { set } from "zod"
 
 interface ExpertsViewProps {
 	onDone: () => void
 }
 
 const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
-	const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
 	const [customExperts, setCustomExperts] = useState<ExpertData[]>([])
 	const [selectedExpert, setSelectedExpert] = useState<ExpertData | null>(null)
 	const [newExpertName, setNewExpertName] = useState("")
 	const [newExpertPrompt, setNewExpertPrompt] = useState("")
 	const [documentLink, setDocumentLink] = useState("")
-	const [documentLinks, setDocumentLinks] = useState<DocumentLink[]>([])
+	const [documentLinks, setDocumentLinks] = useState<LocalDocumentLink[]>([])
 	const [documentLinkError, setDocumentLinkError] = useState<string | null>(null)
 	const [inlineDocLinkError, setInlineDocLinkError] = useState<string | null>(null)
 	const [nameError, setNameError] = useState<string | null>(null)
@@ -44,6 +49,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const [maxDepth, setMaxDepth] = useState(10)
 	const [maxPages, setMaxPages] = useState(20)
 	const [crawlTimeout, setCrawlTimeout] = useState(10_0000)
+	const [defaultExperts, setDefaultExperts] = useState<ExpertData[]>([])
 	const [isEmbeddingValid, setIsEmbeddingValid] = useState<boolean | null>(null)
 	const { vscodeWorkspacePath, embeddingConfiguration } = useExtensionState()
 	const fileInputRef = React.useRef<HTMLInputElement>(null)
@@ -53,35 +59,50 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	useEffect(() => {
 		const messageHandler = (event: MessageEvent) => {
 			const message = event.data
-
 			switch (message.type) {
-				case "defaultExpertsLoaded":
-					if (message.experts) {
-						setDefaultExperts(message.experts)
+				case "grpc_response":
+					if (message.grpc_response?.message?.key === "defaultExpertsLoaded") {
+						setDefaultExperts(message.grpc_response.message.experts)
 					}
-					break
-
-				case "expertsUpdated":
-					if (message.experts) {
-						setCustomExperts(message.experts)
+					if (message.grpc_response?.message?.key === "customExpertsLoaded") {
+						setCustomExperts(message.grpc_response.message.experts)
 					}
-					break
-				case "embeddingConfigValidation":
-					setIsEmbeddingValid(!!message.bool)
-					break
-
-				default:
-					console.warn(`Unhandled message type: ${message.type}`)
 			}
 		}
 		window.addEventListener("message", messageHandler)
-		vscode.postMessage({ type: "loadDefaultExperts" })
-		vscode.postMessage({ type: "loadExperts" })
+
+		manageExperts("loadDefaultExperts")
+		manageExperts("loadExperts")
+
 		if (embeddingConfiguration?.provider === "none") {
 			setIsEmbeddingValid(null)
 			return
 		}
-		vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
+		const validateEmbedding = async () => {
+			const error = validateEmbeddingConfiguration(embeddingConfiguration)
+			if (error) {
+				setIsEmbeddingValid(null)
+				return
+			}
+
+			try {
+				if (!embeddingConfiguration) {
+					setIsEmbeddingValid(null)
+					return
+				}
+				const protoConfig = convertEmbeddingConfigurationToProto(embeddingConfiguration)
+				const result = await ModelsServiceClient.validateEmbeddingConfigurationProto(
+					UpdateEmbeddingConfigurationRequest.create({
+						embeddingConfiguration: protoConfig,
+					}),
+				)
+				setIsEmbeddingValid(result.value)
+			} catch (error) {
+				setIsEmbeddingValid(false)
+			}
+		}
+
+		validateEmbedding()
 		return () => {
 			window.removeEventListener("message", messageHandler)
 		}
@@ -137,35 +158,23 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const handleSaveExpert = () => {
 		setNameError(null)
 		if (!newExpertName.trim()) {
-			vscode.postMessage({
-				type: "showToast",
-				toast: { message: "Expert name cannot be empty", toastType: "error" },
-			})
+			showErrorToast("Expert name cannot be empty")
 			return
 		}
 		if (!newExpertPrompt.trim() && !isFileUploaded) {
-			vscode.postMessage({
-				type: "showToast",
-				toast: { message: "Expert prompt cannot be empty", toastType: "error" },
-			})
+			showErrorToast("Expert prompt cannot be empty")
 			return
 		}
 
 		if (deepCrawl && documentLinks.length === 0) {
-			vscode.postMessage({
-				type: "showToast",
-				toast: { message: "At least one document link is required when DeepCrawl is enabled", toastType: "error" },
-			})
+			showErrorToast("At least one document link is required when DeepCrawl is enabled")
 			return
 		}
 
 		const expertExists = allExperts.some((expert) => expert.name.toLowerCase() === newExpertName.toLowerCase())
 		if (expertExists) {
 			setNameError("An expert with this name already exists")
-			vscode.postMessage({
-				type: "showToast",
-				toast: { message: "An expert with this name already exists", toastType: "error" },
-			})
+			showErrorToast("An expert with this name already exists")
 			return
 		}
 		const newExpert: ExpertData = {
@@ -179,20 +188,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 			maxPages: deepCrawl ? maxPages : undefined,
 			crawlTimeout: deepCrawl ? crawlTimeout : undefined,
 		}
-		vscode.postMessage({
-			type: "saveExpert",
-			text: JSON.stringify(newExpert),
-		})
+		manageExperts("saveExpert", newExpert)
 		setCustomExperts([...customExperts, newExpert])
 		resetForm()
 	}
 
 	const handleFileUpload = () => {
 		if (newExpertPrompt.trim()) {
-			vscode.postMessage({
-				type: "showToast",
-				toast: { message: "Uploading a file will override existing prompt content", toastType: "warning" },
-			})
+			showWarningToast("Uploading a file will override existing prompt content")
 		}
 		fileInputRef.current?.click()
 	}
@@ -206,7 +209,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 		e.stopPropagation()
 		const expertToDelete = customExperts.find((expert) => expert.name === expertName)
 		if (expertToDelete && !expertToDelete.isDefault) {
-			vscode.postMessage({ type: "deleteExpert", text: expertName.trim() })
+			manageExperts("deleteExpert", expertToDelete)
 			setCustomExperts(customExperts.filter((expert) => expert.name !== expertName))
 			if (selectedExpert && selectedExpert.name === expertName) {
 				resetForm()
@@ -223,11 +226,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 	const handleOpenExpertPrompt = (expertName: string) => {
 		const expertToOpen = allExperts.find((expert) => expert.name === expertName)
 		if (expertToOpen) {
-			vscode.postMessage({
-				type: "viewExpertPrompt",
-				text: expertName.trim(),
+			manageExperts("viewExpertPrompt", {
+				name: expertToOpen.name,
 				isDefault: expertToOpen.isDefault,
-				prompt: expertToOpen.isDefault ? expertToOpen.prompt : undefined,
+				prompt: expertToOpen.prompt,
 				isDeepCrawlEnabled: expertToOpen.deepCrawl,
 			})
 		}
@@ -286,11 +288,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													}}
 													style={{ marginRight: "8px" }}>
 													<span
-														className={`codicon ${
-															expandedExperts[exp.name]
+														className={`codicon ${expandedExperts[exp.name]
 																? "codicon-chevron-down"
 																: "codicon-chevron-right"
-														}`}
+															}`}
 													/>
 												</VSCodeButton>
 												<span
@@ -343,54 +344,95 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												{/* Render document links if available */}
 												{exp.documentLinks && exp.documentLinks.length > 0
 													? exp.documentLinks.map((link, idx) => (
-															<DocumentAccordionItem key={idx}>
-																{link.status && (
-																	<StatusIcon
-																		status={link.status}
-																		title={capitalizeFirstLetter(link.status)}>
-																		{link.status.toLowerCase() ===
+														<DocumentAccordionItem key={idx}>
+															{link.status && (
+																<StatusIcon
+																	status={link.status}
+																	title={capitalizeFirstLetter(link.status)}>
+																	{link.status.toLowerCase() ===
 																		DocumentStatus.COMPLETED ? (
-																			<span className="codicon codicon-check" />
-																		) : link.status.toLowerCase() ===
-																		  DocumentStatus.FAILED ? (
-																			<span className="codicon codicon-error" />
-																		) : link.status.toLowerCase() ===
-																		  DocumentStatus.PROCESSING ? (
-																			<div
-																				style={{
-																					transform: "scale(0.8)",
-																					width: "20px",
-																					height: "20px",
-																					display: "flex",
-																					alignItems: "center",
-																					justifyContent: "center",
-																				}}>
-																				<VSCodeProgressRing />
-																			</div>
-																		) : (
-																			<span className="codicon codicon-clock" />
-																		)}
-																	</StatusIcon>
-																)}
-																<DocumentLinkContainer>
-																	<DocumentLinkText title={link.url}>
-																		{link.url}
-																	</DocumentLinkText>
-																	{link.processedAt && (
-																		<TimestampText>
-																			{formatTimestamp(link.processedAt)}
-																		</TimestampText>
+																		<span className="codicon codicon-check" />
+																	) : link.status.toLowerCase() ===
+																		DocumentStatus.FAILED ? (
+																		<span className="codicon codicon-error" />
+																	) : link.status.toLowerCase() ===
+																		DocumentStatus.PROCESSING ? (
+																		<div
+																			style={{
+																				transform: "scale(0.8)",
+																				width: "20px",
+																				height: "20px",
+																				display: "flex",
+																				alignItems: "center",
+																				justifyContent: "center",
+																			}}>
+																			<VSCodeProgressRing />
+																		</div>
+																	) : (
+																		<span className="codicon codicon-clock" />
 																	)}
-																</DocumentLinkContainer>
-																<DocumentButtons>
+																</StatusIcon>
+															)}
+															<DocumentLinkContainer>
+																<DocumentLinkText title={link.url}>
+																	{link.url}
+																</DocumentLinkText>
+																{link.processedAt && (
+																	<TimestampText>
+																		{formatTimestamp(link.processedAt)}
+																	</TimestampText>
+																)}
+															</DocumentLinkContainer>
+															<DocumentButtons>
+																<VSCodeButton
+																	appearance="icon"
+																	onClick={(e) => {
+																		e.stopPropagation()
+																		manageExperts("refreshDocumentLink", {
+																			expertName: exp.name,
+																			url: link.url,
+																		})
+																	}}
+																	disabled={exp.deepCrawl && !isEmbeddingValid}
+																	title={
+																		exp.deepCrawl && !isEmbeddingValid
+																			? "Document operations are disabled due to invalid embedding configuration"
+																			: undefined
+																	}>
+																	<span className="codicon codicon-refresh" />
+																</VSCodeButton>
+																{documentLinkInDeleteConfirmation?.expertName === exp.name &&
+																	documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
+																	<>
+																		<VSCodeButton
+																			appearance="icon"
+																			onClick={(e) => {
+																				e.stopPropagation()
+																				setDocumentLinkInDeleteConfirmation(null)
+																			}}>
+																			<span className="codicon codicon-close" />
+																		</VSCodeButton>
+																		<VSCodeButton
+																			appearance="icon"
+																			onClick={(e) => {
+																				e.stopPropagation()
+																				manageExperts("deleteDocumentLink", {
+																					expertName: exp.name,
+																					url: link.url,
+																				})
+																				setDocumentLinkInDeleteConfirmation(null)
+																			}}>
+																			<span className="codicon codicon-check" />
+																		</VSCodeButton>
+																	</>
+																) : (
 																	<VSCodeButton
 																		appearance="icon"
 																		onClick={(e) => {
 																			e.stopPropagation()
-																			vscode.postMessage({
-																				type: "refreshDocumentLink",
-																				text: link.url,
-																				expert: exp.name,
+																			setDocumentLinkInDeleteConfirmation({
+																				expertName: exp.name,
+																				linkUrl: link.url,
 																			})
 																		}}
 																		disabled={exp.deepCrawl && !isEmbeddingValid}
@@ -399,55 +441,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																				? "Document operations are disabled due to invalid embedding configuration"
 																				: undefined
 																		}>
-																		<span className="codicon codicon-refresh" />
+																		<span className="codicon codicon-trash" />
 																	</VSCodeButton>
-																	{documentLinkInDeleteConfirmation?.expertName === exp.name &&
-																	documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
-																		<>
-																			<VSCodeButton
-																				appearance="icon"
-																				onClick={(e) => {
-																					e.stopPropagation()
-																					setDocumentLinkInDeleteConfirmation(null)
-																				}}>
-																				<span className="codicon codicon-close" />
-																			</VSCodeButton>
-																			<VSCodeButton
-																				appearance="icon"
-																				onClick={(e) => {
-																					e.stopPropagation()
-																					vscode.postMessage({
-																						type: "deleteDocumentLink",
-																						text: link.url,
-																						expert: exp.name,
-																					})
-																					setDocumentLinkInDeleteConfirmation(null)
-																				}}>
-																				<span className="codicon codicon-check" />
-																			</VSCodeButton>
-																		</>
-																	) : (
-																		<VSCodeButton
-																			appearance="icon"
-																			onClick={(e) => {
-																				e.stopPropagation()
-																				setDocumentLinkInDeleteConfirmation({
-																					expertName: exp.name,
-																					linkUrl: link.url,
-																				})
-																			}}
-																			disabled={exp.deepCrawl && !isEmbeddingValid}
-																			title={
-																				exp.deepCrawl && !isEmbeddingValid
-																					? "Document operations are disabled due to invalid embedding configuration"
-																					: undefined
-																			}>
-																			<span className="codicon codicon-trash" />
-																		</VSCodeButton>
-																	)}
-																</DocumentButtons>
-															</DocumentAccordionItem>
-														))
+																)}
+															</DocumentButtons>
+														</DocumentAccordionItem>
+													))
 													: null}
 
 												{/* Inline editing for adding a document */}
@@ -455,16 +454,16 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													<DocumentAccordionItem>
 														<div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
 															<VSCodeTextField
-																value={inlineEditingDoc.linkUrl}
+																value={inlineEditingDoc?.linkUrl}
 																placeholder="Enter document link"
 																onChange={(e) => {
 																	setInlineDocLinkError(null) // Reset error on input change
 																	setInlineEditingDoc((prev) =>
 																		prev
 																			? {
-																					...prev,
-																					linkUrl: (e.target as HTMLInputElement).value,
-																				}
+																				...prev,
+																				linkUrl: (e.target as HTMLInputElement).value,
+																			}
 																			: null,
 																	)
 																}}
@@ -487,7 +486,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																onClick={(e) => {
 																	e.stopPropagation()
 																	try {
-																		const url = new URL(inlineEditingDoc.linkUrl.trim())
+																		const url = new URL(inlineEditingDoc?.linkUrl.trim())
 																		if (url.protocol !== "https:") {
 																			setInlineDocLinkError("Only HTTPS links are allowed")
 																			return
@@ -495,7 +494,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																		if (
 																			exp.documentLinks?.some(
 																				(link) =>
-																					link.url === inlineEditingDoc.linkUrl.trim(),
+																					link.url === inlineEditingDoc?.linkUrl.trim(),
 																			)
 																		) {
 																			setInlineDocLinkError(
@@ -503,26 +502,25 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																			)
 																			return
 																		}
-																		if (inlineEditingDoc.linkUrl.trim()) {
-																			vscode.postMessage({
-																				type: "addDocumentLink",
-																				text: inlineEditingDoc.linkUrl,
-																				expert: exp.name,
+																		if (inlineEditingDoc?.linkUrl.trim()) {
+																			manageExperts("addDocumentLink", {
+																				expertName: exp.name,
+																				url: inlineEditingDoc.linkUrl.trim(),
 																			})
 																			setCustomExperts((prevExperts) =>
 																				prevExperts.map((expert) =>
 																					expert.name === exp.name
 																						? {
-																								...expert,
-																								documentLinks: [
-																									...(expert.documentLinks ||
-																										[]),
-																									{
-																										url: inlineEditingDoc.linkUrl,
-																										status: DocumentStatus.PENDING,
-																									},
-																								],
-																							}
+																							...expert,
+																							documentLinks: [
+																								...(expert.documentLinks ||
+																									[]),
+																								{
+																									url: inlineEditingDoc.linkUrl,
+																									status: DocumentStatus.PENDING,
+																								},
+																							],
+																						}
 																						: expert,
 																				),
 																			)

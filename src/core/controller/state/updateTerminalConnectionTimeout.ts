@@ -1,27 +1,18 @@
-import { Controller } from ".."
-import { Int64, Int64Request } from "../../../shared/proto/common"
-import { customUpdateState } from "../../storage/state"
+import { Controller } from "../index"
+import { UpdateTerminalConnectionTimeoutRequest, UpdateTerminalConnectionTimeoutResponse } from "@shared/proto/cline/state"
+import { updateGlobalState } from "../../storage/state"
 
-/**
- * Updates the terminal connection timeout setting
- * @param controller The controller instance
- * @param request The request containing the timeout value in milliseconds
- * @returns The updated timeout value
- */
-export async function updateTerminalConnectionTimeout(controller: Controller, request: Int64Request): Promise<Int64> {
-	try {
-		const timeout = request.value
+export async function updateTerminalConnectionTimeout(
+	controller: Controller,
+	request: UpdateTerminalConnectionTimeoutRequest,
+): Promise<UpdateTerminalConnectionTimeoutResponse> {
+	const timeoutMs = request.timeoutMs
 
-		if (typeof timeout === "number" && !isNaN(timeout) && timeout > 0) {
-			// Update the global state directly
-			await customUpdateState(controller.context, "shellIntegrationTimeout", timeout)
-			return { value: timeout }
-		} else {
-			console.warn(`Invalid shell integration timeout value received: ${timeout}. Expected a positive number.`)
-			throw new Error("Invalid timeout value. Expected a positive number.")
-		}
-	} catch (error) {
-		console.error(`Failed to update terminal connection timeout: ${error}`)
-		throw error
-	}
+	// Update the terminal connection timeout setting in the state
+	await updateGlobalState(controller.context, "shellIntegrationTimeout", timeoutMs)
+
+	// Broadcast state update to all webviews
+	await controller.postStateToWebview()
+
+	return { timeoutMs }
 }

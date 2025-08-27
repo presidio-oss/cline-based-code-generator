@@ -1,0 +1,352 @@
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import Section from "../Section"
+import { VSCodeButton, VSCodeCheckbox, VSCodeDropdown, VSCodeOption, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { updateSetting, manageIndex } from "../utils/settingsHandlers"
+import { HaiBuildContextOptions, HaiBuildIndexProgress } from "@shared/customApi"
+import { memo } from "react"
+import { HaiBuildDefaults } from "../../../../../src/shared/haiDefaults"
+
+const haiSystemPromptVersions = [
+	{
+		version: "v1",
+		label: "Optimized v1",
+		description: "Optimised tool definitions, reducing cost by ~35%.",
+	},
+	{
+		version: "v2",
+		label: "Optimized v2",
+		description: "Optimised guidelines/instructions, reducing cost by ~25%.",
+	},
+	{
+		version: "v3",
+		label: "Optimized v3",
+		description: "Optimised tool definitions and guidelines/instructions, reducing cost by ~50%.",
+	},
+	{
+		version: "default",
+		label: "Standard",
+		description: "Default with no optimizations, highest API cost.",
+	},
+]
+
+type IndexingProgressProps = {
+	buildContextOptions?: HaiBuildContextOptions
+}
+
+type IndexControlButtonsProps = {
+	disabled?: boolean
+	buildIndexProgress?: HaiBuildIndexProgress
+	buildContextOptions?: HaiBuildContextOptions
+}
+
+interface HaiSettingsSectionProps {
+	renderSectionHeader: (tabId: string) => JSX.Element | null
+}
+
+const IndexControlButtons = memo(({ disabled, buildIndexProgress, buildContextOptions }: IndexControlButtonsProps) => {
+	return (
+		<div style={{ display: "flex", gap: "4px", marginLeft: "auto" }}>
+			<VSCodeButton
+				appearance="icon"
+				title="Start Index"
+				onClick={() => {
+					manageIndex("start")
+				}}
+				disabled={
+					disabled ||
+					(buildContextOptions && !buildContextOptions.useIndex) ||
+					(buildIndexProgress &&
+						(buildIndexProgress.isInProgress ||
+							(!!buildIndexProgress.progress && buildIndexProgress.progress.toFixed(1) === "100.0")))
+				}>
+				<span className="codicon codicon-play"></span>
+			</VSCodeButton>
+			<VSCodeButton
+				appearance="icon"
+				title="Stop Index"
+				onClick={() => {
+					manageIndex("stop")
+				}}
+				disabled={disabled || !buildContextOptions?.useIndex || !buildIndexProgress?.isInProgress}>
+				<span className="codicon codicon-stop"></span>
+			</VSCodeButton>
+			<VSCodeButton
+				appearance="icon"
+				title="Reset Index"
+				onClick={() => {
+					manageIndex("reset")
+				}}
+				disabled={
+					disabled ||
+					(buildContextOptions && !buildContextOptions.useIndex) ||
+					(buildIndexProgress &&
+						(buildIndexProgress.isInProgress ||
+							buildIndexProgress.progress === undefined ||
+							buildIndexProgress.progress.toFixed(1) === "0.0"))
+				}>
+				<span className="codicon codicon-debug-restart"></span>
+			</VSCodeButton>
+		</div>
+	)
+})
+
+const IndexingProgress = memo(({ buildContextOptions }: IndexingProgressProps) => {
+	const { buildIndexProgress } = useExtensionState()
+	return (
+		<>
+			<div
+				style={{
+					display: "flex",
+					alignItems: "center",
+					justifyContent: "center",
+					paddingTop: "2px",
+					paddingBottom: "2px",
+					opacity: !buildContextOptions?.useIndex ? 0.5 : 1,
+				}}>
+				<div style={{ width: "100%", backgroundColor: "#e5e7eb", height: "8px", borderRadius: "2px" }}>
+					<div
+						style={{
+							backgroundColor: "#186DF0",
+							height: "8px",
+							width: `${buildIndexProgress?.progress ?? 0}%`,
+							borderRadius: "2px",
+						}}></div>
+				</div>
+				<span
+					style={{
+						paddingLeft: "4px",
+					}}>
+					{buildIndexProgress && buildIndexProgress.progress ? `${buildIndexProgress.progress.toFixed(1)}%` : "---"}
+				</span>
+			</div>
+			<div>
+				Last run
+				<span
+					style={{
+						fontSize: "12px",
+						color: "var(--vscode-descriptionForeground)",
+						paddingLeft: "4px",
+					}}>
+					{buildIndexProgress?.ts ?? "-"}
+				</span>
+			</div>
+		</>
+	)
+})
+
+const HaiSettingsSection = ({ renderSectionHeader }: HaiSettingsSectionProps) => {
+	const { buildContextOptions, vscodeWorkspacePath, buildIndexProgress } = useExtensionState()
+	return (
+		<div>
+			{renderSectionHeader("hai-settings")}
+			<Section>
+				<div style={{ marginBottom: 5 }}>
+					<div className="dropdown-container" style={{ marginBottom: 5 }}>
+						<label htmlFor="system-prompt-version">
+							<span style={{ fontWeight: 500 }}>Prompt Optimization (Experimental)</span>
+						</label>
+						<VSCodeDropdown
+							id="system-prompt-version"
+							value={buildContextOptions?.systemPromptVersion || "v3"}
+							onChange={(event: any) => {
+								updateSetting("buildContextOptions", {
+									...buildContextOptions!,
+									systemPromptVersion: event.target?.value,
+								})
+							}}
+							style={{ minWidth: 130, position: "relative", width: "100%", marginBottom: "8px", marginTop: "8px" }}>
+							{haiSystemPromptVersions.map((version) => {
+								return (
+									<VSCodeOption key={version.version} value={version.version}>
+										<div>{version.label} </div>
+										<div
+											style={{
+												fontSize: "10px",
+												marginTop: "2px",
+												color: "var(--vscode-descriptionForeground)",
+											}}>
+											{version.description}
+										</div>
+									</VSCodeOption>
+								)
+							})}
+						</VSCodeDropdown>
+					</div>
+					<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+						<VSCodeCheckbox
+							checked={buildContextOptions?.useIndex}
+							onChange={(e: any) => {
+								updateSetting("buildContextOptions", {
+									...buildContextOptions!,
+									useIndex: e.target?.checked,
+								})
+							}}
+							disabled={!vscodeWorkspacePath || buildIndexProgress?.isInProgress}>
+							<span style={{ fontWeight: "500" }}>Use Code Index</span>
+						</VSCodeCheckbox>
+						<IndexControlButtons
+							disabled={!vscodeWorkspacePath}
+							buildIndexProgress={buildIndexProgress}
+							buildContextOptions={buildContextOptions}
+						/>
+					</div>
+					<IndexingProgress buildContextOptions={buildContextOptions} />
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						When enabled, HAI will automatically index your code. This is useful for finding relevant files for the
+						tasks you are working on.
+					</p>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						<span style={{ color: "var(--vscode-errorForeground)" }}>
+							(<span style={{ fontWeight: 500 }}>Note:</span> Code indexing reads all file content and sends it to
+							the LLM to generate embeddings. Exclude sensitive data to prevent unintended inclusion.)
+						</span>
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeCheckbox
+						checked={buildContextOptions?.useContext}
+						disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
+						onChange={(e: any) => {
+							updateSetting("buildContextOptions", {
+								...buildContextOptions!,
+								useContext: e.target?.checked,
+							})
+						}}>
+						<span style={{ fontWeight: "500" }}>With Code Context (Comments)</span>
+					</VSCodeCheckbox>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						When enabled, HAI will automatically add code context to your code before indexing.
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeTextArea
+						value={buildContextOptions?.appContext ?? ""}
+						style={{ width: "100%" }}
+						rows={4}
+						disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
+						placeholder={'e.g. "This is an e-commerce application", "This is an CRM application"'}
+						onInput={(e: any) => {
+							updateSetting("buildContextOptions", {
+								...buildContextOptions!,
+								appContext: e.target?.value || "",
+							})
+						}}>
+						<span style={{ fontWeight: "500" }}>Application Context</span>
+					</VSCodeTextArea>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						This will help HAI to better understand your application.
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeTextArea
+						value={buildContextOptions?.excludeFolders ?? ""}
+						style={{ width: "100%" }}
+						rows={4}
+						disabled={!vscodeWorkspacePath || !buildContextOptions?.useIndex || buildIndexProgress?.isInProgress}
+						placeholder={"Comma separated list of folders to exclude from indexing"}
+						onInput={(e: any) => {
+							updateSetting("buildContextOptions", {
+								...buildContextOptions!,
+								excludeFolders: e.target?.value || "",
+							})
+						}}>
+						<span style={{ fontWeight: "500" }}>Exclude Folders</span>
+					</VSCodeTextArea>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						List of folders to exclude from the code indexing. The following folders are ignored by default{" "}
+						<span
+							style={{
+								color: "#E8912D",
+								opacity: "80%",
+							}}>
+							{HaiBuildDefaults.defaultDirsToIgnore.join(", ")}
+						</span>
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeCheckbox
+						checked={buildContextOptions?.useSecretScanning ?? false}
+						disabled={!vscodeWorkspacePath}
+						onChange={(e: any) => {
+							updateSetting("buildContextOptions", {
+								...buildContextOptions!,
+								useSecretScanning: e.target?.checked,
+							})
+						}}>
+						<span style={{ fontWeight: "500" }}>Secret Scanning</span>
+					</VSCodeCheckbox>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						When enabled, HAI will try not to read secrets from your code. That matches below given patterns.
+					</p>
+				</div>
+
+				<div style={{ marginBottom: 5 }}>
+					<VSCodeTextArea
+						value={
+							buildContextOptions?.secretFilesPatternToIgnore
+								? buildContextOptions?.secretFilesPatternToIgnore.join("\n")
+								: HaiBuildDefaults.defaultSecretFilesPatternToIgnore.join("\n")
+						}
+						style={{ width: "100%" }}
+						rows={4}
+						disabled={!vscodeWorkspacePath || !buildContextOptions?.useSecretScanning}
+						placeholder={'e.g. ".env", ".env.local", ".env.development", ".env.production"'}
+						onInput={(e: any) => {
+							if (e.target?.value) {
+								updateSetting("buildContextOptions", {
+									...buildContextOptions!,
+									secretFilesPatternToIgnore: e.target?.value.split("\n"),
+								})
+							}
+						}}>
+						<span style={{ fontWeight: "500" }}>Secret Files Patterns to Ignore</span>
+					</VSCodeTextArea>
+					<p
+						style={{
+							fontSize: "12px",
+							marginTop: "5px",
+							color: "var(--vscode-descriptionForeground)",
+						}}>
+						List of files to ignore when scanning for secrets. Separate each pattern with a new line.
+					</p>
+				</div>
+			</Section>
+		</div>
+	)
+}
+
+export default HaiSettingsSection

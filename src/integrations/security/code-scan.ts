@@ -6,11 +6,13 @@ import { ApiConfiguration } from "../../shared/api"
 import { getApiStreamResponse } from "../code-prep/helper"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { fileExists } from "../../utils/runtime-downloader"
+import { Mode } from "@/shared/storage/types"
 
 export class CodeScanner {
 	private apiConfig!: ApiConfiguration
 	private systemPrompt: string
 	private maxRetry: number
+	private currentMode!: Mode
 
 	constructor() {
 		this.systemPrompt = HaiBuildDefaults.defaultCodeScannerSystemPrompt
@@ -19,6 +21,11 @@ export class CodeScanner {
 
 	withApiConfig(apiConfig: ApiConfiguration) {
 		this.apiConfig = apiConfig
+		return this
+	}
+
+	withCurrentMode(mode: Mode) {
+		this.currentMode = mode
 		return this
 	}
 
@@ -37,7 +44,7 @@ export class CodeScanner {
 	scanCode(code: string, maxRetry: number = this.maxRetry): Promise<string> {
 		const executeScan = (retryCount: number): Promise<string> => {
 			return new Promise((resolve) => {
-				const llmApi = buildApiHandler(this.apiConfig)
+				const llmApi = buildApiHandler(this.apiConfig, this.currentMode)
 				const userPrompt = `<code>${code}</code>`
 				const apiStream = llmApi.createMessage(this.systemPrompt, [
 					{

@@ -2,7 +2,7 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import { withRetry } from "../retry"
 import { ApiHandler } from "../"
 import { convertToR1Format } from "../transform/r1-format"
-import { bedrockDefaultModelId, BedrockModelId, bedrockModels, CLAUDE_SONNET_4_1M_SUFFIX, ModelInfo } from "@shared/api"
+import { bedrockDefaultModelId, BedrockModelId, bedrockModels, ModelInfo } from "@shared/api"
 import { calculateApiCostOpenAI } from "../../utils/cost"
 import { ApiStream } from "../transform/stream"
 import { fromNodeProviderChain } from "@aws-sdk/credential-providers"
@@ -117,14 +117,7 @@ export class AwsBedrockHandler implements ApiHandler {
 	@withRetry({ maxRetries: 4 })
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		// cross region inference requires prefixing the model id with the region
-		const rawModelId = await this.getModelId()
-
-		const modelId = rawModelId.endsWith(CLAUDE_SONNET_4_1M_SUFFIX)
-			? rawModelId.slice(0, -CLAUDE_SONNET_4_1M_SUFFIX.length)
-			: rawModelId
-
-		const enable1mContextWindow = rawModelId.endsWith(CLAUDE_SONNET_4_1M_SUFFIX)
-
+		const modelId = await this.getModelId()
 		const model = this.getModel()
 
 		// This baseModelId is used to indicate the capabilities of the model.
@@ -146,7 +139,7 @@ export class AwsBedrockHandler implements ApiHandler {
 		}
 
 		// Default: Use Anthropic Converse API for all Anthropic models
-		yield* this.createAnthropicMessage(systemPrompt, messages, modelId, model, enable1mContextWindow)
+		yield* this.createAnthropicMessage(systemPrompt, messages, modelId, model)
 	}
 
 	getModel(): { id: string; info: ModelInfo } {
@@ -750,7 +743,6 @@ export class AwsBedrockHandler implements ApiHandler {
 		messages: Anthropic.Messages.MessageParam[],
 		modelId: string,
 		model: { id: string; info: ModelInfo },
-		enable1mContextWindow: boolean,
 	): ApiStream {
 		// Format messages for Anthropic model using unified formatter
 		const formattedMessages = this.formatMessagesForConverseAPI(messages)
@@ -781,18 +773,15 @@ export class AwsBedrockHandler implements ApiHandler {
 			messages: messagesWithCache,
 			system: systemMessages,
 			inferenceConfig: this.getInferenceConfig(model.info, "anthropic"),
-			additionalModelRequestFields: {
-				// Add thinking configuration as per LangChain documentation
-				...(reasoningOn && {
-					thinking: {
-						type: "enabled",
-						budget_tokens: budget_tokens,
-					},
-				}),
-				...(enable1mContextWindow && {
-					anthropic_beta: ["context-1m-2025-08-07"],
-				}),
-			},
+			// Add thinking configuration as per LangChain documentation
+			additionalModelRequestFields: reasoningOn
+				? {
+						thinking: {
+							type: "enabled",
+							budget_tokens: budget_tokens,
+						},
+					}
+				: undefined,
 		})
 
 		// Execute the streaming request using unified handler
@@ -873,7 +862,7 @@ export class AwsBedrockHandler implements ApiHandler {
 				imageData = new Uint8Array(Buffer.from(base64Data, "base64"))
 			} else if (item.source.data && typeof item.source.data === "object") {
 				// Try to convert to Uint8Array
-				imageData = item.source.data instanceof Uint8Array ? item.source.data : new Uint8Array(item.source.data)
+				imageData = new Uint8Array(Buffer.from(item.source.data as Buffer | Uint8Array))
 			} else {
 				throw new Error("Unsupported image data format")
 			}

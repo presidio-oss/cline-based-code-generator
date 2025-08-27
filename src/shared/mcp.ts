@@ -94,8 +94,6 @@ export interface McpMarketplaceItem {
 	createdAt: string
 	updatedAt: string
 	lastGithubSync: string
-
-	// TAG:HAI
 	isLocal?: boolean
 }
 

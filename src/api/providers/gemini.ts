@@ -2,6 +2,7 @@ import type { Anthropic } from "@anthropic-ai/sdk"
 // Restore GenerateContentConfig import and add GenerateContentResponseUsageMetadata
 import { GoogleGenAI, type GenerateContentConfig, type GenerateContentResponseUsageMetadata } from "@google/genai"
 import { withRetry } from "../retry"
+import { Part } from "@google/genai"
 import { ApiHandler } from "../"
 import { ApiHandlerOptions, geminiDefaultModelId, GeminiModelId, geminiModels, ModelInfo } from "@shared/api"
 import { convertAnthropicMessageToGemini } from "../transform/gemini-format"
@@ -11,8 +12,15 @@ import { telemetryService } from "@services/posthog/telemetry/TelemetryService"
 // Define a default TTL for the cache (e.g., 15 minutes in seconds)
 const DEFAULT_CACHE_TTL_SECONDS = 900
 
-interface GeminiHandlerOptions extends ApiHandlerOptions {
+interface GeminiHandlerOptions {
 	isVertex?: boolean
+	vertexProjectId?: string
+	vertexRegion?: string
+	geminiApiKey?: string
+	geminiBaseUrl?: string
+	thinkingBudgetTokens?: number
+	apiModelId?: string
+	taskId?: string
 }
 
 /**
@@ -36,31 +44,46 @@ interface GeminiHandlerOptions extends ApiHandlerOptions {
  * 4. Separating immediate costs from ongoing costs to avoid double-counting
  */
 export class GeminiHandler implements ApiHandler {
-	private options: ApiHandlerOptions
-	private client: GoogleGenAI
+	private options: GeminiHandlerOptions
+	private client: GoogleGenAI | undefined
 
 	constructor(options: GeminiHandlerOptions) {
 		// Store the options
 		this.options = options
+	}
 
-		if (options.isVertex) {
-			// Initialize with Vertex AI configuration
-			const project = this.options.vertexProjectId ?? "not-provided"
-			const location = this.options.vertexRegion ?? "not-provided"
+	private ensureClient(): GoogleGenAI {
+		if (!this.client) {
+			const options = this.options as GeminiHandlerOptions
 
-			this.client = new GoogleGenAI({
-				vertexai: true,
-				project,
-				location,
-			})
-		} else {
-			// Initialize with standard API key
-			if (!options.geminiApiKey) {
-				throw new Error("API key is required for Google Gemini when not using Vertex AI")
+			if (options.isVertex) {
+				// Initialize with Vertex AI configuration
+				const project = this.options.vertexProjectId ?? "not-provided"
+				const location = this.options.vertexRegion ?? "not-provided"
+
+				try {
+					this.client = new GoogleGenAI({
+						vertexai: true,
+						project,
+						location,
+					})
+				} catch (error) {
+					throw new Error(`Error creating Gemini Vertex AI client: ${error.message}`)
+				}
+			} else {
+				// Initialize with standard API key
+				if (!options.geminiApiKey) {
+					throw new Error("API key is required for Google Gemini when not using Vertex AI")
+				}
+
+				try {
+					this.client = new GoogleGenAI({ apiKey: options.geminiApiKey })
+				} catch (error) {
+					throw new Error(`Error creating Gemini client: ${error.message}`)
+				}
 			}
-
-			this.client = new GoogleGenAI({ apiKey: options.geminiApiKey })
 		}
+		return this.client
 	}
 
 	/**
@@ -79,6 +102,7 @@ export class GeminiHandler implements ApiHandler {
 		maxDelay: 15000,
 	})
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const client = this.ensureClient()
 		const { id: modelId, info } = this.getModel()
 		const contents = messages.map(convertAnthropicMessageToGemini)
 
@@ -96,9 +120,10 @@ export class GeminiHandler implements ApiHandler {
 		}
 
 		// Add thinking config if the model supports it
-		if (info.thinkingConfig?.outputPrice !== undefined && maxBudget > 0) {
+		if (thinkingBudget > 0) {
 			requestConfig.thinkingConfig = {
 				thinkingBudget: thinkingBudget,
+				includeThoughts: true,
 			}
 		}
 
@@ -111,10 +136,11 @@ export class GeminiHandler implements ApiHandler {
 		let promptTokens = 0
 		let outputTokens = 0
 		let cacheReadTokens = 0
+		let thoughtsTokenCount = 0 // Initialize thought token counts
 		let lastUsageMetadata: GenerateContentResponseUsageMetadata | undefined
 
 		try {
-			const result = await this.client.models.generateContentStream({
+			const result = await client.models.generateContentStream({
 				model: modelId,
 				contents: contents,
 				config: {
@@ -130,6 +156,31 @@ export class GeminiHandler implements ApiHandler {
 					isFirstSdkChunk = false
 				}
 
+				// Handle thinking content from Gemini's response
+				const candidateForThoughts = chunk?.candidates?.[0]
+				const partsForThoughts = candidateForThoughts?.content?.parts
+				let thoughts = "" // Initialize as empty string
+
+				if (partsForThoughts) {
+					// This ensures partsForThoughts is a Part[] array
+					for (const part of partsForThoughts) {
+						const { thought, text } = part as Part
+						if (thought && text) {
+							// Ensure part.text exists
+							// Handle the thought part
+							thoughts += text + "\n" // Append thought and a newline
+						}
+					}
+				}
+
+				if (thoughts.trim() !== "") {
+					yield {
+						type: "reasoning",
+						reasoning: thoughts.trim(),
+					}
+					thoughts = "" // Reset thoughts after yielding
+				}
+
 				if (chunk.text) {
 					yield {
 						type: "text",
@@ -141,6 +192,7 @@ export class GeminiHandler implements ApiHandler {
 					lastUsageMetadata = chunk.usageMetadata
 					promptTokens = lastUsageMetadata.promptTokenCount ?? promptTokens
 					outputTokens = lastUsageMetadata.candidatesTokenCount ?? outputTokens
+					thoughtsTokenCount = lastUsageMetadata.thoughtsTokenCount ?? thoughtsTokenCount
 					cacheReadTokens = lastUsageMetadata.cachedContentTokenCount ?? cacheReadTokens
 				}
 			}
@@ -151,12 +203,14 @@ export class GeminiHandler implements ApiHandler {
 					info,
 					inputTokens: promptTokens,
 					outputTokens,
+					thoughtsTokenCount,
 					cacheReadTokens,
 				})
 				yield {
 					type: "usage",
-					inputTokens: promptTokens,
+					inputTokens: promptTokens - cacheReadTokens,
 					outputTokens,
+					thoughtsTokenCount,
 					cacheReadTokens,
 					cacheWriteTokens: 0,
 					totalCost,
@@ -171,8 +225,22 @@ export class GeminiHandler implements ApiHandler {
 
 				// Gemini doesn't include status codes in their errors
 				// https://github.com/googleapis/js-genai/blob/61f7f27b866c74333ca6331883882489bcb708b9/src/_api_client.ts#L569
-				if (error.name === "ClientError" && error.message.includes("got status: 429 Too Many Requests.")) {
-					;(error as any).status = 429
+				const rateLimitPatterns = [
+					/got status: 429/i,
+					/429 Too Many Requests/i,
+					/rate limit exceeded/i,
+					/too many requests/i,
+				]
+
+				const isRateLimit =
+					error.name === "ClientError" && rateLimitPatterns.some((pattern) => pattern.test(error.message))
+
+				if (isRateLimit) {
+					const rateLimitError = Object.assign(new Error(error.message), {
+						...error,
+						status: 429,
+					})
+					throw rateLimitError
 				}
 			} else {
 				apiError = String(error)
@@ -188,23 +256,18 @@ export class GeminiHandler implements ApiHandler {
 				totalDurationSdkMs > 0 && outputTokens > 0 ? outputTokens / (totalDurationSdkMs / 1000) : undefined
 
 			if (this.options.taskId) {
-				telemetryService.captureGeminiApiPerformance(
-					this.options.taskId,
-					modelId,
-					{
-						ttftSec: ttftSdkMs !== undefined ? ttftSdkMs / 1000 : undefined,
-						totalDurationSec: totalDurationSdkMs / 1000,
-						promptTokens,
-						outputTokens,
-						cacheReadTokens,
-						cacheHit,
-						cacheHitPercentage,
-						apiSuccess,
-						apiError,
-						throughputTokensPerSec: throughputTokensPerSecSdk,
-					},
-					true,
-				)
+				telemetryService.captureGeminiApiPerformance(this.options.taskId, modelId, {
+					ttftSec: ttftSdkMs !== undefined ? ttftSdkMs / 1000 : undefined,
+					totalDurationSec: totalDurationSdkMs / 1000,
+					promptTokens,
+					outputTokens,
+					cacheReadTokens,
+					cacheHit,
+					cacheHitPercentage,
+					apiSuccess,
+					apiError,
+					throughputTokensPerSec: throughputTokensPerSecSdk,
+				})
 			} else {
 				console.warn("GeminiHandler: taskId not available for telemetry in createMessage.")
 			}
@@ -225,11 +288,13 @@ export class GeminiHandler implements ApiHandler {
 		info,
 		inputTokens,
 		outputTokens,
+		thoughtsTokenCount = 0,
 		cacheReadTokens = 0,
 	}: {
 		info: ModelInfo
 		inputTokens: number
 		outputTokens: number
+		thoughtsTokenCount: number
 		cacheReadTokens?: number
 	}) {
 		// Exit early if any required pricing information is missing
@@ -261,18 +326,18 @@ export class GeminiHandler implements ApiHandler {
 		const inputTokensCost = inputPrice * (uncachedInputTokens / 1_000_000)
 
 		// 2. Output token costs
-		const outputTokensCost = outputPrice * (outputTokens / 1_000_000)
+		const responseTokensCost = outputPrice * ((outputTokens + thoughtsTokenCount) / 1_000_000)
 
 		// 3. Cache read costs (immediate)
 		const cacheReadCost = (cacheReadTokens ?? 0) > 0 ? cacheReadsPrice * ((cacheReadTokens ?? 0) / 1_000_000) : 0
 
 		// Calculate total immediate cost (excluding cache write/storage costs)
-		const totalCost = inputTokensCost + outputTokensCost + cacheReadCost
+		const totalCost = inputTokensCost + responseTokensCost + cacheReadCost
 
 		// Create the trace object for debugging
 		const trace: Record<string, { price: number; tokens: number; cost: number }> = {
 			input: { price: inputPrice, tokens: uncachedInputTokens, cost: inputTokensCost },
-			output: { price: outputPrice, tokens: outputTokens, cost: outputTokensCost },
+			output: { price: outputPrice, tokens: outputTokens, cost: responseTokensCost },
 		}
 
 		// Only include cache read costs in the trace (cache write costs are tracked separately)
@@ -304,6 +369,7 @@ export class GeminiHandler implements ApiHandler {
 	 */
 	async countTokens(content: Array<any>): Promise<number> {
 		try {
+			const client = this.ensureClient()
 			const { id: model } = this.getModel()
 
 			// Convert content to Gemini format
@@ -315,7 +381,7 @@ export class GeminiHandler implements ApiHandler {
 			})
 
 			// Use Gemini's token counting API
-			const response = await this.client.models.countTokens({
+			const response = await client.models.countTokens({
 				model,
 				contents: [{ parts: geminiContent }],
 			})
@@ -367,7 +433,8 @@ export class GeminiHandler implements ApiHandler {
 				},
 			]
 
-			await this.client.models.generateContent({
+			const client = this.ensureClient()
+			await client.models.generateContent({
 				model,
 				contents,
 				config: {

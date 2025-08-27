@@ -43,7 +43,7 @@ export async function sendTaskToServer(task: string, apiKey?: string): Promise<a
 	} catch (error: any) {
 		if (error.code === "ECONNREFUSED") {
 			throw new Error(
-				"Could not connect to the test server. Make sure VSCode is running with the HAI extension and the test server is active.",
+				"Could not connect to the test server. Make sure VSCode is running with the Cline extension and the test server is active.",
 			)
 		}
 

@@ -1,7 +1,7 @@
-import { UpdateBrowserSettingsRequest } from "../../../shared/proto/browser"
-import { Boolean } from "../../../shared/proto/common"
+import { UpdateBrowserSettingsRequest } from "@shared/proto/cline/browser"
+import { Boolean } from "@shared/proto/cline/common"
 import { Controller } from "../index"
-import { customGetState, customUpdateState } from "../../storage/state"
+import { updateGlobalState, getGlobalState } from "../../storage/state"
 import { BrowserSettings as SharedBrowserSettings, DEFAULT_BROWSER_SETTINGS } from "../../../shared/BrowserSettings"
 
 /**
@@ -13,7 +13,7 @@ import { BrowserSettings as SharedBrowserSettings, DEFAULT_BROWSER_SETTINGS } fr
 export async function updateBrowserSettings(controller: Controller, request: UpdateBrowserSettingsRequest): Promise<Boolean> {
 	try {
 		// Get current browser settings to preserve fields not in the request
-		const currentSettings = (await customGetState(controller.context, "browserSettings")) as SharedBrowserSettings | undefined
+		const currentSettings = (await getGlobalState(controller.context, "browserSettings")) as SharedBrowserSettings | undefined
 		const mergedWithDefaults = { ...DEFAULT_BROWSER_SETTINGS, ...currentSettings }
 
 		// Convert from protobuf format to shared format, merging with existing settings
@@ -39,7 +39,7 @@ export async function updateBrowserSettings(controller: Controller, request: Upd
 		}
 
 		// Update global state with new settings
-		await customUpdateState(controller.context, "browserSettings", newBrowserSettings)
+		await updateGlobalState(controller.context, "browserSettings", newBrowserSettings)
 
 		// Update task browser settings if task exists
 		if (controller.task) {
@@ -50,13 +50,13 @@ export async function updateBrowserSettings(controller: Controller, request: Upd
 		// Post updated state to webview
 		await controller.postStateToWebview()
 
-		return {
+		return Boolean.create({
 			value: true,
-		}
+		})
 	} catch (error) {
 		console.error("Error updating browser settings:", error)
-		return {
+		return Boolean.create({
 			value: false,
-		}
+		})
 	}
 }

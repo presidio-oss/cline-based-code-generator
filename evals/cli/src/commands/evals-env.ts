@@ -24,14 +24,14 @@ export async function evalsEnvHandler(options: EvalsEnvOptions): Promise<void> {
 		case "create":
 			console.log(chalk.blue("Creating evals.env file..."))
 			createEvalsEnvFile(directory)
-			console.log(chalk.green("The HAI extension should now detect this file and enter test mode."))
+			console.log(chalk.green("The Cline extension should now detect this file and enter test mode."))
 			console.log(chalk.yellow("Note: You may need to reload VSCode for the changes to take effect."))
 			break
 
 		case "remove":
 			console.log(chalk.blue("Removing evals.env file..."))
 			removeEvalsEnvFile(directory)
-			console.log(chalk.green("The HAI extension should now exit test mode."))
+			console.log(chalk.green("The Cline extension should now exit test mode."))
 			console.log(chalk.yellow("Note: You may need to reload VSCode for the changes to take effect."))
 			break
 
@@ -39,9 +39,9 @@ export async function evalsEnvHandler(options: EvalsEnvOptions): Promise<void> {
 			console.log(chalk.blue("Checking for evals.env file..."))
 			const exists = checkEvalsEnvFile(directory)
 			if (exists) {
-				console.log(chalk.green("The HAI extension should be in test mode."))
+				console.log(chalk.green("The Cline extension should be in test mode."))
 			} else {
-				console.log(chalk.yellow("The HAI extension should not be in test mode."))
+				console.log(chalk.yellow("The Cline extension should not be in test mode."))
 			}
 			break
 

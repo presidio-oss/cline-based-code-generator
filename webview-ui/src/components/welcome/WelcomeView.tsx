@@ -1,21 +1,28 @@
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
 import { useExtensionState } from "../../context/ExtensionStateContext"
-import { vscode } from "../../utils/vscode"
 import Logo from "../../assets/hai-dark.svg?react"
 import ApiOptions from "../settings/ApiOptions"
 import EmbeddingOptions from "../settings/EmbeddingOptions"
+import { Mode } from "@shared/storage/types"
+import { StateServiceClient } from "@/services/grpc-client"
+import { BooleanRequest } from "@shared/proto/cline/common"
 
 const IS_DEV = false // FIXME: use flags when packaging
 
 const WelcomeView = () => {
-	const { apiConfiguration, embeddingConfiguration, buildContextOptions, buildIndexProgress } = useExtensionState()
+	const { apiConfiguration, embeddingConfiguration, buildContextOptions, buildIndexProgress, mode } = useExtensionState()
+
+	const [currentTab, setCurrentTab] = useState<Mode>(mode)
 
 	const [apiValid, setApiValid] = useState<boolean>(false)
 
-	const handleSubmit = () => {
-		vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-		vscode.postMessage({ type: "embeddingConfiguration", embeddingConfiguration })
+	const handleSubmit = async () => {
+		try {
+			await StateServiceClient.setWelcomeViewCompleted(BooleanRequest.create({ value: true }))
+		} catch (error) {
+			console.error("Failed to update API configuration or complete welcome view:", error)
+		}
 	}
 
 	return (
@@ -74,7 +81,7 @@ const WelcomeView = () => {
 					}}>
 					<div>
 						<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-						<ApiOptions showModelOptions={true} onValid={(isValid) => setApiValid(isValid)} />
+						<ApiOptions showModelOptions={true} currentMode={currentTab} onValid={(isValid) => setApiValid(isValid)} />
 					</div>
 
 					<div style={{ marginBottom: 10 }}>

@@ -1,31 +1,31 @@
 ---
 title: "Context Management"
-description: "Context is key to getting the most out of HAI"
+description: "Context is key to getting the most out of Cline"
 ---
 
 > 💡 **Quick Reference**
 >
-> -   Context = The information HAI knows about your project
-> -   Context Window = How much information HAI can hold at once
+> -   Context = The information Cline knows about your project
+> -   Context Window = How much information Cline can hold at once
 > -   Use context files to maintain project knowledge
 > -   Reset when the context window gets full
 
 ## Understanding Context & Context Windows
 
-<Frame caption="In a world of infinite context, the context window is what HAI currently has available">
+<Frame caption="In a world of infinite context, the context window is what Cline currently has available">
 	<img
 		src="https://storage.googleapis.com/cline_public_images/docs/assets/image%20(2).png"
-		alt="In a world of infinite context, the context window is what HAI currently has available"
+		alt="In a world of infinite context, the context window is what Cline currently has available"
 	/>
 </Frame>
 
-Think of working with HAI like collaborating with a thorough, proactive teammate:
+Think of working with Cline like collaborating with a thorough, proactive teammate:
 
 ### How Context is Built
 
-HAI actively builds context in two ways:
+Cline actively builds context in two ways:
 
-1. **Automatic Context Gathering (i.e. HAI-driven)**
+1. **Automatic Context Gathering (i.e. Cline-driven)**
     - Proactively reads related files
     - Explores project structure
     - Analyzes patterns and relationships
@@ -34,18 +34,18 @@ HAI actively builds context in two ways:
 2. **User-Guided Context**
     - Share specific files
     - Provide documentation
-    - Answer HAI's questions
+    - Answer Cline's questions
     - Guide focus areas
     - Share design thoughts and requirements
 
-💡 **Key Point**: HAI isn't passive - it actively seeks to understand your project. You can either let it explore or guide its focus, especially in [Plan](https://github.com/presidio-oss/cline-based-code-generator/blob/main/docs/exploring-hai-tools/plan-and-act-modes-a-guide-to-effective-ai-development.mdx) mode.
+💡 **Key Point**: Cline isn't passive - it actively seeks to understand your project. You can either let it explore or guide its focus, especially in [Plan](https://docs.cline.bot/features/plan-and-act) mode.
 
 ### Context & Context Windows
 
-Think of context like a whiteboard you and HAI share:
+Think of context like a whiteboard you and Cline share:
 
 -   **Context** is all the information available:
-    -   What HAI has discovered
+    -   What Cline has discovered
     -   What you've shared
     -   Your conversation history
     -   Project requirements
@@ -56,13 +56,13 @@ Think of context like a whiteboard you and HAI share:
         -   Claude 3.5 Sonnet: 200,000 tokens
         -   DeepSeek: 64,000 tokens
     -   When the whiteboard is full, you need to erase (clear context) to write more
-        -   [How HAI manages context under the hood](https://cline.bot/blog/understanding-the-new-context-window-progress-bar-in-cline)
+        -   [How Cline manages context under the hood](https://cline.bot/blog/understanding-the-new-context-window-progress-bar-in-cline)
 
 ⚠️ **Important**: Having a large context window (like Claude's 200k tokens) doesn't mean you should fill it completely. Just like a cluttered whiteboard, too much information can make it harder to focus on what's important.
 
 ## Understanding the Context Window Progress Bar
 
-HAI provides a visual way to monitor your context window usage through a progress bar:
+Cline provides a visual way to monitor your context window usage through a progress bar:
 
 <Frame caption="Visual representation of the context window usage">
 	<img
@@ -83,7 +83,7 @@ HAI provides a visual way to monitor your context window usage through a progres
 -   During long coding sessions
 -   When working with multiple files
 -   Before starting complex tasks
--   When HAI seems to lose context
+-   When Cline seems to lose context
 
 💡 **Tip**: Consider starting a fresh session when usage reaches 70-80% to maintain optimal performance.
 
@@ -93,7 +93,7 @@ Context files help maintain understanding across sessions. They serve as documen
 
 #### Approaches to Context Files
 
-1. **Evergreen Project Context (i.e.** [**Memory Bank**](https://github.com/presidio-oss/cline-based-code-generator/blob/main/docs/prompting/hai-memory-bank.mdx)**)**
+1. **Evergreen Project Context (i.e.** [**Memory Bank**](https://docs.cline.bot/prompting/cline-memory-bank)**)**
     - Living documentation that evolves with your project
     - Updated as architecture and patterns emerge
     - Example: The Memory Bank pattern maintains files like `techContext.md` and `systemPatterns.md`
@@ -121,7 +121,7 @@ Context files help maintain understanding across sessions. They serve as documen
         ```
 
 3. **Knowledge Transfer Docs**
-    - Switch to plan mode and ask HAI to document everything you've accomplished so far, along with the remaining steps, in a markdown file.
+    - Switch to plan mode and ask Cline to document everything you've accomplished so far, along with the remaining steps, in a markdown file.
     - Copy the contents of the markdown file.
     - Start a new task using that content as context.
 
@@ -141,7 +141,7 @@ Context files help maintain understanding across sessions. They serve as documen
 ## Practical Tips
 
 1. **Starting New Projects**
-    - Let HAI explore the codebase
+    - Let Cline explore the codebase
     - Answer its questions about structure and patterns
     - Consider setting up basic context files
     - Document key design decisions
@@ -151,9 +151,9 @@ Context files help maintain understanding across sessions. They serve as documen
     - Use Plan mode for complex discussions
     - Start fresh sessions when needed
 3. **Team Projects**
-    - Share common context files (consider using [.hairules](https://github.com/presidio-oss/cline-based-code-generator/blob/main/docs/prompting/prompt-engineering-guide.mdx) files in project roots)
+    - Share common context files (consider using [.clinerules](https://docs.cline.bot/features/cline-rules) files in project roots)
     - Document architectural decisions
     - Maintain consistent patterns
     - Keep documentation current
 
-Remember: The goal is to help HAI maintain consistent understanding of your project across sessions.
+Remember: The goal is to help Cline maintain consistent understanding of your project across sessions.

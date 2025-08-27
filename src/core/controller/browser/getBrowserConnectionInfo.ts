@@ -1,8 +1,7 @@
-import { BrowserConnectionInfo } from "@shared/proto/browser"
-import { EmptyRequest } from "@shared/proto/common"
+import { BrowserConnectionInfo } from "@shared/proto/cline/browser"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { Controller } from "../index"
 import { getAllExtensionState } from "@core/storage/state"
-import { getWorkspaceID } from "@/utils/path"
 
 /**
  * Get information about the current browser connection
@@ -10,11 +9,10 @@ import { getWorkspaceID } from "@/utils/path"
  * @param request The request message
  * @returns The browser connection info
  */
-export async function getBrowserConnectionInfo(controller: Controller, request: EmptyRequest): Promise<BrowserConnectionInfo> {
+export async function getBrowserConnectionInfo(controller: Controller, _: EmptyRequest): Promise<BrowserConnectionInfo> {
 	try {
 		// Get browser settings from extension state
-		const workspaceId = getWorkspaceID() || ""
-		const { browserSettings } = await getAllExtensionState(controller.context, workspaceId)
+		const { browserSettings } = await getAllExtensionState(controller.context)
 
 		// Check if there's an active browser session by using the controller's handleWebviewMessage approach
 		// This is similar to what's done in controller/index.ts for the "getBrowserConnectionInfo" message
@@ -25,25 +23,25 @@ export async function getBrowserConnectionInfo(controller: Controller, request: 
 			const connectionInfo = browserSession.getConnectionInfo()
 
 			// Convert from BrowserSession.BrowserConnectionInfo to proto.BrowserConnectionInfo
-			return {
+			return BrowserConnectionInfo.create({
 				isConnected: connectionInfo.isConnected,
 				isRemote: connectionInfo.isRemote,
 				host: connectionInfo.host || "", // Ensure host is never undefined
-			}
+			})
 		}
 
 		// Fallback to browser settings if no active browser session
-		return {
+		return BrowserConnectionInfo.create({
 			isConnected: false,
 			isRemote: !!browserSettings.remoteBrowserEnabled,
 			host: browserSettings.remoteBrowserHost || "",
-		}
+		})
 	} catch (error: unknown) {
 		console.error("Error getting browser connection info:", error)
-		return {
+		return BrowserConnectionInfo.create({
 			isConnected: false,
 			isRemote: false,
 			host: "",
-		}
+		})
 	}
 }

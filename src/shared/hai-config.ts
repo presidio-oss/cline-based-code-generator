@@ -29,9 +29,9 @@ export const haiConfigSchema = z.object({
 })
 
 export class HaiConfig {
-	static getConfig(workspacePath?: string) {
+	static async getConfig(workspacePath?: string) {
 		if (!workspacePath) {
-			workspacePath = getWorkspacePath()
+			workspacePath = await getWorkspacePath()
 		}
 
 		// Parse hai config file
@@ -81,18 +81,18 @@ export class HaiConfig {
 		return data
 	}
 
-	static getPostHogConfig(workspacePath?: string) {
-		const config = HaiConfig.getConfig(workspacePath)
+	static async getPostHogConfig(workspacePath?: string) {
+		const config = await HaiConfig.getConfig(workspacePath)
 		return config?.posthog
 	}
 
-	static getLangfuseConfig(workspacePath?: string) {
-		const config = HaiConfig.getConfig(workspacePath)
+	static async getLangfuseConfig(workspacePath?: string) {
+		const config = await HaiConfig.getConfig(workspacePath)
 		return config?.langfuse
 	}
 
-	static getCorMatrixConfig(workspacePath?: string) {
-		const config = HaiConfig.getConfig(workspacePath)
+	static async getCorMatrixConfig(workspacePath?: string) {
+		const config = await HaiConfig.getConfig(workspacePath)
 		return config?.cormatrix
 	}
 }

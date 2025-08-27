@@ -1,4 +1,4 @@
-You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `cline-based-code-generator` repo.
+You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `cline` repo.
 
 <detailed_sequence_of_steps>
 # GitHub PR Review Process - Detailed Sequence of Steps
@@ -328,7 +328,7 @@ Hey, the PR looks good overall but I'm concerned about removing those timeouts. 
 Could you add back the timeouts after focusing the sidebar? Something like:
 
 ```typescript
-await vscode.commands.executeCommand("hai.SidebarProvider.focus")
+await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
 await setTimeoutPromise(100)  // Give UI time to update
 visibleWebview = WebviewProvider.getSidebarInstance()
 ```

@@ -37,7 +37,7 @@ export class ClineIgnoreController {
 	 * Set up the file watcher for .clineignore changes
 	 */
 	private setupFileWatcher(): void {
-		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".haiignore")
+		const clineignorePattern = new vscode.RelativePattern(this.cwd, ".clineignore")
 		const fileWatcher = vscode.workspace.createFileSystemWatcher(clineignorePattern)
 
 		// Watch for changes and updates
@@ -58,25 +58,25 @@ export class ClineIgnoreController {
 	}
 
 	/**
-	 * Load custom patterns from .haiignore if it exists.
+	 * Load custom patterns from .clineignore if it exists.
 	 * Supports "!include <filename>" to load additional ignore patterns from other files.
 	 */
 	private async loadClineIgnore(): Promise<void> {
 		try {
 			// Reset ignore instance to prevent duplicate patterns
 			this.ignoreInstance = ignore()
-			const ignorePath = path.join(this.cwd, ".haiignore")
+			const ignorePath = path.join(this.cwd, ".clineignore")
 			if (await fileExistsAtPath(ignorePath)) {
 				const content = await fs.readFile(ignorePath, "utf8")
 				this.clineIgnoreContent = content
 				await this.processIgnoreContent(content)
-				this.ignoreInstance.add(".haiignore")
+				this.ignoreInstance.add(".clineignore")
 			} else {
 				this.clineIgnoreContent = undefined
 			}
 		} catch (error) {
 			// Should never happen: reading file failed even though it exists
-			console.error("Unexpected error loading .haiignore:", error)
+			console.error("Unexpected error loading .clineignore:", error)
 		}
 	}
 
@@ -128,7 +128,7 @@ export class ClineIgnoreController {
 		const resolvedIncludePath = path.join(this.cwd, includePath)
 
 		if (!(await fileExistsAtPath(resolvedIncludePath))) {
-			console.debug(`[HAIIgnore] Included file not found: ${resolvedIncludePath}`)
+			console.debug(`[ClineIgnore] Included file not found: ${resolvedIncludePath}`)
 			return null
 		}
 

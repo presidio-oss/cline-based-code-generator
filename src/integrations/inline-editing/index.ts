@@ -1,23 +1,32 @@
 import * as vscode from "vscode"
 import type { ApiConfiguration } from "../../shared/api"
 import { type ApiHandler, buildApiHandler } from "../../api"
-import { customGetState } from "@/core/storage/state"
+import { getGlobalState } from "@/core/storage/state"
+import { Mode } from "@/shared/storage/types"
+import { HostProvider } from "@/hosts/host-provider"
+import { ShowMessageType } from "@/shared/proto/index.host"
 
 export class InlineEditingProvider {
 	private api!: ApiHandler
 	private activeCodeLensProvider?: vscode.Disposable
 	private isEditing = false
 	constructor(
+		private currentMode?: Mode,
 		private context?: vscode.ExtensionContext,
 		private apiConfiguration?: ApiConfiguration,
 	) {
-		if (apiConfiguration) {
-			this.api = buildApiHandler(apiConfiguration)
+		if (apiConfiguration && this.currentMode) {
+			this.api = buildApiHandler(apiConfiguration, this.currentMode)
 		}
 	}
 
-	withApiConfiguration(apiConfiguration: ApiConfiguration) {
-		this.api = buildApiHandler(apiConfiguration)
+	withCurrentMode(currentMode: Mode) {
+		this.currentMode = currentMode
+		return this
+	}
+
+	withApiConfiguration(apiConfiguration: ApiConfiguration, mode: Mode) {
+		this.api = buildApiHandler(apiConfiguration, mode)
 		return this
 	}
 
@@ -32,6 +41,9 @@ export class InlineEditingProvider {
 	}
 
 	build() {
+		if (!this.currentMode) {
+			throw new Error("Current mode not set")
+		}
 		if (!this.api) {
 			throw new Error("API not initialized")
 		}
@@ -120,7 +132,10 @@ export class InlineEditingProvider {
 
 				const selection = editor.selection
 				if (selection.isEmpty) {
-					vscode.window.showErrorMessage("No code selected, please select some code.")
+					HostProvider.window.showMessage({
+						type: ShowMessageType.ERROR,
+						message: "No code selected, please select some code.",
+					})
 					return
 				}
 
@@ -329,9 +344,10 @@ export class InlineEditingProvider {
 					this.isEditing = false
 					progressDisposable.dispose()
 					console.error(`Error enhancing code: ${error}`, error)
-					vscode.window.showErrorMessage(
-						`Failed to enhance code: ${error instanceof Error ? error.message : "Unknown error"}`,
-					)
+					HostProvider.window.showMessage({
+						type: ShowMessageType.ERROR,
+						message: `Failed to enhance code: ${error instanceof Error ? error.message : "Unknown error"}`,
+					})
 				}
 			}),
 		]
@@ -340,7 +356,7 @@ export class InlineEditingProvider {
 	async registerCodeLensProvider() {
 		this.activeCodeLensProvider?.dispose()
 		const isEditing = this.isEditing
-		const isInlineEditEnabled = this.context ? ((await customGetState(this.context, "enableInlineEdit")) ?? true) : true
+		const isInlineEditEnabled = this.context ? ((await getGlobalState(this.context, "enableInlineEdit")) ?? true) : true
 		const provider = vscode.languages.registerCodeLensProvider("*", {
 			provideCodeLenses(document) {
 				const editor = vscode.window.activeTextEditor
@@ -368,7 +384,7 @@ export class InlineEditingProvider {
 		return provider
 	}
 
-	updateApiConfiguration(apiConfiguration: ApiConfiguration) {
-		this.api = buildApiHandler(apiConfiguration)
+	updateApiConfiguration(apiConfiguration: ApiConfiguration, mode: Mode) {
+		this.api = buildApiHandler(apiConfiguration, mode)
 	}
 }

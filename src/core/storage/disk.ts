@@ -13,6 +13,7 @@ export const GlobalFileNames = {
 	contextHistory: "context_history.json",
 	uiMessages: "ui_messages.json",
 	openRouterModels: "openrouter_models.json",
+	groqModels: "groq_models.json",
 	mcpSettings: "hai_mcp_settings.json",
 	clineRules: ".hairules",
 	workflows: ".hairules/workflows",

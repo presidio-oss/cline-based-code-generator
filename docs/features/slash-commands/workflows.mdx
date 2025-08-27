@@ -3,26 +3,26 @@ title: "Workflows"
 sidebarTitle: "Workflows"
 ---
 
-Workflows allow you to define a series of steps to guide HAI through a repetitive set of tasks, such as deploying a service or submitting a PR.
+Workflows allow you to define a series of steps to guide Cline through a repetitive set of tasks, such as deploying a service or submitting a PR.
 
 To invoke a workflow, type `/[workflow-name.md]` in the chat.
 
 ## How to Create and Use Workflows
 
-Workflows live alongside [HAI Rules](/features/hai-rules). Creating one is straightforward:
+Workflows live alongside [Cline Rules](/features/cline-rules). Creating one is straightforward:
 
 <Frame>
-	<img src="https://storage.googleapis.com/hai_public_images/docs/assets/workflows.png" alt="Workflows tab in HAI" />
+	<img src="https://storage.googleapis.com/cline_public_images/docs/assets/workflows.png" alt="Workflows tab in Cline" />
 </Frame>
 
-1. Create a markdown file with clear instructions for the steps HAI should take
+1. Create a markdown file with clear instructions for the steps Cline should take
 2. Save it with a `.md` extension in your workflows directory
 3. To trigger a workflow, just type `/` followed by the workflow filename
 4. Provide any required parameters when prompted
 
 The real power comes from how you structure your workflow files. You can:
 
--   Leverage HAI's [built-in tools](/exploring-hais-tools/hai-tools-guide) like `ask_followup_question`, `read_file`, `search_files`, and `new_task`
+-   Leverage Cline's [built-in tools](/exploring-clines-tools/cline-tools-guide) like `ask_followup_question`, `read_file`, `search_files`, and `new_task`
 -   Use command-line tools you already have installed like `gh` or `docker`
 -   Reference external [MCP tool calls](/mcp/mcp-overview) like Slack or Whatsapp
 -   Chain multiple actions together in a specific sequence
@@ -32,7 +32,7 @@ The real power comes from how you structure your workflow files. You can:
 I created a PR Review workflow that's already saving me tons of time.
 
 ````md pr-review.md [expandable]
-You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `hai` repo.
+You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `cline` repo.
 
 <detailed_sequence_of_steps>
 
@@ -414,20 +414,20 @@ When I get a new PR to review, I used to manually gather context: checking the P
 
 1. Type `/pr-review.md` in chat
 2. Paste in the PR number
-3. Let HAI handle everything else
+3. Let Cline handle everything else
 
-My workflow uses the `gh` command-line tool and HAI's built in `ask_followup_question` to:
+My workflow uses the `gh` command-line tool and Cline's built in `ask_followup_question` to:
 
 -   Pull the PR description and comments
 -   Examine the diff
 -   Check surrounding files for context
 -   Analyze potential issues
 -   Asks me if it's cool approve it if everything looks good, with justification for why it should be approved
--   If I say "yes," HAI automatically approves the PR with the `gh` command
+-   If I say "yes," Cline automatically approves the PR with the `gh` command
 
 This has taken my PR review process from a manual, multi-step operation to a single command that gives me everything I need to make an informed decision.
 
-> This is just one example of a workflow file. You can find more in our [prompts repository](https://github.com/hai/prompts) for inspiration.
+> This is just one example of a workflow file. You can find more in our [prompts repository](https://github.com/cline/prompts) for inspiration.
 
 ## Building Your Own Workflows
 

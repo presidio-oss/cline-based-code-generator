@@ -3,8 +3,9 @@ import { v4 as uuidv4 } from "uuid"
 import fs from "fs"
 import { DocumentLink, DocumentStatus } from "../../shared/experts"
 import { CrawlResult, UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
-import { getAllExtensionState } from "../storage/state"
+import { getAllExtensionState, getGlobalState } from "../storage/state"
 import { buildApiHandler } from "../../api"
+import { Mode } from "../../shared/storage/types"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { ExpertFileManager } from "./ExpertFileManager"
 import path from "path"
@@ -199,7 +200,8 @@ export class DocumentProcessor {
 	public async summarizeMarkdownContent(markdownContent: string): Promise<string> {
 		let content = ""
 		const { apiConfiguration } = await getAllExtensionState(this.extensionContext, this.workspaceId)
-		const llmApi = buildApiHandler(apiConfiguration)
+		const mode = ((await getGlobalState(this.extensionContext, "mode")) as Mode | undefined) || "act"
+		const llmApi = buildApiHandler(apiConfiguration, mode)
 
 		const apiStream = llmApi.createMessage(this.systemPrompt, [
 			{

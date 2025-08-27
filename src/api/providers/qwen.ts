@@ -2,7 +2,6 @@ import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { ApiHandler } from "../"
 import {
-	ApiHandlerOptions,
 	ModelInfo,
 	mainlandQwenModels,
 	internationalQwenModels,
@@ -10,31 +9,59 @@ import {
 	internationalQwenDefaultModelId,
 	MainlandQwenModelId,
 	InternationalQwenModelId,
+	QwenApiRegions,
 } from "@shared/api"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
 import { convertToR1Format } from "../transform/r1-format"
+import { withRetry } from "../retry"
+
+interface QwenHandlerOptions {
+	qwenApiKey?: string
+	qwenApiLine?: QwenApiRegions
+	apiModelId?: string
+	thinkingBudgetTokens?: number
+}
 
 export class QwenHandler implements ApiHandler {
-	private options: ApiHandlerOptions
-	private client: OpenAI
+	private options: QwenHandlerOptions
+	private client: OpenAI | undefined
 
-	constructor(options: ApiHandlerOptions) {
-		this.options = options
-		this.client = new OpenAI({
-			baseURL:
-				this.options.qwenApiLine === "china"
-					? "https://dashscope.aliyuncs.com/compatible-mode/v1"
-					: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-			apiKey: this.options.qwenApiKey,
-			maxRetries: this.options.maxRetries,
-		})
+	constructor(options: QwenHandlerOptions) {
+		// Ensure options start with defaults but allow overrides
+		this.options = {
+			qwenApiLine: QwenApiRegions.CHINA,
+			...options,
+		}
+	}
+
+	private useChinaApi(): boolean {
+		return this.options.qwenApiLine === QwenApiRegions.CHINA
+	}
+
+	private ensureClient(): OpenAI {
+		if (!this.client) {
+			if (!this.options.qwenApiKey) {
+				throw new Error("Alibaba API key is required")
+			}
+			try {
+				this.client = new OpenAI({
+					baseURL: this.useChinaApi()
+						? "https://dashscope.aliyuncs.com/compatible-mode/v1"
+						: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+					apiKey: this.options.qwenApiKey,
+				})
+			} catch (error: any) {
+				throw new Error(`Error creating Alibaba client: ${error.message}`)
+			}
+		}
+		return this.client
 	}
 
 	getModel(): { id: MainlandQwenModelId | InternationalQwenModelId; info: ModelInfo } {
 		const modelId = this.options.apiModelId
 		// Branch based on API line to let poor typescript know what to do
-		if (this.options.qwenApiLine === "china") {
+		if (this.useChinaApi()) {
 			return {
 				id: (modelId as MainlandQwenModelId) ?? mainlandQwenDefaultModelId,
 				info: mainlandQwenModels[modelId as MainlandQwenModelId] ?? mainlandQwenModels[mainlandQwenDefaultModelId],
@@ -49,23 +76,42 @@ export class QwenHandler implements ApiHandler {
 		}
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const client = this.ensureClient()
 		const model = this.getModel()
 		const isDeepseekReasoner = model.id.includes("deepseek-r1")
+		const isReasoningModelFamily = model.id.includes("qwen3") || ["qwen-plus-latest", "qwen-turbo-latest"].includes(model.id)
+
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
-		if (isDeepseekReasoner) {
+
+		let temperature: number | undefined = 0
+		// Configuration for extended thinking
+		const budgetTokens = this.options.thinkingBudgetTokens || 0
+		const reasoningOn = budgetTokens !== 0 ? true : false
+		const thinkingArgs = isReasoningModelFamily
+			? {
+					enable_thinking: reasoningOn,
+					thinking_budget: reasoningOn ? budgetTokens : undefined,
+				}
+			: undefined
+
+		if (isDeepseekReasoner || (reasoningOn && isReasoningModelFamily)) {
 			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+			temperature = undefined
 		}
-		const stream = await this.client.chat.completions.create({
+
+		const stream = await client.chat.completions.create({
 			model: model.id,
 			max_completion_tokens: model.info.maxTokens,
 			messages: openAiMessages,
 			stream: true,
 			stream_options: { include_usage: true },
-			...(model.id === "deepseek-r1" ? {} : { temperature: 0 }),
+			temperature,
+			...thinkingArgs,
 		})
 
 		for await (const chunk of stream) {
@@ -100,7 +146,8 @@ export class QwenHandler implements ApiHandler {
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.chat.completions.create({
+			const client = this.ensureClient()
+			await client.chat.completions.create({
 				model: this.getModel().id,
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],

@@ -1,14 +1,14 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import { ApiHandler } from ".."
-import {
-	ApiHandlerOptions,
-	ModelInfo,
-	AskSageModelId,
-	askSageModels,
-	askSageDefaultModelId,
-	askSageDefaultURL,
-} from "@shared/api"
+import { ModelInfo, AskSageModelId, askSageModels, askSageDefaultModelId, askSageDefaultURL } from "@shared/api"
 import { ApiStream } from "../transform/stream"
+import { withRetry } from "../retry"
+
+interface AskSageHandlerOptions {
+	asksageApiKey?: string
+	asksageApiUrl?: string
+	apiModelId?: string
+}
 
 type AskSageRequest = {
 	system_prompt: string
@@ -30,11 +30,11 @@ type AskSageResponse = {
 }
 
 export class AskSageHandler implements ApiHandler {
-	private options: ApiHandlerOptions
+	private options: AskSageHandlerOptions
 	private apiUrl: string
 	private apiKey: string
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: AskSageHandlerOptions) {
 		console.log("init api url", options.asksageApiUrl, askSageDefaultURL)
 		this.options = options
 		this.apiKey = options.asksageApiKey || ""
@@ -45,6 +45,7 @@ export class AskSageHandler implements ApiHandler {
 		}
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
 		try {
 			const model = this.getModel()
