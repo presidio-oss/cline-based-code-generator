@@ -81,7 +81,11 @@ const WelcomeView = () => {
 					}}>
 					<div>
 						<h3 style={{ marginBottom: 5 }}>LLM API Configuration</h3>
-						<ApiOptions showModelOptions={true} currentMode={currentTab} onValid={(isValid) => setApiValid(isValid)} />
+						<ApiOptions
+							showModelOptions={true}
+							currentMode={currentTab}
+							onValid={(isValid) => setApiValid(isValid)}
+						/>
 					</div>
 
 					<div style={{ marginBottom: 10 }}>

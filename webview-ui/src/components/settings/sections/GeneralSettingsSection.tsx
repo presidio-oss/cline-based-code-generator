@@ -29,8 +29,8 @@ const GeneralSettingsSection = ({ renderSectionHeader }: GeneralSettingsSectionP
 					</VSCodeCheckbox>
 
 					<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-						Help improve HAI by sending usage data and error reports. No code, prompts, or
-						personal information are ever sent. Only the{" "}
+						Help improve HAI by sending usage data and error reports. No code, prompts, or personal information are
+						ever sent. Only the{" "}
 						<a href="https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git">
 							git username and email
 						</a>{" "}

@@ -65,7 +65,7 @@ const TelemetryBanner = () => {
 		}
 	}
 
-		return (
+	return (
 		<BannerContainer>
 			<CloseButton onClick={handleClose} aria-label="Close banner and enable telemetry">
 				✕

@@ -85,7 +85,7 @@ const ApiOptions = ({
 	showModelError = true,
 	isPopup,
 	currentMode,
-	onValid
+	onValid,
 }: ApiOptionsProps) => {
 	// Use full context state for immediate save payload
 	const { apiConfiguration, openRouterModels } = useExtensionState()

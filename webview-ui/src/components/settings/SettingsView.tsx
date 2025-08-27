@@ -238,10 +238,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 						isCompactMode ? (
 							<HeroTooltip key={tab.id} content={tab.tooltipText} placement="right">
 								<div
-									className={`${activeTab === tab.id
+									className={`${
+										activeTab === tab.id
 											? `${settingsTabTrigger} ${settingsTabTriggerActive}`
 											: settingsTabTrigger
-										} focus:ring-0`}
+									} focus:ring-0`}
 									data-compact={isCompactMode}
 									data-testid={`tab-${tab.id}`}
 									data-value={tab.id}
@@ -259,10 +260,11 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 							<TabTrigger
 								key={tab.id}
 								value={tab.id}
-								className={`${activeTab === tab.id
+								className={`${
+									activeTab === tab.id
 										? `${settingsTabTrigger} ${settingsTabTriggerActive}`
 										: settingsTabTrigger
-									} focus:ring-0`}
+								} focus:ring-0`}
 								data-compact={isCompactMode}
 								data-testid={`tab-${tab.id}`}>
 								<div className={`flex items-center gap-2 ${isCompactMode ? "justify-center" : ""}`}>
@@ -314,7 +316,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 							{activeTab === "terminal" && <TerminalSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Debug Tab (only in dev mode) */}
-							{ activeTab === "debug" && (
+							{activeTab === "debug" && (
 								<DebugSection onResetState={handleResetState} renderSectionHeader={renderSectionHeader} />
 							)}
 
