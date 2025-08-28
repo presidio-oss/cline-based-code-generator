@@ -13,12 +13,12 @@ Analyze the current branch's changes against main to provide informed insights a
 
 **If the expected line count is greater than 500 lines, use the file-based approach:**
    ```shell
-   git branch --show-current > cline-git-analysis.temp && echo "=== STATUS ===" >> cline-git-analysis.temp && git status --porcelain >> cline-git-analysis.temp && echo "=== COMMIT MESSAGES ===" >> cline-git-analysis.temp && git log main..HEAD --oneline >> cline-git-analysis.temp && echo "=== CHANGED FILES ===" >> cline-git-analysis.temp && git diff main --name-only >> cline-git-analysis.temp && echo "=== FULL DIFF ===" >> cline-git-analysis.temp && git diff main >> cline-git-analysis.temp
+   git branch --show-current > hai-git-analysis.temp && echo "=== STATUS ===" >> hai-git-analysis.temp && git status --porcelain >> hai-git-analysis.temp && echo "=== COMMIT MESSAGES ===" >> hai-git-analysis.temp && git log main..HEAD --oneline >> hai-git-analysis.temp && echo "=== CHANGED FILES ===" >> hai-git-analysis.temp && git diff main --name-only >> hai-git-analysis.temp && echo "=== FULL DIFF ===" >> hai-git-analysis.temp && git diff main >> hai-git-analysis.temp
    ```
 
    Then, read the file using the read_file tool. After you have read the file but before you proceed with subsequent steps, delete it:
    ```shell
-   rm cline-git-analysis.temp
+   rm hai-git-analysis.temp
    ```
 
 **If the expected line count is 500 lines or fewer, use the direct approach:**

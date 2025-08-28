@@ -1,10 +1,10 @@
-# Cline Protobuf Development Guide
+# HAI Protobuf Development Guide
 
 This guide outlines how to add new gRPC endpoints for communication between the webview (frontend) and the extension host (backend).
 
 ## Overview
 
-Cline uses [Protobuf](https://protobuf.dev/) to define a strongly-typed API, ensuring efficient and type-safe communication. All definitions are in the `/proto` directory. The compiler and plugins are included as project dependencies, so no manual installation is needed.
+HAI uses [Protobuf](https://protobuf.dev/) to define a strongly-typed API, ensuring efficient and type-safe communication. All definitions are in the `/proto` directory. The compiler and plugins are included as project dependencies, so no manual installation is needed.
 
 ## Key Concepts & Best Practices
 

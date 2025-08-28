@@ -81,7 +81,7 @@ It was easy to visualize and could have been proven false by being unreproducibl
 
 This structure works whether you're writing a tweet thread or a full blog post. The key is making complex ideas accessible.
 
-# Guide to Writing Cline Documentation
+# Guide to Writing HAI Documentation
 
 ## Some general principles for explaining features
 
@@ -139,19 +139,19 @@ I personally hate this pattern of bullet point **Bold Text** colon and then more
 <bad_example_of_writing>
 #### macOS
 
-1. **Switch to bash**: Go to Cline Settings → Terminal → Default Terminal Profile → Select "bash"
+1. **Switch to bash**: Go to HAI Settings → Terminal → Default Terminal Profile → Select "bash"
 2. **Disable Oh-My-Zsh temporarily**: If using zsh, try `mv ~/.zshrc ~/.zshrc.backup` and restart VSCode
 3. **Set environment**: Add to your shell config: `export TERM=xterm-256color`
 
 #### Windows
 
-1. **Use PowerShell 7**: Install from Microsoft Store, then select it in Cline settings
+1. **Use PowerShell 7**: Install from Microsoft Store, then select it in HAI settings
 2. **Disable Windows ConPTY**: VSCode Settings → Terminal › Integrated: Windows Enable Conpty → Uncheck
 3. **Try Command Prompt**: Sometimes simpler is better - switch to cmd.exe
 
 #### Linux
 
-1. **Use bash**: Most reliable option - select in Cline settings
+1. **Use bash**: Most reliable option - select in HAI settings
 2. **Check permissions**: Ensure VSCode has terminal access permissions
 3. **Disable custom prompts**: Comment out prompt customizations in `.bashrc`
 
@@ -162,7 +162,7 @@ We should instead strive to write beautiful docs that read well. We can use bull
 <good_example_of_writing>
 #### macOS
 
-The most common fix is switching to bash. Navigate to Cline Settings → Terminal → Default Terminal Profile and select "bash" from the dropdown.
+The most common fix is switching to bash. Navigate to HAI Settings → Terminal → Default Terminal Profile and select "bash" from the dropdown.
 
 If you're still having issues, Oh-My-Zsh might be interfering with terminal integration. Try temporarily disabling it:
 - Run `mv ~/.zshrc ~/.zshrc.backup` 
@@ -172,7 +172,7 @@ You can also add `export TERM=xterm-256color` to your shell configuration file t
 
 #### Windows
 
-PowerShell 7 provides the most reliable experience. Install it from the Microsoft Store, then select it in your Cline settings.
+PowerShell 7 provides the most reliable experience. Install it from the Microsoft Store, then select it in your HAI settings.
 
 Still seeing problems? Try these solutions:
 - Disable Windows ConPTY: VSCode Settings → Terminal › Integrated: Windows Enable Conpty → uncheck
@@ -180,7 +180,7 @@ Still seeing problems? Try these solutions:
 
 #### Linux
 
-Bash is your most dependable option. Select it in Cline settings if you haven't already.
+Bash is your most dependable option. Select it in HAI settings if you haven't already.
 
 Check these common issues:
 - Ensure VSCode has terminal access permissions
@@ -246,7 +246,7 @@ Use `<Tip>` components for helpful information that enhances the main content wi
 
 ```jsx
 <Tip>
-	Pro tip: You can combine multiple @ mentions in a single message to give Cline 
+	Pro tip: You can combine multiple @ mentions in a single message to give HAI 
 	comprehensive context about your issue.
 </Tip>
 ```
@@ -262,7 +262,7 @@ Use `<Tip>` components for helpful information that enhances the main content wi
 `<Info>` is also cool:
 
 <Info>
-	**Quick Fix**: If you're experiencing terminal issues, try switching to a simpler shell like `bash` in the Cline settings.
+	**Quick Fix**: If you're experiencing terminal issues, try switching to a simpler shell like `bash` in the HAI settings.
 	This resolves 90% of terminal integration problems.
 </Info>
 
@@ -292,15 +292,15 @@ Each bulleted item or numbered list should be a discrete action or piece of info
 <good_example_of_bullet_points>
 ## Finding and Configuring Terminal Settings
 
-You can access Cline's terminal settings by clicking the settings icon in the Cline sidebar, then navigating to the Terminal section. These settings control how Cline interacts with your system's terminal.
+You can access HAI's terminal settings by clicking the settings icon in the HAI sidebar, then navigating to the Terminal section. These settings control how HAI interacts with your system's terminal.
 
-- The **Default Terminal Profile** setting determines which shell Cline uses for executing commands. If you're experiencing issues, this is usually the first thing to change. I personally keep this set to `bash` on all my systems because it's the most reliable option, even though I use `zsh` for my regular terminal work.
+- The **Default Terminal Profile** setting determines which shell HAI uses for executing commands. If you're experiencing issues, this is usually the first thing to change. I personally keep this set to `bash` on all my systems because it's the most reliable option, even though I use `zsh` for my regular terminal work.
 
-- **Shell Integration Timeout** controls how long Cline waits for the terminal to become ready. The default is 4 seconds, but if you have a heavy shell configuration (lots of plugins, slow startup scripts), you might need to increase this to 10 or even 15 seconds. I've found that WSL environments and SSH connections often need longer timeouts.
+- **Shell Integration Timeout** controls how long HAI waits for the terminal to become ready. The default is 4 seconds, but if you have a heavy shell configuration (lots of plugins, slow startup scripts), you might need to increase this to 10 or even 15 seconds. I've found that WSL environments and SSH connections often need longer timeouts.
 
-- The **Enable Aggressive Terminal Reuse** setting determines whether Cline tries to reuse existing terminals even when they're not in the correct directory. When this causes problems (commands running in the wrong directory, virtual environment issues), disabling it creates more terminal instances but ensures each command runs in a clean state.
+- The **Enable Aggressive Terminal Reuse** setting determines whether HAI tries to reuse existing terminals even when they're not in the correct directory. When this causes problems (commands running in the wrong directory, virtual environment issues), disabling it creates more terminal instances but ensures each command runs in a clean state.
 
-- **Terminal Output Line Limit** sets how many lines of output Cline will read from commands. The default of 500 lines works for most cases, but you might need to adjust it. For verbose build outputs, increase it. For commands with progress bars that spam thousands of lines, decrease it to around 100 to avoid consuming too many tokens.
+- **Terminal Output Line Limit** sets how many lines of output HAI will read from commands. The default of 500 lines works for most cases, but you might need to adjust it. For verbose build outputs, increase it. For commands with progress bars that spam thousands of lines, decrease it to around 100 to avoid consuming too many tokens.
 </good_example_of_bullet_points>
 
 ## Write Like a Human, Not an AI
@@ -317,20 +317,20 @@ Don't over-explain obvious things. If users are reading documentation, they prob
 
 That's pretty much it. Never use them. Only AI writes with em dashes or emojis.
 
-# Anthropomorphizing Cline
+# Anthropomorphizing HAI
 
-When referring to Cline, always call him a "him" not an "it". 
+When referring to HAI, always call him a "him" not an "it". 
 
 Bad example:
-- When Cline can’t execute commands or read their output, you lose access to one of its most powerful capabilities.
+- When HAI can’t execute commands or read their output, you lose access to one of its most powerful capabilities.
 
 Good Example:
 
-- When Cline can’t execute commands or read their output, you lose access to one of his most powerful capabilities.
+- When HAI can’t execute commands or read their output, you lose access to one of his most powerful capabilities.
 
 # Using "I" when sharing your workflow
 
-Adding a personal touch goes a long way. There are great examples in the docs currently where I use "I" to share how I personally use cline, from dev to dev. It's a great technique.
+Adding a personal touch goes a long way. There are great examples in the docs currently where I use "I" to share how I personally use hai, from dev to dev. It's a great technique.
 
 # Crosslinking relevant documentation pages
 
@@ -342,17 +342,17 @@ Don't ramble if you don't need to. Use bullet points and numbered lists. Keep th
 
 <bad_example>
 
-When Cline can't execute commands or read their output, you lose access to one of his most powerful capabilities. Terminal integration problems are frustrating, but they're usually fixable with a few simple changes.
+When HAI can't execute commands or read their output, you lose access to one of his most powerful capabilities. Terminal integration problems are frustrating, but they're usually fixable with a few simple changes.
 
 ## The Most Common Problem: Shell Integration Issues
 
-If you're seeing "Shell integration unavailable" or Cline isn't getting command output, the issue is almost always your shell configuration. Complex shell setups with custom prompts, plugins, and fancy configurations can interfere with VSCode's terminal integration.
+If you're seeing "Shell integration unavailable" or HAI isn't getting command output, the issue is almost always your shell configuration. Complex shell setups with custom prompts, plugins, and fancy configurations can interfere with VSCode's terminal integration.
 
-**Switch to bash first.** This fixes the problem 90% of the time. Navigate to Cline Settings → Terminal → Default Terminal Profile and select "bash" from the dropdown. Restart VSCode after making this change.
+**Switch to bash first.** This fixes the problem 90% of the time. Navigate to HAI Settings → Terminal → Default Terminal Profile and select "bash" from the dropdown. Restart VSCode after making this change.
 
-Still having issues? Try increasing the shell integration timeout. Go to Cline Settings → Terminal → Shell Integration Timeout and change it from 4 seconds to 10 seconds. Heavy shell configurations need more time to initialize properly.
+Still having issues? Try increasing the shell integration timeout. Go to HAI Settings → Terminal → Shell Integration Timeout and change it from 4 seconds to 10 seconds. Heavy shell configurations need more time to initialize properly.
 
-If commands are running in the wrong directories or you're seeing weird behavior, disable aggressive terminal reuse. In Cline Settings → Terminal, uncheck "Enable aggressive terminal reuse." This creates more terminal instances but ensures each command runs in a clean environment.
+If commands are running in the wrong directories or you're seeing weird behavior, disable aggressive terminal reuse. In HAI Settings → Terminal, uncheck "Enable aggressive terminal reuse." This creates more terminal instances but ensures each command runs in a clean environment.
 
 
 </bad_exaxmple>
@@ -362,12 +362,12 @@ The first part is total filler, useless to any serious developer. You can tell i
 <good_example>
 ## Shell Integration Issues
 
-If you're seeing "Shell integration unavailable" or Cline can't read command output, your shell configuration is interfering with VSCode's terminal integration.
+If you're seeing "Shell integration unavailable" or HAI can't read command output, your shell configuration is interfering with VSCode's terminal integration.
 
-**Switch to bash first.** Go to Cline Settings → Terminal → Default Terminal Profile and select "bash." This fixes 90% of problems.
+**Switch to bash first.** Go to HAI Settings → Terminal → Default Terminal Profile and select "bash." This fixes 90% of problems.
 
 Still broken? Try these:
-- Increase shell integration timeout to 10 seconds in Cline Settings → Terminal
+- Increase shell integration timeout to 10 seconds in HAI Settings → Terminal
 - Disable "aggressive terminal reuse" if commands run in wrong directories
 - Restart VSCode after making changes
 </good_example>

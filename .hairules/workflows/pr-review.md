@@ -1,4 +1,4 @@
-You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `cline` repo.
+You have access to the `gh` terminal command. I already authenticated it for you. Please review it to use the PR that I asked you to review. You're already in the `hai` repo.
 
 <detailed_sequence_of_steps>
 # GitHub PR Review Process - Detailed Sequence of Steps

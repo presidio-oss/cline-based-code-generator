@@ -1,8 +1,8 @@
-# Cline Extension Architecture & Development Guide
+# HAI Extension Architecture & Development Guide
 
 ## Project Overview
 
-Cline is a VSCode extension that provides AI assistance through a combination of a core extension backend and a React-based webview frontend. The extension is built with TypeScript and follows a modular architecture pattern.
+HAI is a VSCode extension that provides AI assistance through a combination of a core extension backend and a React-based webview frontend. The extension is built with TypeScript and follows a modular architecture pattern.
 
 ## Architecture Overview
 
@@ -100,7 +100,7 @@ The WebviewProvider class in `src/core/webview/index.ts` is responsible for:
 - Supporting Hot Module Replacement (HMR) for development
 - Setting up message listeners between the webview and extension
 
-The WebviewProvider maintains a reference to the Controller and delegates message handling to it. It also handles the creation of both sidebar and tab panel webviews, allowing Cline to be used in different contexts within VSCode.
+The WebviewProvider maintains a reference to the Controller and delegates message handling to it. It also handles the creation of both sidebar and tab panel webviews, allowing HAI to be used in different contexts within VSCode.
 
 ### Core Extension State
 
@@ -148,7 +148,7 @@ The ExtensionStateContext handles:
 
 ## API Provider System
 
-Cline supports multiple AI providers through a modular API provider system. Each provider is implemented as a separate module in the `src/api/providers/` directory and follows a common interface.
+HAI supports multiple AI providers through a modular API provider system. Each provider is implemented as a separate module in the `src/api/providers/` directory and follows a common interface.
 
 ### API Provider Architecture
 
@@ -185,7 +185,7 @@ The system supports:
 
 ### Plan/Act Mode API Configuration
 
-Cline supports separate model configurations for Plan and Act modes:
+HAI supports separate model configurations for Plan and Act modes:
 - Different models can be used for planning vs. execution
 - The system preserves model selections when switching modes
 - The Controller handles the transition between modes and updates the API configuration accordingly
@@ -507,7 +507,7 @@ Key aspects of task state management:
 
 ## Plan/Act Mode System
 
-Cline implements a dual-mode system that separates planning from execution:
+HAI implements a dual-mode system that separates planning from execution:
 
 ### Mode Architecture
 
@@ -681,7 +681,7 @@ The McpHub class:
 
 ### MCP Server Types
 
-Cline supports two types of MCP server connections:
+HAI supports two types of MCP server connections:
 - **Stdio**: Command-line based servers that communicate via standard I/O
 - **SSE**: HTTP-based servers that communicate via Server-Sent Events
 
@@ -742,7 +742,7 @@ class Controller {
 
 ## Conclusion
 
-This guide provides a comprehensive overview of the Cline extension architecture, with special focus on state management, data persistence, and code organization. Following these patterns ensures robust feature implementation with proper state handling across the extension's components.
+This guide provides a comprehensive overview of the HAI extension architecture, with special focus on state management, data persistence, and code organization. Following these patterns ensures robust feature implementation with proper state handling across the extension's components.
 
 Remember:
 - Always persist important state in the extension
@@ -757,8 +757,8 @@ Remember:
 
 ## Contributing
 
-Contributions to the Cline extension are welcome! Please follow these guidelines:
+Contributions to the HAI extension are welcome! Please follow these guidelines:
 
 When adding new tools or API providers, follow the existing patterns in the `src/integrations/` and `src/api/providers/` directories, respectively. Ensure that your code is well-documented and includes appropriate error handling.
 
-The `.clineignore` file allows users to specify files and directories that Cline should not access. When implementing new features, respect the `.clineignore` rules and ensure that your code does not attempt to read or modify ignored files.
+The `.haiignore` file allows users to specify files and directories that HAI should not access. When implementing new features, respect the `.haiignore` rules and ensure that your code does not attempt to read or modify ignored files.
