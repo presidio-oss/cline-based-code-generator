@@ -288,10 +288,11 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													}}
 													style={{ marginRight: "8px" }}>
 													<span
-														className={`codicon ${expandedExperts[exp.name]
+														className={`codicon ${
+															expandedExperts[exp.name]
 																? "codicon-chevron-down"
 																: "codicon-chevron-right"
-															}`}
+														}`}
 													/>
 												</VSCodeButton>
 												<span
@@ -344,95 +345,53 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 												{/* Render document links if available */}
 												{exp.documentLinks && exp.documentLinks.length > 0
 													? exp.documentLinks.map((link, idx) => (
-														<DocumentAccordionItem key={idx}>
-															{link.status && (
-																<StatusIcon
-																	status={link.status}
-																	title={capitalizeFirstLetter(link.status)}>
-																	{link.status.toLowerCase() ===
+															<DocumentAccordionItem key={idx}>
+																{link.status && (
+																	<StatusIcon
+																		status={link.status}
+																		title={capitalizeFirstLetter(link.status)}>
+																		{link.status.toLowerCase() ===
 																		DocumentStatus.COMPLETED ? (
-																		<span className="codicon codicon-check" />
-																	) : link.status.toLowerCase() ===
-																		DocumentStatus.FAILED ? (
-																		<span className="codicon codicon-error" />
-																	) : link.status.toLowerCase() ===
-																		DocumentStatus.PROCESSING ? (
-																		<div
-																			style={{
-																				transform: "scale(0.8)",
-																				width: "20px",
-																				height: "20px",
-																				display: "flex",
-																				alignItems: "center",
-																				justifyContent: "center",
-																			}}>
-																			<VSCodeProgressRing />
-																		</div>
-																	) : (
-																		<span className="codicon codicon-clock" />
-																	)}
-																</StatusIcon>
-															)}
-															<DocumentLinkContainer>
-																<DocumentLinkText title={link.url}>
-																	{link.url}
-																</DocumentLinkText>
-																{link.processedAt && (
-																	<TimestampText>
-																		{formatTimestamp(link.processedAt)}
-																	</TimestampText>
-																)}
-															</DocumentLinkContainer>
-															<DocumentButtons>
-																<VSCodeButton
-																	appearance="icon"
-																	onClick={(e) => {
-																		e.stopPropagation()
-																		manageExperts("refreshDocumentLink", {
-																			expertName: exp.name,
-																			url: link.url,
-																		})
-																	}}
-																	disabled={exp.deepCrawl && !isEmbeddingValid}
-																	title={
-																		exp.deepCrawl && !isEmbeddingValid
-																			? "Document operations are disabled due to invalid embedding configuration"
-																			: undefined
-																	}>
-																	<span className="codicon codicon-refresh" />
-																</VSCodeButton>
-																{documentLinkInDeleteConfirmation?.expertName === exp.name &&
-																	documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
-																	<>
-																		<VSCodeButton
-																			appearance="icon"
-																			onClick={(e) => {
-																				e.stopPropagation()
-																				setDocumentLinkInDeleteConfirmation(null)
-																			}}>
-																			<span className="codicon codicon-close" />
-																		</VSCodeButton>
-																		<VSCodeButton
-																			appearance="icon"
-																			onClick={(e) => {
-																				e.stopPropagation()
-																				manageExperts("deleteDocumentLink", {
-																					expertName: exp.name,
-																					url: link.url,
-																				})
-																				setDocumentLinkInDeleteConfirmation(null)
-																			}}>
 																			<span className="codicon codicon-check" />
-																		</VSCodeButton>
-																	</>
-																) : (
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.FAILED ? (
+																			<span className="codicon codicon-error" />
+																		) : link.status.toLowerCase() ===
+																		  DocumentStatus.PROCESSING ? (
+																			<div
+																				style={{
+																					transform: "scale(0.8)",
+																					width: "20px",
+																					height: "20px",
+																					display: "flex",
+																					alignItems: "center",
+																					justifyContent: "center",
+																				}}>
+																				<VSCodeProgressRing />
+																			</div>
+																		) : (
+																			<span className="codicon codicon-clock" />
+																		)}
+																	</StatusIcon>
+																)}
+																<DocumentLinkContainer>
+																	<DocumentLinkText title={link.url}>
+																		{link.url}
+																	</DocumentLinkText>
+																	{link.processedAt && (
+																		<TimestampText>
+																			{formatTimestamp(link.processedAt)}
+																		</TimestampText>
+																	)}
+																</DocumentLinkContainer>
+																<DocumentButtons>
 																	<VSCodeButton
 																		appearance="icon"
 																		onClick={(e) => {
 																			e.stopPropagation()
-																			setDocumentLinkInDeleteConfirmation({
+																			manageExperts("refreshDocumentLink", {
 																				expertName: exp.name,
-																				linkUrl: link.url,
+																				url: link.url,
 																			})
 																		}}
 																		disabled={exp.deepCrawl && !isEmbeddingValid}
@@ -441,12 +400,54 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																				? "Document operations are disabled due to invalid embedding configuration"
 																				: undefined
 																		}>
-																		<span className="codicon codicon-trash" />
+																		<span className="codicon codicon-refresh" />
 																	</VSCodeButton>
-																)}
-															</DocumentButtons>
-														</DocumentAccordionItem>
-													))
+																	{documentLinkInDeleteConfirmation?.expertName === exp.name &&
+																	documentLinkInDeleteConfirmation?.linkUrl === link.url ? (
+																		<>
+																			<VSCodeButton
+																				appearance="icon"
+																				onClick={(e) => {
+																					e.stopPropagation()
+																					setDocumentLinkInDeleteConfirmation(null)
+																				}}>
+																				<span className="codicon codicon-close" />
+																			</VSCodeButton>
+																			<VSCodeButton
+																				appearance="icon"
+																				onClick={(e) => {
+																					e.stopPropagation()
+																					manageExperts("deleteDocumentLink", {
+																						expertName: exp.name,
+																						url: link.url,
+																					})
+																					setDocumentLinkInDeleteConfirmation(null)
+																				}}>
+																				<span className="codicon codicon-check" />
+																			</VSCodeButton>
+																		</>
+																	) : (
+																		<VSCodeButton
+																			appearance="icon"
+																			onClick={(e) => {
+																				e.stopPropagation()
+																				setDocumentLinkInDeleteConfirmation({
+																					expertName: exp.name,
+																					linkUrl: link.url,
+																				})
+																			}}
+																			disabled={exp.deepCrawl && !isEmbeddingValid}
+																			title={
+																				exp.deepCrawl && !isEmbeddingValid
+																					? "Document operations are disabled due to invalid embedding configuration"
+																					: undefined
+																			}>
+																			<span className="codicon codicon-trash" />
+																		</VSCodeButton>
+																	)}
+																</DocumentButtons>
+															</DocumentAccordionItem>
+														))
 													: null}
 
 												{/* Inline editing for adding a document */}
@@ -461,9 +462,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																	setInlineEditingDoc((prev) =>
 																		prev
 																			? {
-																				...prev,
-																				linkUrl: (e.target as HTMLInputElement).value,
-																			}
+																					...prev,
+																					linkUrl: (e.target as HTMLInputElement).value,
+																				}
 																			: null,
 																	)
 																}}
@@ -511,16 +512,16 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																				prevExperts.map((expert) =>
 																					expert.name === exp.name
 																						? {
-																							...expert,
-																							documentLinks: [
-																								...(expert.documentLinks ||
-																									[]),
-																								{
-																									url: inlineEditingDoc.linkUrl,
-																									status: DocumentStatus.PENDING,
-																								},
-																							],
-																						}
+																								...expert,
+																								documentLinks: [
+																									...(expert.documentLinks ||
+																										[]),
+																									{
+																										url: inlineEditingDoc.linkUrl,
+																										status: DocumentStatus.PENDING,
+																									},
+																								],
+																							}
 																						: expert,
 																				),
 																			)

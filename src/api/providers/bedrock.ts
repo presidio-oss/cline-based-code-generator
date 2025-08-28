@@ -960,20 +960,25 @@ export class AwsBedrockHandler implements ApiHandler {
 	}
 
 	async validateAPIKey(): Promise<boolean> {
-		let output = false
 		try {
 			const stream = this.createMessage(
 				'You are a helpful AI. The user will send a test message — please reply with "OK"',
 				[{ role: "user", content: "Test" }],
 			)
 
-			for await (const _ of stream) {
-				output = true
-				break
+			for await (const chunk of stream) {
+				if (chunk.type === "text" && chunk.text.includes("[ERROR]")) {
+					console.error("API validation failed with error:", chunk.text)
+					return false
+				}
+				if (chunk.type === "text" && !chunk.text.includes("[ERROR]")) {
+					return true
+				}
 			}
+			return false
 		} catch (error) {
 			console.error("Error validating Bedrock credentials: ", error)
+			return false
 		}
-		return output
 	}
 }
