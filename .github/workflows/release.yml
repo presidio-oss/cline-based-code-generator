@@ -1,16 +1,10 @@
-name: "Publish Release"
+name: "Release"
 
 on:
+    push:
+        branches:
+            - release
     workflow_dispatch:
-        inputs:
-            release-type:
-                description: "Choose release type (release or pre-release)"
-                required: true
-                default: "release"
-                type: choice
-                options:
-                    - pre-release
-                    - release
 
 permissions:
     contents: write
