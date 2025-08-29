@@ -27,10 +27,10 @@ describe("HAIAPI Core Functionality", () => {
 			mockLogToChannel,
 		)
 		// Stub the getGlobalState function from the state module
-		// This is needed because the real createClineAPI uses it for getCustomInstructions
+		// This is needed because the real createHAIAPI uses it for getCustomInstructions
 		getGlobalStateStub = sandbox.stub(stateModule, "getGlobalState")
 
-		// Create a mock controller that matches what the real createClineAPI expects
+		// Create a mock controller that matches what the real createHAIAPI expects
 		// We don't import the real Controller to avoid the webview dependencies
 		mockController = {
 			context: {

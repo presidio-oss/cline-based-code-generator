@@ -19,7 +19,7 @@ import {
 	migrateWorkspaceToGlobalStorage,
 } from "./core/storage/state-migrations"
 import { WebviewProvider } from "./core/webview"
-import { createClineAPI } from "./exports"
+import { createHAIAPI } from "./exports"
 import { ErrorService } from "./services/error/ErrorService"
 import { Logger } from "./services/logging/Logger"
 import { posthogClientProvider } from "./services/posthog/PostHogClientProvider"
@@ -721,7 +721,7 @@ export async function activate(context: vscode.ExtensionContext) {
 		}),
 	)
 
-	return createClineAPI(sidebarWebview.controller)
+	return createHAIAPI(sidebarWebview.controller)
 }
 
 async function maybeSetupHostProviders(context: ExtensionContext) {
