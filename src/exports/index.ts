@@ -1,10 +1,10 @@
 import { Controller } from "@core/controller"
-import { ClineAPI } from "./hai"
+import { HAIAPI } from "./hai"
 import { sendChatButtonClickedEvent } from "@core/controller/ui/subscribeToChatButtonClicked"
 import { HostProvider } from "@/hosts/host-provider"
 
-export function createClineAPI(sidebarController: Controller): ClineAPI {
-	const api: ClineAPI = {
+export function createHAIAPI(sidebarController: Controller): HAIAPI {
+	const api: HAIAPI = {
 		startNewTask: async (task?: string, images?: string[]) => {
 			HostProvider.get().logToChannel("Starting new task")
 			await sidebarController.clearTask()

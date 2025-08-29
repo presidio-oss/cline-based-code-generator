@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, it } from "mocha"
 import * as should from "should"
 import * as sinon from "sinon"
 import type { HAIAPI } from "../hai"
-import { createClineAPI } from "../index"
+import { createHAIAPI } from "../index"
 
 describe("HAIAPI Core Functionality", () => {
 	let api: HAIAPI
@@ -56,7 +56,7 @@ describe("HAIAPI Core Functionality", () => {
 		}
 
 		// Create API instance
-		api = createClineAPI(mockController)
+		api = createHAIAPI(mockController)
 	})
 
 	afterEach(() => {
