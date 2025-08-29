@@ -131,8 +131,20 @@ const baseConfig = {
 	sourcemap: !production,
 	logLevel: "silent",
 	define: production
-		? { "import.meta.url": "_importMetaUrl", "process.env.IS_DEV": JSON.stringify(!production) }
-		: { "import.meta.url": "_importMetaUrl" },
+		? {
+				"import.meta.url": "_importMetaUrl",
+				"process.env.IS_DEV": JSON.stringify(!production),
+				"process.env.LANGFUSE_API_KEY": JSON.stringify(process.env.LANGFUSE_API_KEY || ""),
+				"process.env.LANGFUSE_PUBLIC_KEY": JSON.stringify(process.env.LANGFUSE_PUBLIC_KEY || ""),
+				"process.env.LANGFUSE_API_URL": JSON.stringify(process.env.LANGFUSE_API_URL || "https://us.cloud.langfuse.com"),
+			}
+		: {
+				"import.meta.url": "_importMetaUrl",
+				"process.env.IS_DEV": JSON.stringify(!production),
+				"process.env.LANGFUSE_API_KEY": JSON.stringify(process.env.LANGFUSE_API_KEY || ""),
+				"process.env.LANGFUSE_PUBLIC_KEY": JSON.stringify(process.env.LANGFUSE_PUBLIC_KEY || ""),
+				"process.env.LANGFUSE_API_URL": JSON.stringify(process.env.LANGFUSE_API_URL || "https://us.cloud.langfuse.com"),
+			},
 	tsconfig: path.resolve(__dirname, "tsconfig.json"),
 	plugins: [
 		copyWasmFiles,
