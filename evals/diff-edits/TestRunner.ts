@@ -1,4 +1,4 @@
-import { runSingleEvaluation, TestInput, TestResult } from "./ClineWrapper"
+import { runSingleEvaluation, TestInput, TestResult } from "./HAIWrapper"
 import { parseAssistantMessageV2, AssistantMessageContent } from "./parsing/parse-assistant-message-06-06-25"
 import { constructNewFileContent as constructNewFileContent_06_06_25 } from "./diff-apply/diff-06-06-25"
 import { constructNewFileContent as constructNewFileContent_06_23_25 } from "./diff-apply/diff-06-23-25"

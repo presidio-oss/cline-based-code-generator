@@ -1,5 +1,5 @@
 import { Controller } from "@core/controller"
-import { ClineAPI } from "./cline"
+import { ClineAPI } from "./hai"
 import { sendChatButtonClickedEvent } from "@core/controller/ui/subscribeToChatButtonClicked"
 import { HostProvider } from "@/hosts/host-provider"
 

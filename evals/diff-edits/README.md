@@ -1,10 +1,10 @@
-# A Note on Cline's Diff Evaluation Setup
+# A Note on HAI's Diff Evaluation Setup
 
-Hey there, this note explains what we're doing with Cline's diff evaluation (evals) system. It's all about checking how well various AI models (which users connect to Cline via their own API keys), prompts, and diffing tools can handle file changes.
+Hey there, this note explains what we're doing with HAI's diff evaluation (evals) system. It's all about checking how well various AI models (which users connect to HAI via their own API keys), prompts, and diffing tools can handle file changes.
 
 ## What We're Trying to Figure Out
 
-The main idea here is to figure out which AI models (configured by users) are best at making `replace_in_file` tool calls that work correctly. This helps us understand model capabilities and also speeds up our own experiments with prompts and diffing algorithms to make Cline better over time. We want to know a few key things.
+The main idea here is to figure out which AI models (configured by users) are best at making `replace_in_file` tool calls that work correctly. This helps us understand model capabilities and also speeds up our own experiments with prompts and diffing algorithms to make HAI better over time. We want to know a few key things.
 
 First, can the model create diffs, which are just sets of SEARCH and REPLACE blocks, that apply cleanly to a file? This is what we call `diffEditSuccess`.
 
@@ -41,7 +41,7 @@ npm run diff-eval -- --model-ids "anthropic/claude-3-5-sonnet,x-ai/grok-3-beta,a
 
 This will build the eval script, run it, and then open the streamlit dashboard to show the results.
 
-The `TestRunner.ts` script is the main coordinator. For each test case and setup, `ClineWrapper.ts` takes over and sends the conversation and system prompt to the LLM. We then watch the model's response as it streams in and parse it to find any tool calls.
+The `TestRunner.ts` script is the main coordinator. For each test case and setup, `HAIWrapper.ts` takes over and sends the conversation and system prompt to the LLM. We then watch the model's response as it streams in and parse it to find any tool calls.
 
 We're specifically looking for the model to make a single `replace_in_file` tool call. Multiple edits in one tool call are allowed, and recorded (in case you want to filter results by number of edits in a single tool call and compare success rate for that slice across different models/system prompts/etc). If it does, and it's for the correct file, we grab the diff content it produced. Then, the chosen diff application algorithm tries to apply that diff to the original file. We record whether this worked or not as `diffEditSuccess`.
 

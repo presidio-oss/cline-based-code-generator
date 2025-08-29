@@ -11,7 +11,7 @@ import { runDiffEvalHandler } from "./commands/runDiffEval"
 const program = new Command()
 
 // Set up CLI metadata
-program.name("cline-eval").description("CLI tool for orchestrating Cline evaluations across multiple benchmarks").version("0.1.0")
+program.name("hai-eval").description("CLI tool for orchestrating HAI evaluations across multiple benchmarks").version("0.1.0")
 
 // Setup command
 program
@@ -38,7 +38,7 @@ program
 	.option("-b, --benchmark <benchmark>", "Specific benchmark to run")
 	.option("-m, --model <model>", "Model to evaluate", "claude-3-opus-20240229")
 	.option("-c, --count <count>", "Number of tasks to run", parseInt)
-	.option("-k, --api-key <apiKey>", "Cline API key to use for evaluations")
+	.option("-k, --api-key <apiKey>", "HAI API key to use for evaluations")
 	.action(async (options) => {
 		try {
 			await runHandler(options)

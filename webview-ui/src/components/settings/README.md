@@ -1,6 +1,6 @@
 # API Options Component Architecture
 
-This directory contains the refactored API Options components for the Cline extension. The refactoring aims to improve maintainability, code organization, and reduce complexity by separating provider-specific code into modular components.
+This directory contains the refactored API Options components for the HAI extension. The refactoring aims to improve maintainability, code organization, and reduce complexity by separating provider-specific code into modular components.
 
 ## Directory Structure
 

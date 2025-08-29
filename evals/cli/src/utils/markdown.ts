@@ -14,7 +14,7 @@ export function generateMarkdownReport(
 	modelReports: Record<string, any>,
 	outputPath: string,
 ): void {
-	let markdown = `# Cline Evaluation Report\n\n`
+	let markdown = `# HAI Evaluation Report\n\n`
 
 	// Generate summary section
 	markdown += `## Summary\n\n`

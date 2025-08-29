@@ -5,11 +5,11 @@ import * as stateModule from "@core/storage/state"
 import { afterEach, beforeEach, describe, it } from "mocha"
 import * as should from "should"
 import * as sinon from "sinon"
-import type { ClineAPI } from "../cline"
+import type { HAIAPI } from "../hai"
 import { createClineAPI } from "../index"
 
-describe("ClineAPI Core Functionality", () => {
-	let api: ClineAPI
+describe("HAIAPI Core Functionality", () => {
+	let api: HAIAPI
 	let mockController: any
 	let mockLogToChannel: sinon.SinonStub<[string], void>
 	let sandbox: sinon.SinonSandbox
