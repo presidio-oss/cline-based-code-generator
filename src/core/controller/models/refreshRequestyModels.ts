@@ -37,6 +37,7 @@ export async function refreshRequestyModels(controller: Controller, _: EmptyRequ
 					cacheWritesPrice: parsePrice(model.caching_price) || 0,
 					cacheReadsPrice: parsePrice(model.cached_price) || 0,
 					description: model.description,
+					tiers: model.tiers || [],
 				})
 				models[model.id] = modelInfo
 			}

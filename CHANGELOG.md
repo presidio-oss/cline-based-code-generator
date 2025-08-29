@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.7.3]
+
+### Added
+
+-   Added support for Claude Sonnet 4 with a 1 million token context window and tiered pricing.
+
 ## [3.7.2]
 
 ### Added

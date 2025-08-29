@@ -139,6 +139,8 @@ export async function createOpenRouterStream(
 		shouldApplyMiddleOutTransform = true
 	}
 
+	const isClaudeSonnet4 = model.id === "anthropic/claude-sonnet-4"
+
 	// hardcoded provider sorting for kimi-k2
 	const isKimiK2 = model.id === "moonshotai/kimi-k2"
 	openRouterProviderSorting = isKimiK2 ? undefined : openRouterProviderSorting
@@ -161,6 +163,8 @@ export async function createOpenRouterStream(
 		...(isKimiK2
 			? { provider: { order: ["groq", "together", "baseten", "parasail", "novita", "deepinfra"], allow_fallbacks: false } }
 			: {}),
+		// limit providers to only those that support the 1m context window
+		...(isClaudeSonnet4 ? { provider: { order: ["anthropic", "amazon-bedrock"], allow_fallbacks: false } } : {}),
 	})
 
 	return stream
