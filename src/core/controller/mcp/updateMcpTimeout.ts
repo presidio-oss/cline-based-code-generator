@@ -1,6 +1,6 @@
 import { convertMcpServersToProtoMcpServers } from "@/shared/proto-conversions/mcp/mcp-server-conversion"
 import { Controller } from ".."
-import { UpdateMcpTimeoutRequest, McpServers } from "../../../shared/proto/mcp"
+import { UpdateMcpTimeoutRequest, McpServers } from "@shared/proto/cline/mcp"
 
 /**
  * Updates the timeout configuration for an MCP server.
@@ -12,10 +12,9 @@ export async function updateMcpTimeout(controller: Controller, request: UpdateMc
 	try {
 		if (request.serverName && typeof request.serverName === "string" && typeof request.timeout === "number") {
 			const mcpServers = await controller.mcpHub?.updateServerTimeoutRPC(request.serverName, request.timeout)
-			console.log("mcpServers", mcpServers)
 			const convertedMcpServers = convertMcpServersToProtoMcpServers(mcpServers)
 			console.log("convertedMcpServers", convertedMcpServers)
-			return { mcpServers: convertedMcpServers }
+			return McpServers.create({ mcpServers: convertedMcpServers })
 		} else {
 			console.error("Server name and timeout are required")
 			throw new Error("Server name and timeout are required")

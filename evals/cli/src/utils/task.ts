@@ -2,9 +2,9 @@ import fetch from "node-fetch"
 import chalk from "chalk"
 
 /**
- * Send a task to the Cline test server
+ * Send a task to the HAI test server
  * @param task The task description to send
- * @param apiKey Optional Cline API key to use for the task
+ * @param apiKey Optional HAI API key to use for the task
  * @returns The result of the task execution
  */
 export async function sendTaskToServer(task: string, apiKey?: string): Promise<any> {

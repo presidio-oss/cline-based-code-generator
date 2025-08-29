@@ -2,7 +2,7 @@
 	"name": "hai-build-code-generator",
 	"displayName": "HAI Build Code Generator",
 	"description": "Human AI (HAI) VS Code extension that streamlines development workflows through AI-powered task execution, intelligent file management, and automated code generation. Built on HAI, it integrates with various LLMs to enhance productivity and code quality while simplifying complex development tasks.",
-	"clineVersion": "3.17.5",
+	"clineVersion": "3.20.3",
 	"version": "3.7.3",
 	"icon": "assets/icons/HAI-Rounded-Dark@3x.png",
 	"galleryBanner": {
@@ -22,20 +22,24 @@
 		"url": "https://github.com/presidio-oss/cline-based-code-generator"
 	},
 	"categories": [
+		"AI",
+		"Chat",
 		"Programming Languages",
 		"Education",
 		"Snippets",
-		"Testing",
-		"Machine Learning",
-		"Debuggers"
+		"Testing"
 	],
 	"keywords": [
 		"hai",
 		"claude",
 		"dev",
+		"mcp",
+		"openrouter",
 		"coding",
 		"agent",
 		"autonomous",
+		"chatgpt",
+		"sonnet",
 		"ai",
 		"llama",
 		"haibuild",
@@ -47,7 +51,6 @@
 		"visual-studio-code",
 		"gpt",
 		"multi-modal",
-		"cline",
 		"owasp-top-10",
 		"human-ai",
 		"code-context",
@@ -64,6 +67,58 @@
 	],
 	"main": "./dist/extension.js",
 	"contributes": {
+		"walkthroughs": [
+			{
+				"id": "HAIWalkthrough",
+				"title": "Meet HAI, your new coding partner",
+				"description": "HAI codes like a developer because it thinks like one. Here are 5 ways to put it to work:",
+				"steps": [
+					{
+						"id": "welcome",
+						"title": "Start with a Goal, Not Just a Prompt",
+						"description": "Tell HAI what you want to achieve. It plans, asks, and then codes, like a true partner.",
+						"media": {
+							"markdown": "walkthrough/step1.md"
+						}
+					},
+					{
+						"id": "learn",
+						"title": "Let HAI Learn Your Codebase",
+						"description": "Point HAI to your project. It builds understanding to make smart, context-aware changes.",
+						"media": {
+							"markdown": "walkthrough/step2.md"
+						}
+					},
+					{
+						"id": "advanced-features",
+						"title": "Always Use the Best AI Models",
+						"description": "HAI empowers you with State-of-the-Art AI, connecting to top models (Anthropic, Gemini, OpenAI & more).",
+						"media": {
+							"markdown": "walkthrough/step3.md"
+						}
+					},
+					{
+						"id": "mcp",
+						"title": "Extend with Powerful Tools (MCP)",
+						"description": "Connect to databases, APIs, or discover new capabilities in the MCP Marketplace.",
+						"media": {
+							"markdown": "walkthrough/step4.md"
+						}
+					},
+					{
+						"id": "getting-started",
+						"title": "You're Always in Control",
+						"description": "Review HAI's plans and diffs. Approve changes before they happen. No surprises.",
+						"media": {
+							"markdown": "walkthrough/step5.md"
+						},
+						"content": {
+							"path": "walkthrough/step5.md"
+						}
+					}
+				]
+			}
+		],
 		"viewsContainers": {
 			"activitybar": [
 				{
@@ -154,6 +209,12 @@
 				"icon": "$(robot)"
 			},
 			{
+				"command": "hai.abortGitCommitMessage",
+				"title": "Generate Commit Message with HAI - Stop",
+				"category": "HAI",
+				"icon": "$(debug-stop)"
+			},
+			{
 				"command": "hai.explainCode",
 				"title": "Explain with HAI",
 				"category": "HAI"
@@ -164,9 +225,9 @@
 				"category": "HAI"
 			},
 			{
-				"command": "hai.haiBuildTaskListClicked",
-				"title": "Hai Tasks",
-				"category": "HAI Build"
+				"command": "hai.openWalkthrough",
+				"title": "Open Walkthrough",
+				"category": "HAI"
 			},
 			{
 				"command": "hai.expertsButtonClicked",
@@ -186,7 +247,7 @@
 			},
 			{
 				"command": "hai.generateGitCommitMessage",
-				"when": "scmProvider == git"
+				"when": "config.git.enabled && scmProvider == git"
 			},
 			{
 				"command": "hai.focusChatInput",
@@ -205,17 +266,12 @@
 					"when": "view == hai.SidebarProvider"
 				},
 				{
-					"command": "hai.haiBuildTaskListClicked",
-					"group": "navigation@1",
-					"when": "view == hai.SidebarProvider"
-				},
-				{
-					"command": "hai.expertsButtonClicked",
+					"command": "hai.mcpButtonClicked",
 					"group": "navigation@2",
 					"when": "view == hai.SidebarProvider"
 				},
 				{
-					"command": "hai.mcpButtonClicked",
+					"command": "hai.expertsButtonClicked",
 					"group": "navigation@2",
 					"when": "view == hai.SidebarProvider"
 				},
@@ -231,23 +287,18 @@
 				},
 				{
 					"command": "hai.settingsButtonClicked",
-					"group": "navigation@5",
+					"group": "navigation@6",
 					"when": "view == hai.SidebarProvider"
 				}
 			],
 			"editor/title": [
 				{
-					"command": "hai.haiBuildTaskListClicked",
+					"command": "hai.plusButtonClicked",
 					"group": "navigation@1",
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				},
 				{
 					"command": "hai.expertsButtonClicked",
-					"group": "navigation@2",
-					"when": "activeWebviewPanelId == hai.TabPanelProvider"
-				},
-				{
-					"command": "hai.plusButtonClicked",
 					"group": "navigation@2",
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				},
@@ -268,7 +319,7 @@
 				},
 				{
 					"command": "hai.settingsButtonClicked",
-					"group": "navigation@5",
+					"group": "navigation@6",
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				}
 			],
@@ -289,13 +340,22 @@
 				{
 					"command": "hai.generateGitCommitMessage",
 					"group": "navigation",
-					"when": "scmProvider == git"
+					"when": "config.git.enabled && scmProvider == git && !hai.isGeneratingCommit"
+				},
+				{
+					"command": "hai.abortGitCommitMessage",
+					"group": "navigation",
+					"when": "config.git.enabled && scmProvider == git && hai.isGeneratingCommit"
 				}
 			],
 			"commandPalette": [
 				{
 					"command": "hai.generateGitCommitMessage",
-					"when": "scmProvider == git"
+					"when": "config.git.enabled && scmProvider == git && !hai.isGeneratingCommit"
+				},
+				{
+					"command": "hai.abortGitCommitMessage",
+					"when": "config.git.enabled && scmProvider == git && hai.isGeneratingCommit"
 				}
 			]
 		},
@@ -306,27 +366,31 @@
 	},
 	"scripts": {
 		"vscode:prepublish": "npm run package",
-		"compile": "npm run check-types && npm run lint && node esbuild.js",
-		"compile-standalone": "npm run check-types && npm run lint && node esbuild.js --standalone",
+		"compile": "npm run check-types && npm run lint && node esbuild.mjs",
+		"compile-standalone": "npm run check-types && npm run lint && node esbuild.mjs --standalone",
 		"postcompile-standalone": "node scripts/package-standalone.mjs",
 		"watch": "npm-run-all -p watch:*",
-		"watch:esbuild": "node esbuild.js --watch",
+		"watch:esbuild": "node esbuild.mjs --watch",
 		"watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.js --production",
-		"protos": "node proto/build-proto.js && node scripts/generate-server-setup.mjs",
-		"postprotos": "prettier src/shared/proto src/core/controller webview-ui/src/services src/standalone/server-setup.ts --write --log-level silent",
+		"package": "npm run check-types && npm run build:webview && npm run lint && node esbuild.mjs --production",
+		"protos": "node scripts/build-proto.mjs",
+		"postprotos": "prettier src/shared/proto src/core/controller src/hosts/ webview-ui/src/services src/generated --write --log-level warn",
+		"clean": "rimraf dist dist-standalone webview-ui/build src/generated out/",
 		"compile-tests": "node ./scripts/build-tests.js",
 		"watch-tests": "tsc -p . -w --outDir out",
-		"pretest": "npm run compile-tests && npm run compile && npm run lint",
-		"check-types": "npm run protos && tsc --noEmit",
-		"lint": "eslint src --ext ts && eslint webview-ui/src --ext ts",
+		"check-types": "npm run protos && npx tsc --noEmit && cd webview-ui && npx tsc -b --noEmit",
+		"lint": "eslint src --ext ts && eslint webview-ui/src --ext ts && buf lint && cd webview-ui && npm run lint",
 		"format": "prettier . --check",
 		"format:fix": "prettier . --write",
+		"pretest": "npm run compile && npm run compile-tests && npm run compile-standalone && npm run lint",
 		"test": "npm-run-all test:unit test:integration",
 		"test:ci": "node scripts/test-ci.js",
 		"test:integration": "vscode-test",
 		"test:unit": "TS_NODE_PROJECT='./tsconfig.unit-test.json' mocha",
 		"test:coverage": "vscode-test --coverage",
+		"e2e": "playwright test -c playwright.config.ts",
+		"test:e2e": "playwright install && vsce package --no-dependencies --out dist/e2e.vsix && node src/test/e2e/utils/build.js && playwright test",
+		"test:e2e:optimal": "vsce package --no-dependencies --out dist/e2e.vsix && node src/test/e2e/utils/build.js && playwright test",
 		"install:all": "npm install && cd webview-ui && npm install",
 		"dev:webview": "cd webview-ui && npm run dev",
 		"build:webview": "cd webview-ui && npm run build",
@@ -336,16 +400,19 @@
 		"prepare": "husky",
 		"changeset": "changeset",
 		"version-packages": "changeset version",
-		"docs": "cd docs && mintlify dev",
-		"docs:check-links": "cd docs && mintlify broken-links",
-		"docs:rename-file": "cd docs && mintlify rename",
+		"docs": "cd docs && npm run dev",
+		"docs:check-links": "cd docs && npm run check",
+		"docs:rename-file": "cd docs && npm run rename",
 		"report-issue": "node scripts/report-issue.js"
 	},
+	"lint-staged": {
+		"*": [
+			"prettier --write --ignore-unknown --log-level=log"
+		]
+	},
 	"devDependencies": {
+		"@bufbuild/buf": "^1.54.0",
 		"@changesets/cli": "^2.27.12",
-		"@commitlint/cli": "^19.6.0",
-		"@commitlint/config-conventional": "^19.6.0",
-		"@gitbeaker/rest": "^41.3.0",
 		"@types/chai": "^5.0.1",
 		"@types/clone-deep": "^4.0.4",
 		"@types/diff": "^5.2.1",
@@ -359,22 +426,25 @@
 		"@types/turndown": "^5.0.5",
 		"@types/vscode": "^1.84.0",
 		"@typescript-eslint/eslint-plugin": "^7.14.1",
-		"@typescript-eslint/parser": "^7.11.0",
+		"@typescript-eslint/parser": "^7.18.0",
+		"@typescript-eslint/utils": "^8.33.0",
 		"@vscode/test-cli": "^0.0.10",
-		"@vscode/test-electron": "^2.4.1",
+		"@vscode/test-electron": "^2.5.2",
+		"@vscode/vsce": "^3.6.0",
 		"chai": "^4.3.10",
 		"chalk": "^5.3.0",
 		"esbuild": "^0.25.0",
 		"eslint": "^8.57.0",
-		"got": "^14.4.5",
+		"eslint-plugin-eslint-rules": "file:eslint-rules",
 		"grpc-tools": "^1.13.0",
 		"husky": "^9.1.7",
-		"keep-a-changelog": "^2.5.3",
-		"mintlify": "^4.0.515",
+		"lint-staged": "^16.1.0",
+		"minimatch": "^3.0.3",
 		"npm-run-all": "^4.1.5",
 		"prettier": "^3.3.3",
 		"protoc-gen-ts": "^0.8.7",
 		"proxyquire": "^2.1.3",
+		"rimraf": "^6.0.1",
 		"should": "^13.2.3",
 		"sinon": "^19.0.2",
 		"ts-node": "^10.9.2",
@@ -383,20 +453,21 @@
 		"typescript": "^5.4.5"
 	},
 	"dependencies": {
-		"@anthropic-ai/bedrock-sdk": "^0.12.4",
 		"@anthropic-ai/sdk": "^0.37.0",
 		"@anthropic-ai/vertex-sdk": "^0.6.4",
-		"@aws-sdk/client-bedrock-runtime": "^3.873.0",
+		"@aws-sdk/client-bedrock-runtime": "^3.840.0",
+		"@aws-sdk/credential-providers": "^3.840.0",
 		"@bufbuild/protobuf": "^2.2.5",
+		"@cerebras/cerebras_cloud_sdk": "^1.35.0",
 		"@google-cloud/vertexai": "^1.9.3",
-		"@google/genai": "^0.13.0",
+		"@google/genai": "1.0.0",
 		"@grpc/grpc-js": "^1.9.15",
 		"@grpc/reflection": "^1.0.4",
-		"@langchain/aws": "^0.1.1",
-		"@langchain/community": "^0.3.11",
-		"@langchain/core": "^0.3.17",
-		"@langchain/ollama": "^0.1.5",
-		"@langchain/openai": "^0.3.12",
+		"@langchain/aws": "^0.1.13",
+		"@langchain/community": "^0.3.53",
+		"@langchain/core": "^0.3.70",
+		"@langchain/ollama": "^0.2.3",
+		"@langchain/openai": "^0.6.3",
 		"@langchain/textsplitters": "^0.1.0",
 		"@mistralai/mistralai": "^1.5.0",
 		"@modelcontextprotocol/sdk": "^1.11.1",
@@ -406,8 +477,10 @@
 		"@opentelemetry/sdk-node": "^0.39.1",
 		"@opentelemetry/sdk-trace-node": "^1.30.1",
 		"@opentelemetry/semantic-conventions": "^1.30.0",
+		"@playwright/test": "^1.53.2",
 		"@presidio-dev/cor-matrix": "^0.0.2",
 		"@sentry/browser": "^9.12.0",
+		"@streamparser/json": "^0.0.22",
 		"@vscode/codicons": "^0.0.36",
 		"archiver": "^7.0.1",
 		"axios": "^1.8.2",
@@ -417,6 +490,7 @@
 		"clone-deep": "^4.0.1",
 		"default-shell": "^2.2.0",
 		"diff": "^5.2.0",
+		"exceljs": "^4.4.0",
 		"execa": "^9.5.2",
 		"faiss-node": "^0.5.1",
 		"fast-deep-equal": "^3.1.3",
@@ -427,13 +501,15 @@
 		"grpc-health-check": "^2.0.2",
 		"iconv-lite": "^0.6.3",
 		"ignore": "^5.3.2",
-		"ignore-walk": "^7.0.0",
+		"ignore-walk": "^8.0.0",
 		"image-size": "^2.0.2",
 		"isbinaryfile": "^5.0.2",
 		"jschardet": "^3.1.4",
-		"langfuse": "^3.37.1",
+		"jwt-decode": "^4.0.0",
+		"langfuse": "^3.38.4",
 		"mammoth": "^1.8.0",
 		"monaco-vscode-textmate-theme-converter": "^0.1.7",
+		"nice-grpc": "^2.1.12",
 		"ollama": "^0.5.13",
 		"open": "^10.1.2",
 		"open-graph-scraper": "^6.9.0",
@@ -445,6 +521,7 @@
 		"posthog-node": "^4.8.1",
 		"puppeteer-chromium-resolver": "^23.0.0",
 		"puppeteer-core": "^23.4.0",
+		"reconnecting-eventsource": "^1.6.4",
 		"serialize-error": "^11.0.3",
 		"simple-git": "^3.27.0",
 		"strip-ansi": "^7.1.0",
@@ -453,6 +530,7 @@
 		"ts-morph": "^25.0.1",
 		"turndown": "^7.2.0",
 		"uuid": "^11.1.0",
+		"vscode-uri": "^3.1.0",
 		"watcher": "^2.3.1",
 		"web-tree-sitter": "^0.22.6",
 		"zod": "^3.24.2"

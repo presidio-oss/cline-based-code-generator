@@ -1,20 +1,18 @@
-import { customGetState, customUpdateState } from "@/core/storage/state"
 import { Controller } from "../"
-import { Empty } from "../../../shared/proto/common"
-import { TaskFavoriteRequest } from "../../../shared/proto/task"
-import { HistoryItem } from "@/shared/HistoryItem"
+import { Empty } from "@shared/proto/cline/common"
+import { TaskFavoriteRequest } from "@shared/proto/cline/task"
 
 export async function toggleTaskFavorite(controller: Controller, request: TaskFavoriteRequest): Promise<Empty> {
 	if (!request.taskId || request.isFavorited === undefined) {
 		const errorMsg = `[toggleTaskFavorite] Invalid request: taskId or isFavorited missing`
 		console.error(errorMsg)
-		return {}
+		return Empty.create({})
 	}
 
 	try {
 		// Update in-memory state only
 		try {
-			const history = ((await customGetState(controller.context, "taskHistory")) as HistoryItem[] | undefined) || []
+			const history = ((await controller.context.globalState.get("taskHistory")) as any[]) || []
 
 			const taskIndex = history.findIndex((item) => item.id === request.taskId)
 
@@ -30,7 +28,7 @@ export async function toggleTaskFavorite(controller: Controller, request: TaskFa
 
 				// Update global state and wait for it to complete
 				try {
-					await customUpdateState(controller.context, "taskHistory", updatedHistory)
+					await controller.context.globalState.update("taskHistory", updatedHistory)
 				} catch (stateErr) {
 					console.error("Error updating global state:", stateErr)
 				}
@@ -49,5 +47,5 @@ export async function toggleTaskFavorite(controller: Controller, request: TaskFa
 		console.error("Error in toggleTaskFavorite:", error)
 	}
 
-	return {}
+	return Empty.create({})
 }

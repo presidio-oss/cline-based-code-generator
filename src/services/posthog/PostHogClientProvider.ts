@@ -1,24 +1,27 @@
 import { PostHog } from "posthog-node"
-import { posthogConfig } from "@/shared/services/config/posthog-config"
+import { posthogConfig } from "../../shared/services/config/posthog-config"
 import { HaiConfig } from "@/shared/hai-config"
 
-export class PostHogClientProvider {
+class PostHogClientProvider {
 	private static instance: PostHogClientProvider
 	private client: PostHog
 
 	private constructor() {
-		this.client = this.initPostHogClient()
+		const config = posthogConfig
+		this.client = new PostHog(config.apiKey, {
+			host: config.host,
+			enableExceptionAutocapture: false,
+		})
 	}
 
-	public initPostHogClient() {
-		const config = HaiConfig.getPostHogConfig()
+	public async initPostHogClient() {
+		const config = await HaiConfig.getPostHogConfig()
 		const apiKey = config && config.apiKey ? config.apiKey : posthogConfig.apiKey
 		const host = config && config.url ? config.url : posthogConfig.host
 
 		this.client = new PostHog(apiKey, {
 			host,
 			enableExceptionAutocapture: false,
-			defaultOptIn: false,
 		})
 
 		return this.client

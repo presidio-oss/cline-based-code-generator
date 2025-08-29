@@ -1,10 +1,9 @@
-import { BrowserConnection } from "@shared/proto/browser"
-import { EmptyRequest } from "@shared/proto/common"
+import { BrowserConnection } from "@shared/proto/cline/browser"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { Controller } from "../index"
 import { getAllExtensionState } from "@core/storage/state"
 import { BrowserSession } from "@services/browser/BrowserSession"
 import { discoverChromeInstances } from "@services/browser/BrowserDiscovery"
-import { getWorkspaceID } from "@/utils/path"
 
 /**
  * Discover Chrome instances
@@ -21,29 +20,28 @@ export async function discoverBrowser(controller: Controller, request: EmptyRequ
 			// This way we don't override the user's preference
 
 			// Test the connection to get the endpoint
-			const workspaceId = getWorkspaceID() || ""
-			const { browserSettings } = await getAllExtensionState(controller.context, workspaceId)
+			const { browserSettings } = await getAllExtensionState(controller.context)
 			const browserSession = new BrowserSession(controller.context, browserSettings)
 			const result = await browserSession.testConnection(discoveredHost)
 
-			return {
+			return BrowserConnection.create({
 				success: true,
 				message: `Successfully discovered and connected to Chrome at ${discoveredHost}`,
 				endpoint: result.endpoint || "",
-			}
+			})
 		} else {
-			return {
+			return BrowserConnection.create({
 				success: false,
 				message:
 					"No Chrome instances found. Make sure Chrome is running with remote debugging enabled (--remote-debugging-port=9222).",
 				endpoint: "",
-			}
+			})
 		}
 	} catch (error) {
-		return {
+		return BrowserConnection.create({
 			success: false,
 			message: `Error discovering browser: ${error instanceof Error ? error.message : String(error)}`,
 			endpoint: "",
-		}
+		})
 	}
 }

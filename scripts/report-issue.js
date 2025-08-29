@@ -9,7 +9,7 @@ const rl = readline.createInterface({
 
 const ask = (question) => new Promise((resolve) => rl.question(`\n${question}`, resolve))
 
-const getHAIVersion = () => {
+const getClineVersion = () => {
 	try {
 		const extensions = execSync("code --list-extensions --show-versions").toString()
 		const clineMatch = extensions.match(/hai@(\d+\.\d+\.\d+)/)
@@ -44,7 +44,7 @@ const collectSystemInfo = () => {
 		os: `${os.arch()}; ${os.version()}`,
 		nodeVersion: execSync("node -v").toString().trim(),
 		npmVersion: execSync("npm -v").toString().trim(),
-		haiVersion: getHAIVersion(),
+		clineVersion: getClineVersion(),
 	}
 }
 
@@ -63,7 +63,7 @@ const checkGitHubAuth = async () => {
 
 const createIssueUrl = (systemInfo, issueTitle) => {
 	return (
-		`https://github.com/presidio-oss/cline-based-code-generator/issues/new?template=bug_report.yml` +
+		`https://github.com/presidio-oss/cline-based-code-generator/issues/new?template=bug_report.ymll` +
 		`&title=${issueTitle}` +
 		`&operating-system=${systemInfo.os}` +
 		`&hai-version=${systemInfo.haiVersion}` +

@@ -9,6 +9,7 @@ import { buildApiHandler } from "../../api"
 import { createDirectoryIfNotExists, ensureGitignorePattern, exponentialBackoff, getCodeFiles } from "./helper"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { createHash } from "node:crypto"
+import { Mode } from "@/shared/storage/types"
 
 export class CodeContextAdditionAgent extends EventEmitter {
 	private srcFolder!: string
@@ -16,6 +17,7 @@ export class CodeContextAdditionAgent extends EventEmitter {
 	private concurrency: number
 	private buildContextOptions!: HaiBuildContextOptions
 	private contextDir: string
+	private currentMode!: Mode
 
 	private abortController: AbortController
 
@@ -73,6 +75,10 @@ export class CodeContextAdditionAgent extends EventEmitter {
 
 	withAbortController(abortController: AbortController) {
 		this.abortController = abortController
+		return this
+	}
+	withCurrentMode(mode: Mode) {
+		this.currentMode = mode
 		return this
 	}
 
@@ -133,7 +139,7 @@ export class CodeContextAdditionAgent extends EventEmitter {
         File name: ${fileName} 
         <CODE>${fileContent}</CODE>`
 
-		const llmApi = buildApiHandler(this.llmApiConfig)
+		const llmApi = buildApiHandler(this.llmApiConfig, this.currentMode)
 
 		createDirectoryIfNotExists(dirname(destinationFilePath))
 

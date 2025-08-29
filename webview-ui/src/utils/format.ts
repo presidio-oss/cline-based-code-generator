@@ -22,6 +22,24 @@ export function formatDollars(cents?: number): string {
 	return (cents / 100).toFixed(2)
 }
 
+/**
+ * Converts microcredits to credits for display purposes.
+ *
+ * The backend stores credit balances in microcredits (1 credit = 10,000 microcredits)
+ * to avoid floating point precision issues when performing calculations.
+ * This function converts the microcredits back to the user-facing credit amount.
+ *
+ * @param microcredits - The balance in microcredits from the backend
+ * @returns The balance in credits (typically displayed with 4 decimal places)
+ *
+ * @example
+ * formatCreditsBalance(50000) // returns 5.0000 (credits)
+ * formatCreditsBalance(12345) // returns 1.2345 (credits)
+ */
+export function formatCreditsBalance(microcredits: number): number {
+	return microcredits / 10000
+}
+
 export function formatTimestamp(timestamp: string): string {
 	const date = new Date(timestamp)
 
@@ -37,14 +55,14 @@ export function formatTimestamp(timestamp: string): string {
 	return dateFormatter.format(date)
 }
 
-export function capitalizeFirstLetter(str: string) {
-	return str.charAt(0).toUpperCase() + str.slice(1)
-}
-
 export function formatSize(bytes?: number) {
 	if (bytes === undefined) {
 		return "--kb"
 	}
 
 	return prettyBytes(bytes)
+}
+
+export function capitalizeFirstLetter(str: string) {
+	return str.charAt(0).toUpperCase() + str.slice(1)
 }

@@ -165,7 +165,7 @@ export class UrlContentFetcher {
 		this should be sufficient for most doc sites
 		*/
 		await this.page.goto(url, {
-			timeout,
+			timeout: 10_000,
 			waitUntil: ["domcontentloaded", "networkidle2"],
 		})
 		const content = await this.page.content()

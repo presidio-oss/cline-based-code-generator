@@ -1,6 +1,6 @@
 import { fileExistsAtPath, isDirectory, readDirectory } from "@utils/fs"
 import { ensureRulesDirectoryExists, ensureWorkflowsDirectoryExists, GlobalFileNames } from "@core/storage/disk"
-import { customGetState, customUpdateState } from "@core/storage/state"
+import { getGlobalState, getWorkspaceState, updateGlobalState, updateWorkspaceState } from "@core/storage/state"
 import * as path from "path"
 import fs from "fs/promises"
 import { ClineRulesToggles } from "@shared/cline-rules"
@@ -240,7 +240,7 @@ export async function deleteRuleFile(
 		}
 
 		// Delete the file from disk
-		await fs.unlink(rulePath)
+		await fs.rm(rulePath, { force: true })
 
 		// Get the filename for messages
 		const fileName = path.basename(rulePath)
@@ -248,31 +248,31 @@ export async function deleteRuleFile(
 		// Update the appropriate toggles
 		if (isGlobal) {
 			if (type === "workflow") {
-				const toggles = ((await customGetState(context, "globalWorkflowToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getGlobalState(context, "globalWorkflowToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "globalWorkflowToggles", toggles)
+				await updateGlobalState(context, "globalWorkflowToggles", toggles)
 			} else {
-				const toggles = ((await customGetState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getGlobalState(context, "globalClineRulesToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "globalClineRulesToggles", toggles)
+				await updateGlobalState(context, "globalClineRulesToggles", toggles)
 			}
 		} else {
 			if (type === "workflow") {
-				const toggles = ((await customGetState(context, "workflowToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getWorkspaceState(context, "workflowToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "workflowToggles", toggles)
+				await updateWorkspaceState(context, "workflowToggles", toggles)
 			} else if (type === "cursor") {
-				const toggles = ((await customGetState(context, "localCursorRulesToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getWorkspaceState(context, "localCursorRulesToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "localCursorRulesToggles", toggles)
+				await updateWorkspaceState(context, "localCursorRulesToggles", toggles)
 			} else if (type === "windsurf") {
-				const toggles = ((await customGetState(context, "localWindsurfRulesToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getWorkspaceState(context, "localWindsurfRulesToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "localWindsurfRulesToggles", toggles)
+				await updateWorkspaceState(context, "localWindsurfRulesToggles", toggles)
 			} else {
-				const toggles = ((await customGetState(context, "localClineRulesToggles")) as ClineRulesToggles) || {}
+				const toggles = ((await getWorkspaceState(context, "localClineRulesToggles")) as ClineRulesToggles) || {}
 				delete toggles[rulePath]
-				await customUpdateState(context, "localClineRulesToggles", toggles)
+				await updateWorkspaceState(context, "localClineRulesToggles", toggles)
 			}
 		}
 

@@ -16,6 +16,7 @@ import { ensureFaissPlatformDeps } from "../../utils/faiss"
 import { EmbeddingConfiguration } from "../../shared/embeddings"
 import { OllamaEmbeddings } from "@langchain/ollama"
 import { buildEmbeddingHandler } from "../../embedding"
+import { Mode } from "@/shared/storage/types"
 
 export class FindFilesToEditAgent {
 	private srcFolder: string
@@ -26,6 +27,7 @@ export class FindFilesToEditAgent {
 	private task: string
 	private buildContextOptions: HaiBuildContextOptions
 	private contextDir: string
+	private currentMode: Mode
 
 	private abortController = new AbortController()
 
@@ -38,6 +40,7 @@ export class FindFilesToEditAgent {
 		buildContextOptions: HaiBuildContextOptions,
 		task: string,
 		contextDir = ".hai",
+		currentMode: Mode,
 	) {
 		this.srcFolder = srcFolder
 		this.llmApiConfig = llmApiConfig
@@ -50,6 +53,7 @@ export class FindFilesToEditAgent {
 		this.task = task
 		this.buildContextOptions = buildContextOptions
 		this.contextDir = contextDir
+		this.currentMode = currentMode
 	}
 
 	private async job(): Promise<string[]> {
@@ -100,7 +104,7 @@ export class FindFilesToEditAgent {
 			.map((id, idx) => `${idx + 1}. ${basename(id)} \t ${id}`)
 			.join("\n")
 
-		const llmApi = buildApiHandler(this.llmApiConfig)
+		const llmApi = buildApiHandler(this.llmApiConfig, this.currentMode)
 
 		const USER_PROMPT = `
         This is the folder structure of a application you are working on:

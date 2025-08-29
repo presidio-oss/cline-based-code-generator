@@ -39,17 +39,19 @@ export interface EmbeddingModelInfo {
 // Bedrock
 
 export type bedrockEmbeddingModelId = keyof typeof bedrockEmbeddingModels
-export const bedrockeEmbeddingDefaultModelId: bedrockEmbeddingModelId = "amazon.titan-embed-text-v1"
+export const bedrockEmbeddingDefaultModelId: bedrockEmbeddingModelId = "amazon.titan-embed-text-v1"
 export const bedrockEmbeddingModels = {
 	"amazon.titan-embed-text-v1": {
 		maxDimensions: 1536,
 		pricePerMillion: 0.0004,
 		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks.",
+		supportsPromptCache: false,
 	},
 	"amazon.titan-embed-text-v2:0": {
 		maxDimensions: 1024,
 		pricePerMillion: 0.02,
 		description: "Amazon Titan Text Embeddings model for semantic search and text similarity tasks with larger context.",
+		supportsPromptCache: false,
 	},
 } as const
 
@@ -62,18 +64,21 @@ export const openAiNativeEmbeddingModels = {
 		pricePerMillion: 0.02,
 		description: "Fastest and most cost-effective model. Ideal for production deployments.",
 		supportsBatching: true,
+		supportsPromptCache: false,
 	},
 	"text-embedding-3-large": {
 		maxDimensions: 3072,
 		pricePerMillion: 0.13,
 		description: "Most capable model. Best for high-stakes use cases requiring maximal performance.",
 		supportsBatching: true,
+		supportsPromptCache: false,
 	},
 	"text-embedding-ada-002": {
 		maxDimensions: 1536,
 		pricePerMillion: 0.1,
 		description: "Legacy model. Kept for backwards compatibility.",
 		supportsBatching: true,
+		supportsPromptCache: false,
 	},
 } as const
 

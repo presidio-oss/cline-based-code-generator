@@ -1,11 +1,5 @@
 export const MAIN_CARDS = [
 	{
-		name: "View Hai Tasks",
-		icon: "add",
-		title: "HAI Tasks",
-		description: "Explore detailed information about your HAI tasks.",
-	},
-	{
 		name: "View Conversation",
 		icon: "history",
 		title: "My Recent Tasks",

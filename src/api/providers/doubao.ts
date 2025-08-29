@@ -1,20 +1,38 @@
 import { ApiHandler } from ".."
-import { ApiHandlerOptions, doubaoDefaultModelId, DoubaoModelId, doubaoModels, ModelInfo } from "@shared/api"
+import { doubaoDefaultModelId, DoubaoModelId, doubaoModels, ModelInfo } from "@shared/api"
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
 import { convertToOpenAiMessages } from "../transform/openai-format"
 import { ApiStream } from "../transform/stream"
+import { withRetry } from "../retry"
+
+interface DoubaoHandlerOptions {
+	doubaoApiKey?: string
+	apiModelId?: string
+}
 
 export class DoubaoHandler implements ApiHandler {
-	private options: ApiHandlerOptions
-	private client: OpenAI
-	constructor(options: ApiHandlerOptions) {
+	private options: DoubaoHandlerOptions
+	private client: OpenAI | undefined
+	constructor(options: DoubaoHandlerOptions) {
 		this.options = options
-		this.client = new OpenAI({
-			baseURL: "https://ark.cn-beijing.volces.com/api/v3/",
-			apiKey: this.options.doubaoApiKey,
-			maxRetries: this.options.maxRetries,
-		})
+	}
+
+	private ensureClient(): OpenAI {
+		if (!this.client) {
+			if (!this.options.doubaoApiKey) {
+				throw new Error("Doubao API key is required")
+			}
+			try {
+				this.client = new OpenAI({
+					baseURL: "https://ark.cn-beijing.volces.com/api/v3/",
+					apiKey: this.options.doubaoApiKey,
+				})
+			} catch (error) {
+				throw new Error(`Error creating Doubao client: ${error.message}`)
+			}
+		}
+		return this.client
 	}
 
 	getModel(): { id: DoubaoModelId; info: ModelInfo } {
@@ -29,13 +47,15 @@ export class DoubaoHandler implements ApiHandler {
 		}
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const client = this.ensureClient()
 		const model = this.getModel()
 		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
-		const stream = await this.client.chat.completions.create({
+		const stream = await client.chat.completions.create({
 			model: model.id,
 			max_completion_tokens: model.info.maxTokens,
 			messages: openAiMessages,
@@ -68,18 +88,20 @@ export class DoubaoHandler implements ApiHandler {
 	}
 
 	async validateAPIKey(): Promise<boolean> {
+		let output = false
 		try {
-			await this.client.chat.completions.create({
-				model: this.getModel().id,
-				max_tokens: 1,
-				messages: [{ role: "user", content: "Test" }],
-				temperature: 0,
-				stream: false,
-			})
-			return true
+			const stream = this.createMessage(
+				'You are a helpful AI. The user will send a test message — please reply with "OK"',
+				[{ role: "user", content: "Test" }],
+			)
+
+			for await (const _ of stream) {
+				output = true
+				break
+			}
 		} catch (error) {
 			console.error("Error validating Doubao credentials: ", error)
-			return false
 		}
+		return output
 	}
 }

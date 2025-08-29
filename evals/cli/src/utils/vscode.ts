@@ -16,7 +16,7 @@ interface VSCodeResources {
 const workspaceResources = new Map<string, VSCodeResources>()
 
 /**
- * Spawn a VSCode instance with the Cline extension
+ * Spawn a VSCode instance with the HAI extension
  * @param workspacePath The workspace path to open
  * @param vsixPath Optional path to a VSIX file to install
  * @returns The resources created for this VS Code instance
@@ -101,7 +101,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 	)
 
 	// Create settings.json in the temporary user data directory to disable workspace trust
-	// and configure Cline to auto-open on startup
+	// and configure HAI to auto-open on startup
 	const settingsDir = path.join(tempUserDataDir, "User")
 	fs.mkdirSync(settingsDir, { recursive: true })
 	const settingsPath = path.join(settingsDir, "settings.json")
@@ -115,7 +115,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// Configure startup behavior
 		"workbench.startupEditor": "none",
 
-		// Auto-open Cline on startup
+		// Auto-open HAI on startup
 		"hai.autoOpenOnStartup": true,
 
 		// Show the activity bar and sidebar
@@ -140,7 +140,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 	fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2))
 	console.log(`Created settings.json to disable workspace trust and auto-open HAI`)
 
-	// Create keybindings.json to automatically open Cline on startup
+	// Create keybindings.json to automatically open HAI on startup
 	const keybindingsPath = path.join(settingsDir, "keybindings.json")
 	const keybindings = [
 		{
@@ -172,7 +172,7 @@ export async function spawnVSCode(workspacePath: string, vsixPath?: string): Pro
 		// Force the extension to be activated on startup
 		"--start-up-extension",
 		"presidio-inc.hai-build-code-generator",
-		// Run a command on startup to open Cline
+		// Run a command on startup to open HAI
 		"--command",
 		"workbench.view.extension.presidio-inc.hai-build-code-generator-ActivityBar",
 		// Additional flags to help with extension activation

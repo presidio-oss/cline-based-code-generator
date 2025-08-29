@@ -1,28 +1,52 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI from "openai"
-import { ApiHandlerOptions, liteLlmDefaultModelId, liteLlmModelInfoSaneDefaults } from "@shared/api"
+import { liteLlmDefaultModelId, liteLlmModelInfoSaneDefaults, LiteLLMModelInfo } from "@shared/api"
 import { ApiHandler } from ".."
 import { ApiStream } from "../transform/stream"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { withRetry } from "../retry"
+
+interface LiteLlmHandlerOptions {
+	liteLlmApiKey?: string
+	liteLlmBaseUrl?: string
+	liteLlmModelId?: string
+	liteLlmModelInfo?: LiteLLMModelInfo
+	thinkingBudgetTokens?: number
+	liteLlmUsePromptCache?: boolean
+	taskId?: string
+}
 
 export class LiteLlmHandler implements ApiHandler {
-	private options: ApiHandlerOptions
-	private client: OpenAI
+	private options: LiteLlmHandlerOptions
+	private client: OpenAI | undefined
 
-	constructor(options: ApiHandlerOptions) {
+	constructor(options: LiteLlmHandlerOptions) {
 		this.options = options
-		this.client = new OpenAI({
-			baseURL: this.options.liteLlmBaseUrl || "http://localhost:4000",
-			apiKey: this.options.liteLlmApiKey || "noop",
-			maxRetries: this.options.maxRetries,
-		})
+	}
+
+	private ensureClient(): OpenAI {
+		if (!this.client) {
+			if (!this.options.liteLlmApiKey) {
+				throw new Error("LiteLLM API key is required")
+			}
+			try {
+				this.client = new OpenAI({
+					baseURL: this.options.liteLlmBaseUrl || "http://localhost:4000",
+					apiKey: this.options.liteLlmApiKey || "noop",
+				})
+			} catch (error) {
+				throw new Error(`Error creating LiteLLM client: ${error.message}`)
+			}
+		}
+		return this.client
 	}
 
 	async calculateCost(prompt_tokens: number, completion_tokens: number): Promise<number | undefined> {
 		// Reference: https://github.com/BerriAI/litellm/blob/122ee634f434014267af104814022af1d9a0882f/litellm/proxy/spend_tracking/spend_management_endpoints.py#L1473
+		const client = this.ensureClient()
 		const modelId = this.options.liteLlmModelId || liteLlmDefaultModelId
 		try {
-			const response = await fetch(`${this.client.baseURL}/spend/calculate`, {
+			const response = await fetch(`${client.baseURL}/spend/calculate`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -52,7 +76,9 @@ export class LiteLlmHandler implements ApiHandler {
 		}
 	}
 
+	@withRetry()
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
+		const client = this.ensureClient()
 		const formattedMessages = convertToOpenAiMessages(messages)
 		const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
 			role: "system",
@@ -100,13 +126,14 @@ export class LiteLlmHandler implements ApiHandler {
 			return message
 		})
 
-		const stream = await this.client.chat.completions.create({
+		const stream = await client.chat.completions.create({
 			model: this.options.liteLlmModelId || liteLlmDefaultModelId,
 			messages: [enhancedSystemMessage, ...enhancedMessages],
 			temperature,
 			stream: true,
 			stream_options: { include_usage: true },
 			...(thinkingConfig && { thinking: thinkingConfig }), // Add thinking configuration when applicable
+			...(this.options.taskId && { litellm_session_id: `hai-${this.options.taskId}` }), // Add session ID for LiteLLM tracking
 		})
 
 		const inputCost = (await this.calculateCost(1e6, 0)) || 0
@@ -176,7 +203,8 @@ export class LiteLlmHandler implements ApiHandler {
 
 	async validateAPIKey(): Promise<boolean> {
 		try {
-			await this.client.chat.completions.create({
+			const client = this.ensureClient()
+			await client.chat.completions.create({
 				model: this.getModel().id,
 				max_tokens: 1,
 				messages: [{ role: "user", content: "Test" }],

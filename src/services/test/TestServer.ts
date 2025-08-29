@@ -6,20 +6,20 @@ import { Logger } from "@services/logging/Logger"
 import { WebviewProvider } from "@core/webview"
 import { AutoApprovalSettings } from "@shared/AutoApprovalSettings"
 import { TaskServiceClient } from "webview-ui/src/services/grpc-client"
+import { validateWorkspacePath, initializeGitRepository, getFileChanges, calculateToolSuccessRate } from "./GitHelper"
 import {
-	getWorkspacePath,
-	validateWorkspacePath,
-	initializeGitRepository,
-	getFileChanges,
-	calculateToolSuccessRate,
-} from "./GitHelper"
-import { getAllExtensionState, updateApiConfiguration, customUpdateState, customStoreSecret } from "@core/storage/state"
+	updateGlobalState,
+	getAllExtensionState,
+	updateApiConfiguration,
+	storeSecret,
+	updateWorkspaceState,
+} from "@core/storage/state"
 import { ClineAsk, ExtensionMessage } from "@shared/ExtensionMessage"
 import { ApiProvider } from "@shared/api"
-import { WebviewMessage } from "@shared/WebviewMessage"
 import { HistoryItem } from "@shared/HistoryItem"
 import { getSavedClineMessages, getSavedApiConversationHistory } from "@core/storage/disk"
-import { getWorkspaceID } from "@/utils/path"
+import { AskResponseRequest } from "@shared/proto/cline/task"
+import { getCwd } from "@/utils/path"
 
 /**
  * Creates a tracker to monitor tool calls and failures during task execution
@@ -38,25 +38,28 @@ function createToolCallTracker(webviewProvider: WebviewProvider): {
 	// Intercept messages to track tool usage
 	const originalPostMessageToWebview = webviewProvider.controller.postMessageToWebview
 	webviewProvider.controller.postMessageToWebview = async (message: ExtensionMessage) => {
-		// Track tool calls
-		if (message.type === "partialMessage" && message.partialMessage?.say === "tool") {
-			const toolName = (message.partialMessage.text as any)?.tool
-			if (toolName) {
-				tracker.toolCalls[toolName] = (tracker.toolCalls[toolName] || 0) + 1
-			}
-		}
+		// NOTE: Tool tracking via partialMessage has been migrated to gRPC streaming
+		// This interceptor is kept for potential future use with other message types
 
-		// Track tool failures
-		if (message.type === "partialMessage" && message.partialMessage?.say === "error") {
-			const errorText = message.partialMessage.text
-			if (errorText && errorText.includes("Error executing tool")) {
-				const match = errorText.match(/Error executing tool: (\w+)/)
-				if (match && match[1]) {
-					const toolName = match[1]
-					tracker.toolFailures[toolName] = (tracker.toolFailures[toolName] || 0) + 1
-				}
-			}
-		}
+		// Track tool calls - commented out as partialMessage is now handled via gRPC
+		// if (message.type === "partialMessage" && message.partialMessage?.say === "tool") {
+		// 	const toolName = (message.partialMessage.text as any)?.tool
+		// 	if (toolName) {
+		// 		tracker.toolCalls[toolName] = (tracker.toolCalls[toolName] || 0) + 1
+		// 	}
+		// }
+
+		// Track tool failures - commented out as partialMessage is now handled via gRPC
+		// if (message.type === "partialMessage" && message.partialMessage?.say === "error") {
+		// 	const errorText = message.partialMessage.text
+		// 	if (errorText && errorText.includes("Error executing tool")) {
+		// 		const match = errorText.match(/Error executing tool: (\w+)/)
+		// 		if (match && match[1]) {
+		// 			const toolName = match[1]
+		// 			tracker.toolFailures[toolName] = (tracker.toolFailures[toolName] || 0) + 1
+		// 		}
+		// 	}
+		// }
 
 		return originalPostMessageToWebview.call(webviewProvider.controller, message)
 	}
@@ -94,9 +97,7 @@ let messageCatcherDisposable: vscode.Disposable | undefined
  */
 async function updateAutoApprovalSettings(context: vscode.ExtensionContext, provider?: WebviewProvider) {
 	try {
-		const workspaceId = getWorkspaceID() || ""
-
-		const { autoApprovalSettings } = await getAllExtensionState(context, workspaceId)
+		const { autoApprovalSettings } = await getAllExtensionState(context)
 
 		// Enable all actions
 		const updatedSettings: AutoApprovalSettings = {
@@ -115,7 +116,7 @@ async function updateAutoApprovalSettings(context: vscode.ExtensionContext, prov
 			maxRequests: 10000, // Increase max requests for tests
 		}
 
-		await customUpdateState(context, "autoApprovalSettings", updatedSettings)
+		await updateGlobalState(context, "autoApprovalSettings", updatedSettings)
 		Logger.log("Auto approval settings updated for test mode")
 
 		// Update the webview with the new state
@@ -133,8 +134,8 @@ async function updateAutoApprovalSettings(context: vscode.ExtensionContext, prov
  * @returns The created HTTP server instance
  */
 export function createTestServer(webviewProvider?: WebviewProvider): http.Server {
-	// Try to show the Cline sidebar
-	Logger.log("[createTestServer] Opening Cline in sidebar...")
+	// Try to show the HAI sidebar
+	Logger.log("[createTestServer] Opening HAI in sidebar...")
 	vscode.commands.executeCommand("workbench.view.hai-ActivityBar")
 
 	// Then ensure the webview is focused/loaded
@@ -200,7 +201,7 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 				const visibleWebview = WebviewProvider.getVisibleInstance()
 				if (!visibleWebview || !visibleWebview.controller) {
 					res.writeHead(500)
-					res.end(JSON.stringify({ error: "No active Cline instance found" }))
+					res.end(JSON.stringify({ error: "No active HAI instance found" }))
 					return
 				}
 
@@ -209,7 +210,7 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 
 				try {
 					// Get and validate the workspace path
-					const workspacePath = getWorkspacePath(visibleWebview)
+					const workspacePath = await getCwd()
 					Logger.log(`Using workspace path: ${workspacePath}`)
 
 					// Validate workspace path before proceeding with any operations
@@ -251,39 +252,40 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 					// Clear any existing task
 					await visibleWebview.controller.clearTask()
 
+					// TODO: convert apiKey to clineAccountId
 					// If API key is provided, update the API configuration
 					if (apiKey) {
 						Logger.log("API key provided, updating API configuration")
 
 						// Get current API configuration
-						const workspaceId = getWorkspaceID() || ""
-						const { apiConfiguration } = await getAllExtensionState(visibleWebview.controller.context, workspaceId)
+						const { apiConfiguration } = await getAllExtensionState(visibleWebview.controller.context)
 
 						// Update API configuration with API key
 						const updatedConfig = {
 							...apiConfiguration,
 							apiProvider: "cline" as ApiProvider,
-							clineApiKey: apiKey,
+							clineAccountId: apiKey,
 						}
 
 						// Store the API key securely
-						await customStoreSecret(visibleWebview.controller.context, "clineApiKey", workspaceId, apiKey, true)
+						await storeSecret(visibleWebview.controller.context, "clineAccountId", apiKey)
 
 						// Update the API configuration
-						await updateApiConfiguration(visibleWebview.controller.context, updatedConfig, workspaceId)
+						await updateApiConfiguration(visibleWebview.controller.context, updatedConfig)
 
 						// Update global state to use cline provider
-						await customUpdateState(visibleWebview.controller.context, "apiProvider", "cline" as ApiProvider)
+						await updateGlobalState(visibleWebview.controller.context, "planModeApiProvider", "cline")
+						await updateGlobalState(visibleWebview.controller.context, "actModeApiProvider", "cline")
 
 						// Post state to webview to reflect changes
 						await visibleWebview.controller.postStateToWebview()
 					}
 
 					// Ensure we're in Act mode before initiating the task
-					const { chatSettings } = await visibleWebview.controller.getStateToPostToWebview()
-					if (chatSettings.mode === "plan") {
+					const { mode } = await visibleWebview.controller.getStateToPostToWebview()
+					if (mode === "plan") {
 						// Switch to Act mode if currently in Plan mode
-						await visibleWebview.controller.togglePlanActModeWithChatSettings({ mode: "act" })
+						await visibleWebview.controller.togglePlanActMode("act")
 					}
 
 					// Initialize tool call tracker
@@ -352,7 +354,7 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 								messages = await getSavedClineMessages(visibleWebview.controller.context, taskId)
 							}
 						} catch (error) {
-							Logger.log(`Error getting saved Cline messages: ${error}`)
+							Logger.log(`Error getting saved HAI messages: ${error}`)
 						}
 
 						try {
@@ -370,7 +372,7 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
 						let fileChanges
 						try {
 							// Get the workspace path using our helper function
-							const workspacePath = getWorkspacePath(visibleWebview)
+							const workspacePath = await getCwd()
 							Logger.log(`Getting file changes from workspace path: ${workspacePath}`)
 
 							// Log directory contents for debugging
@@ -501,29 +503,32 @@ export function createTestServer(webviewProvider?: WebviewProvider): http.Server
  * @returns A disposable that can be used to clean up the message catcher
  */
 export function createMessageCatcher(webviewProvider: WebviewProvider): vscode.Disposable {
-	Logger.log("Cline message catcher registered")
+	Logger.log("HAI message catcher registered")
 
 	if (webviewProvider && webviewProvider.controller) {
 		const originalPostMessageToWebview = webviewProvider.controller.postMessageToWebview
 
 		// Intercept outgoing messages from extension to webview
 		webviewProvider.controller.postMessageToWebview = async (message: ExtensionMessage) => {
-			// Check for completion_result message
-			if (message.type === "partialMessage" && message.partialMessage?.say === "completion_result") {
-				// Complete the current task
-				completeTask()
-			}
+			// NOTE: Completion and ask message detection has been migrated to gRPC streaming
+			// This interceptor is kept for potential future use with other message types
 
-			// Check for ask messages that require user intervention
-			if (message.type === "partialMessage" && message.partialMessage?.type === "ask" && !message.partialMessage.partial) {
-				const askType = message.partialMessage.ask as ClineAsk
-				const askText = message.partialMessage.text
+			// Check for completion_result message - commented out as partialMessage is now handled via gRPC
+			// if (message.type === "partialMessage" && message.partialMessage?.say === "completion_result") {
+			// 	// Complete the current task
+			// 	completeTask()
+			// }
 
-				// Automatically respond to different types of asks
-				setTimeout(async () => {
-					await autoRespondToAsk(webviewProvider, askType, askText)
-				}, 100) // Small delay to ensure the message is processed first
-			}
+			// Check for ask messages that require user intervention - commented out as partialMessage is now handled via gRPC
+			// if (message.type === "partialMessage" && message.partialMessage?.type === "ask" && !message.partialMessage.partial) {
+			// 	const askType = message.partialMessage.ask as ClineAsk
+			// 	const askText = message.partialMessage.text
+
+			// 	// Automatically respond to different types of asks
+			// 	setTimeout(async () => {
+			// 		await autoRespondToAsk(webviewProvider, askType, askText)
+			// 	}, 100) // Small delay to ensure the message is processed first
+			// }
 
 			return originalPostMessageToWebview.call(webviewProvider.controller, message)
 		}
@@ -533,7 +538,7 @@ export function createMessageCatcher(webviewProvider: WebviewProvider): vscode.D
 
 	return new vscode.Disposable(() => {
 		// Cleanup function if needed
-		Logger.log("Cline message catcher disposed")
+		Logger.log("HAI message catcher disposed")
 	})
 }
 
@@ -607,7 +612,7 @@ async function autoRespondToAsk(webviewProvider: WebviewProvider, askType: Cline
 				try {
 					if (webviewProvider.controller) {
 						Logger.log("Auto-toggling to Act mode from Plan mode")
-						await webviewProvider.controller.togglePlanActModeWithChatSettings({ mode: "act" })
+						await webviewProvider.controller.togglePlanActMode("act")
 					}
 				} catch (error) {
 					Logger.log(`Error toggling to Act mode: ${error}`)
@@ -621,11 +626,13 @@ async function autoRespondToAsk(webviewProvider: WebviewProvider, askType: Cline
 
 	// Send the response message
 	try {
-		await TaskServiceClient.askResponse({
-			responseType,
-			text: responseText,
-			images: responseImages,
-		})
+		await TaskServiceClient.askResponse(
+			AskResponseRequest.create({
+				responseType,
+				text: responseText,
+				images: responseImages,
+			}),
+		)
 		Logger.log(`Auto-responded to ${askType} with ${responseType}`)
 	} catch (error) {
 		Logger.log(`Error sending askResponse: ${error}`)

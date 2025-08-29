@@ -1,55 +1,34 @@
+import HeroTooltip from "@/components/common/HeroTooltip"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import { StateServiceClient } from "@/services/grpc-client"
+import { ExtensionMessage } from "@shared/ExtensionMessage"
+import { ResetStateRequest } from "@shared/proto/cline/state"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import {
-	VSCodeButton,
-	VSCodeCheckbox,
-	VSCodeDropdown,
-	VSCodeLink,
-	VSCodeOption,
-	VSCodeTextArea,
-} from "@vscode/webview-ui-toolkit/react"
-import { memo, useCallback, useEffect, useState, useRef } from "react"
-import {
-	Settings,
-	Webhook,
 	CheckCheck,
-	SquareMousePointer,
-	GitBranch,
-	Bell,
-	Database,
-	SquareTerminal,
 	FlaskConical,
-	Globe,
 	Info,
 	LucideIcon,
+	Settings,
 	Sparkles,
+	SquareMousePointer,
+	SquareTerminal,
+	Webhook,
 } from "lucide-react"
-import HeroTooltip from "@/components/common/HeroTooltip"
-import { UnsavedChangesDialog } from "@/components/common/AlertDialog"
-import SectionHeader from "./SectionHeader"
-import Section from "./Section"
-import PreferredLanguageSetting from "./PreferredLanguageSetting" // Added import
-import { OpenAIReasoningEffort } from "@shared/ChatSettings"
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import { validateApiConfiguration, validateModelId } from "@/utils/validate"
-import { vscode } from "@/utils/vscode"
-import SettingsButton from "@/components/common/SettingsButton"
-import ApiOptions from "./ApiOptions"
-import { TabButton } from "../mcp/configuration/McpConfigurationView"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "react-use"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
-import { StateServiceClient } from "@/services/grpc-client"
-import FeatureSettingsSection from "./FeatureSettingsSection"
-import BrowserSettingsSection from "./BrowserSettingsSection"
-import TerminalSettingsSection from "./TerminalSettingsSection"
-import { FEATURE_FLAGS } from "@shared/services/feature-flags/feature-flags"
 import { Tab, TabContent, TabHeader, TabList, TabTrigger } from "../common/Tab"
-import { cn } from "@/utils/cn"
-import { PlanActMode } from "@shared/proto/state"
+import FeatureSettingsSection from "./sections/FeatureSettingsSection"
+import SectionHeader from "./SectionHeader"
+import TerminalSettingsSection from "./sections/TerminalSettingsSection"
+import ApiConfigurationSection from "./sections/ApiConfigurationSection"
+import GeneralSettingsSection from "./sections/GeneralSettingsSection"
+import BrowserSettingsSection from "./sections/BrowserSettingsSection"
+import DebugSection from "./sections/DebugSection"
+import AboutSection from "./sections/AboutSection"
+import HaiSettingsSection from "./sections/HaiSettingsSection"
 
-// TAG:HAI
-import SettingsViewExtra from "./SettingsViewExtra"
-import EmbeddingOptions from "./EmbeddingOptions"
-import { CREATE_HAI_RULES_PROMPT, HAI_RULES_PATH } from "@utils/constants"
-import { validateEmbeddingConfiguration } from "@shared/validate"
+const IS_DEV = process.env.IS_DEV
 
 // Styles for the tab system
 const settingsTabsContainer = "flex flex-1 overflow-hidden [&.narrow_.tab-label]:hidden"
@@ -135,294 +114,62 @@ type SettingsViewProps = {
 }
 
 const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
-	// Track if there are unsaved changes
-	const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-	// State for the unsaved changes dialog
-	const [isUnsavedChangesDialogOpen, setIsUnsavedChangesDialogOpen] = useState(false)
-	// Store the action to perform after confirmation
-	const pendingAction = useRef<() => void>()
-	const {
-		apiConfiguration,
-		version,
-		customInstructions,
-		setCustomInstructions,
-		openRouterModels,
-		telemetrySetting,
-		setTelemetrySetting,
-		chatSettings,
-		setChatSettings,
-		planActSeparateModelsSetting,
-		setPlanActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		setEnableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		setMcpMarketplaceEnabled,
-		setApiConfiguration,
+	// Track active tab
+	const [activeTab, setActiveTab] = useState<string>(targetSection || SETTINGS_TABS[0].id)
+	// Track if we're currently switching modes
 
-		// TAG:HAI
-		buildContextOptions,
-		setBuildContextOptions,
-		buildIndexProgress,
-		embeddingConfiguration,
-		vscodeWorkspacePath,
-		enableInlineEdit,
-	} = useExtensionState()
+	const { version } = useExtensionState()
 
-	// Store the original state to detect changes
-	const originalState = useRef({
-		apiConfiguration,
-		customInstructions,
-		telemetrySetting,
-		planActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		chatSettings,
-		embeddingConfiguration,
-		buildContextOptions,
-		enableInlineEdit,
-	})
-	const [apiErrorMessage, setApiErrorMessage] = useState<string | undefined>(undefined)
-	const [modelIdErrorMessage, setModelIdErrorMessage] = useState<string | undefined>(undefined)
-	const [pendingTabChange, setPendingTabChange] = useState<"plan" | "act" | null>(null)
+	const handleMessage = useCallback((event: MessageEvent) => {
+		const message: ExtensionMessage = event.data
+		switch (message.type) {
+			// Handle tab navigation through targetSection prop instead
+			case "grpc_response":
+				if (message.grpc_response?.message?.key === "scrollToSettings") {
+					const tabId = message.grpc_response?.message?.value
+					if (tabId) {
+						console.log("Opening settings tab from GRPC response:", tabId)
+						// Check if the value corresponds to a valid tab ID
+						const isValidTabId = SETTINGS_TABS.some((tab) => tab.id === tabId)
 
-	// TAG:HAI
-	const [showCopied, setShowCopied] = useState(false)
+						if (isValidTabId) {
+							// Set the active tab directly
+							setActiveTab(tabId)
+						} else {
+							// Fall back to the old behavior of scrolling to an element
+							setTimeout(() => {
+								const element = document.getElementById(tabId)
+								if (element) {
+									element.scrollIntoView({ behavior: "smooth" })
 
-	const handleCopy = () => {
-		navigator.clipboard.writeText(
-			JSON.stringify({ buildContextOptions, buildIndexProgress, apiConfiguration, embeddingConfiguration }, null, 2),
-		)
-		setShowCopied(true)
-		setTimeout(() => setShowCopied(false), 2000)
-	}
+									element.style.transition = "background-color 0.5s ease"
+									element.style.backgroundColor = "var(--vscode-textPreformat-background)"
 
-	const handleSubmit = (withoutDone: boolean = false) => {
-		const apiValidationResult = validateApiConfiguration(apiConfiguration)
-		const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
-
-		// setApiErrorMessage(apiValidationResult)
-		// setModelIdErrorMessage(modelIdValidationResult)
-
-		let apiConfigurationToSubmit = apiConfiguration
-		if (!apiValidationResult && !modelIdValidationResult) {
-			// vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
-			// vscode.postMessage({
-			// 	type: "customInstructions",
-			// 	text: customInstructions,
-			// })
-			// vscode.postMessage({
-			// 	type: "telemetrySetting",
-			// 	text: telemetrySetting,
-			// })
-			// console.log("handleSubmit", withoutDone)
-			// vscode.postMessage({
-			// 	type: "separateModeSetting",
-			// 	text: separateModeSetting,
-			// })
-		} else {
-			// if the api configuration is invalid, we don't save it
-			apiConfigurationToSubmit = undefined
-		}
-
-		// TAG:HAI
-		const embeddingValidationResult = validateEmbeddingConfiguration(embeddingConfiguration)
-		let embeddingConfigurationToSubmit = !embeddingValidationResult ? embeddingConfiguration : undefined
-
-		vscode.postMessage({
-			type: "updateSettings",
-			planActSeparateModelsSetting,
-			customInstructionsSetting: customInstructions,
-			telemetrySetting,
-			enableCheckpointsSetting,
-			mcpMarketplaceEnabled,
-			apiConfiguration: apiConfigurationToSubmit,
-
-			// TAG:HAI
-			embeddingConfiguration: embeddingConfigurationToSubmit,
-			buildContextOptions: buildContextOptions,
-			enableInlineEdit,
-		})
-
-		if (!withoutDone) {
-			onDone()
-		}
-	}
-
-	// Check for unsaved changes by comparing current state with original state
-	useEffect(() => {
-		const hasChanges =
-			JSON.stringify(apiConfiguration) !== JSON.stringify(originalState.current.apiConfiguration) ||
-			customInstructions !== originalState.current.customInstructions ||
-			telemetrySetting !== originalState.current.telemetrySetting ||
-			planActSeparateModelsSetting !== originalState.current.planActSeparateModelsSetting ||
-			enableCheckpointsSetting !== originalState.current.enableCheckpointsSetting ||
-			mcpMarketplaceEnabled !== originalState.current.mcpMarketplaceEnabled ||
-			JSON.stringify(chatSettings) !== JSON.stringify(originalState.current.chatSettings) ||
-			// TAG:HAI
-			JSON.stringify(embeddingConfiguration) !== JSON.stringify(originalState.current.embeddingConfiguration) ||
-			JSON.stringify(buildContextOptions) !== JSON.stringify(originalState.current.buildContextOptions) ||
-			enableInlineEdit !== originalState.current.enableInlineEdit
-
-		setHasUnsavedChanges(hasChanges)
-	}, [
-		apiConfiguration,
-		customInstructions,
-		telemetrySetting,
-		planActSeparateModelsSetting,
-		enableCheckpointsSetting,
-		mcpMarketplaceEnabled,
-		chatSettings,
-		embeddingConfiguration,
-		buildContextOptions,
-		enableInlineEdit,
-	])
-
-	// Handle cancel button click
-	const handleCancel = useCallback(() => {
-		if (hasUnsavedChanges) {
-			// Show confirmation dialog
-			setIsUnsavedChangesDialogOpen(true)
-			pendingAction.current = () => {
-				// Reset all tracked state to original values
-				setCustomInstructions(originalState.current.customInstructions)
-				setTelemetrySetting(originalState.current.telemetrySetting)
-				setPlanActSeparateModelsSetting(originalState.current.planActSeparateModelsSetting)
-				setChatSettings(originalState.current.chatSettings)
-				if (typeof setApiConfiguration === "function") {
-					setApiConfiguration(originalState.current.apiConfiguration ?? {})
-				}
-				if (typeof setEnableCheckpointsSetting === "function") {
-					setEnableCheckpointsSetting(
-						typeof originalState.current.enableCheckpointsSetting === "boolean"
-							? originalState.current.enableCheckpointsSetting
-							: false,
-					)
-				}
-				if (typeof setMcpMarketplaceEnabled === "function") {
-					setMcpMarketplaceEnabled(
-						typeof originalState.current.mcpMarketplaceEnabled === "boolean"
-							? originalState.current.mcpMarketplaceEnabled
-							: false,
-					)
-				}
-				// Close settings view
-				onDone()
-			}
-		} else {
-			// No changes, just close
-			onDone()
-		}
-	}, [
-		hasUnsavedChanges,
-		onDone,
-		setCustomInstructions,
-		setTelemetrySetting,
-		setPlanActSeparateModelsSetting,
-		setChatSettings,
-		setApiConfiguration,
-		setEnableCheckpointsSetting,
-		setMcpMarketplaceEnabled,
-	])
-
-	// Handle confirmation dialog actions
-	const handleConfirmDiscard = useCallback(() => {
-		setIsUnsavedChangesDialogOpen(false)
-		if (pendingAction.current) {
-			pendingAction.current()
-			pendingAction.current = undefined
-		}
-	}, [])
-
-	const handleCancelDiscard = useCallback(() => {
-		setIsUnsavedChangesDialogOpen(false)
-		pendingAction.current = undefined
-	}, [])
-
-	// validate as soon as the component is mounted
-	/*
-	useEffect will use stale values of variables if they are not included in the dependency array. 
-	so trying to use useEffect with a dependency array of only one value for example will use any 
-	other variables' old values. In most cases you don't want this, and should opt to use react-use 
-	hooks.
-    
-		// uses someVar and anotherVar
-	// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [someVar])
-	If we only want to run code once on mount we can use react-use's useEffectOnce or useMount
-	*/
-
-	const handleMessage = useCallback(
-		(event: MessageEvent) => {
-			const message: ExtensionMessage = event.data
-			switch (message.type) {
-				case "didUpdateSettings":
-					if (pendingTabChange) {
-						StateServiceClient.togglePlanActMode({
-							chatSettings: {
-								mode: pendingTabChange === "plan" ? PlanActMode.PLAN : PlanActMode.ACT,
-								preferredLanguage: chatSettings.preferredLanguage,
-								openAIReasoningEffort: chatSettings.openAIReasoningEffort,
-							},
-						})
-						setPendingTabChange(null)
-					}
-					break
-				// Handle tab navigation through targetSection prop instead
-				case "grpc_response":
-					if (message.grpc_response?.message?.action === "scrollToSettings") {
-						const tabId = message.grpc_response?.message?.value
-						if (tabId) {
-							console.log("Opening settings tab from GRPC response:", tabId)
-							// Check if the value corresponds to a valid tab ID
-							const isValidTabId = SETTINGS_TABS.some((tab) => tab.id === tabId)
-
-							if (isValidTabId) {
-								// Set the active tab directly
-								setActiveTab(tabId)
-							} else {
-								// Fall back to the old behavior of scrolling to an element
-								setTimeout(() => {
-									const element = document.getElementById(tabId)
-									if (element) {
-										element.scrollIntoView({ behavior: "smooth" })
-
-										element.style.transition = "background-color 0.5s ease"
-										element.style.backgroundColor = "var(--vscode-textPreformat-background)"
-
-										setTimeout(() => {
-											element.style.backgroundColor = "transparent"
-										}, 1200)
-									}
-								}, 300)
-							}
+									setTimeout(() => {
+										element.style.backgroundColor = "transparent"
+									}, 1200)
+								}
+							}, 300)
 						}
 					}
-					break
-			}
-		},
-		[pendingTabChange],
-	)
+				}
+				break
+		}
+	}, [])
 
 	useEvent("message", handleMessage)
 
-	const handleResetState = async () => {
+	const handleResetState = async (resetGlobalState?: boolean) => {
 		try {
-			await StateServiceClient.resetState({})
+			await StateServiceClient.resetState(
+				ResetStateRequest.create({
+					global: resetGlobalState,
+				}),
+			)
 		} catch (error) {
 			console.error("Failed to reset state:", error)
 		}
 	}
-
-	const handlePlanActModeChange = (tab: "plan" | "act") => {
-		if (tab === chatSettings.mode) {
-			return
-		}
-		setPendingTabChange(tab)
-		handleSubmit(true)
-	}
-
-	// Track active tab
-	const [activeTab, setActiveTab] = useState<string>(targetSection || SETTINGS_TABS[0].id)
 
 	// Update active tab when targetSection changes
 	useEffect(() => {
@@ -474,33 +221,28 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 					<h3 className="text-[var(--vscode-foreground)] m-0">Settings</h3>
 				</div>
 				<div className="flex gap-2">
-					<VSCodeButton appearance="secondary" onClick={handleCancel}>
-						Cancel
-					</VSCodeButton>
-					<VSCodeButton onClick={() => handleSubmit(false)} disabled={!hasUnsavedChanges}>
-						Save
-					</VSCodeButton>
+					{/* All settings now save immediately, so only show Done button */}
+					<VSCodeButton onClick={onDone}>Done</VSCodeButton>
 				</div>
 			</TabHeader>
 
 			{/* Vertical tabs layout */}
-			<div ref={containerRef} className={cn(settingsTabsContainer, isCompactMode && "narrow")}>
+			<div ref={containerRef} className={`${settingsTabsContainer} ${isCompactMode ? "narrow" : ""}`}>
 				{/* Tab sidebar */}
 				<TabList
 					value={activeTab}
 					onValueChange={handleTabChange}
-					className={cn(settingsTabList)}
+					className={settingsTabList}
 					data-compact={isCompactMode}>
 					{SETTINGS_TABS.map((tab) =>
 						isCompactMode ? (
 							<HeroTooltip key={tab.id} content={tab.tooltipText} placement="right">
 								<div
-									className={cn(
+									className={`${
 										activeTab === tab.id
 											? `${settingsTabTrigger} ${settingsTabTriggerActive}`
-											: settingsTabTrigger,
-										"focus:ring-0",
-									)}
+											: settingsTabTrigger
+									} focus:ring-0`}
 									data-compact={isCompactMode}
 									data-testid={`tab-${tab.id}`}
 									data-value={tab.id}
@@ -508,7 +250,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 										console.log("Compact tab clicked:", tab.id)
 										handleTabChange(tab.id)
 									}}>
-									<div className={cn("flex items-center gap-2", isCompactMode && "justify-center")}>
+									<div className={`flex items-center gap-2 ${isCompactMode ? "justify-center" : ""}`}>
 										<tab.icon className="w-4 h-4" />
 										<span className="tab-label">{tab.name}</span>
 									</div>
@@ -518,15 +260,14 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 							<TabTrigger
 								key={tab.id}
 								value={tab.id}
-								className={cn(
+								className={`${
 									activeTab === tab.id
 										? `${settingsTabTrigger} ${settingsTabTriggerActive}`
-										: settingsTabTrigger,
-									"focus:ring-0",
-								)}
+										: settingsTabTrigger
+								} focus:ring-0`}
 								data-compact={isCompactMode}
 								data-testid={`tab-${tab.id}`}>
-								<div className={cn("flex items-center gap-2", isCompactMode && "justify-center")}>
+								<div className={`flex items-center gap-2 ${isCompactMode ? "justify-center" : ""}`}>
 									<tab.icon className="w-4 h-4" />
 									<span className="tab-label">{tab.name}</span>
 								</div>
@@ -557,237 +298,38 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 					return (
 						<TabContent className="flex-1 overflow-auto">
 							{/* API Configuration Tab */}
-							{activeTab === "api-config" && (
-								<div>
-									{renderSectionHeader("api-config")}
-									<Section>
-										{/* Tabs container */}
-										{planActSeparateModelsSetting ? (
-											<div className="rounded-md mb-5 bg-[var(--vscode-panel-background)]">
-												<div className="flex gap-[1px] mb-[10px] -mt-2 border-0 border-b border-solid border-[var(--vscode-panel-border)]">
-													<TabButton
-														isActive={chatSettings.mode === "plan"}
-														onClick={() => handlePlanActModeChange("plan")}>
-														Plan Mode
-													</TabButton>
-													<TabButton
-														isActive={chatSettings.mode === "act"}
-														onClick={() => handlePlanActModeChange("act")}>
-														Act Mode
-													</TabButton>
-												</div>
-
-												{/* Content container */}
-												<div className="-mb-3">
-													<ApiOptions key={chatSettings.mode} showModelOptions={true} />
-												</div>
-											</div>
-										) : (
-											<ApiOptions key={"single"} showModelOptions={true} />
-										)}
-
-										<div style={{ marginBottom: 10 }}>
-											<h3 style={{ marginBottom: 5 }}>Embedding Configuration</h3>
-											<EmbeddingOptions showModelOptions={true} />
-										</div>
-										<div className="mb-[5px]">
-											<VSCodeCheckbox
-												className="mb-[5px]"
-												checked={planActSeparateModelsSetting}
-												onChange={(e: any) => {
-													const checked = e.target.checked === true
-													setPlanActSeparateModelsSetting(checked)
-												}}>
-												Use different models for Plan and Act modes
-											</VSCodeCheckbox>
-											<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-												Switching between Plan and Act mode will persist the API and model used in the
-												previous mode. This may be helpful e.g. when using a strong reasoning model to
-												architect a plan for a cheaper coding model to act on.
-											</p>
-										</div>
-										<div className="mb-[5px]">
-											<VSCodeTextArea
-												value={customInstructions ?? ""}
-												className="w-full"
-												resize="vertical"
-												rows={4}
-												placeholder={
-													'e.g. "Run unit tests at the end", "Use TypeScript with async/await", "Speak in Spanish"'
-												}
-												onInput={(e: any) => setCustomInstructions(e.target?.value ?? "")}>
-												<span className="font-medium">Custom Instructions</span>
-											</VSCodeTextArea>
-											<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-												These instructions are added to the end of the system prompt sent with every
-												request.
-											</p>
-										</div>
-									</Section>
-								</div>
-							)}
+							{activeTab === "api-config" && <ApiConfigurationSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* HAI Settings Tab */}
-							{activeTab === "hai-settings" && (
-								<div>
-									{renderSectionHeader("hai-settings")}
-									<Section>
-										<SettingsViewExtra
-											setBuildContextOptions={setBuildContextOptions}
-											buildContextOptions={buildContextOptions}
-											vscodeWorkspacePath={vscodeWorkspacePath}
-											buildIndexProgress={buildIndexProgress}
-										/>
-									</Section>
-								</div>
-							)}
+							{activeTab === "hai-settings" && <HaiSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* General Settings Tab */}
-							{activeTab === "general" && (
-								<div>
-									{renderSectionHeader("general")}
-									<Section>
-										{chatSettings && (
-											<PreferredLanguageSetting
-												chatSettings={chatSettings}
-												setChatSettings={setChatSettings}
-											/>
-										)}
-
-										<div className="mb-[5px]">
-											<VSCodeCheckbox
-												className="mb-[5px]"
-												checked={telemetrySetting === "enabled"}
-												onChange={(e: any) => {
-													const checked = e.target.checked === true
-													setTelemetrySetting(checked ? "enabled" : "disabled")
-												}}>
-												Allow anonymous error and usage reporting
-											</VSCodeCheckbox>
-											<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-												Help improve HAI by sending usage data and error reports. No code, prompts, or
-												personal information are ever sent. Only the{" "}
-												<a href="https://docs.github.com/en/get-started/git-basics/setting-your-username-in-git">
-													git username and email
-												</a>{" "}
-												are sent for analytics.
-											</p>
-										</div>
-									</Section>
-								</div>
-							)}
+							{activeTab === "general" && <GeneralSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Feature Settings Tab */}
-							{activeTab === "features" && (
-								<div>
-									{renderSectionHeader("features")}
-									<Section>
-										<FeatureSettingsSection />
-									</Section>
-								</div>
-							)}
+							{activeTab === "features" && <FeatureSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Browser Settings Tab */}
-							{activeTab === "browser" && (
-								<div>
-									{renderSectionHeader("browser")}
-									<Section>
-										<BrowserSettingsSection />
-									</Section>
-								</div>
-							)}
+							{activeTab === "browser" && <BrowserSettingsSection renderSectionHeader={renderSectionHeader} />}
 
 							{/* Terminal Settings Tab */}
-							{activeTab === "terminal" && (
-								<div>
-									{renderSectionHeader("terminal")}
-									<Section>
-										<TerminalSettingsSection />
-									</Section>
-								</div>
-							)}
+							{activeTab === "terminal" && <TerminalSettingsSection renderSectionHeader={renderSectionHeader} />}
 
+							{/* Debug Tab (only in dev mode) */}
 							{activeTab === "debug" && (
-								<div>
-									{renderSectionHeader("debug")}
-									<Section>
-										<VSCodeButton
-											onClick={handleResetState}
-											className="mt-[5px] w-auto"
-											style={{ backgroundColor: "var(--vscode-errorForeground)", color: "black" }}>
-											Reset State
-										</VSCodeButton>
-										<p className="text-xs mt-[5px] text-[var(--vscode-descriptionForeground)]">
-											This will reset all global state and secret storage in the extension.
-										</p>
-										<div style={{ position: "relative" }}>
-											<VSCodeButton
-												style={{ position: "absolute", top: "24px", right: "18px", padding: "4px 8px" }}
-												onClick={handleCopy}
-												appearance="icon">
-												<span className="codicon codicon-copy" style={{ marginRight: "4px" }}></span>
-												{showCopied ? "Copied!" : "Copy"}
-											</VSCodeButton>
-											<pre
-												style={{
-													color: "#e8912d",
-													backgroundColor: "#2b2d30",
-													padding: "10px",
-													borderRadius: "5px",
-													border: "2px solid #333",
-													whiteSpace: "pre-wrap",
-													wordWrap: "break-word",
-													overflowWrap: "break-word",
-												}}>
-												{JSON.stringify(
-													{
-														buildContextOptions,
-														buildIndexProgress,
-														apiConfiguration,
-														embeddingConfiguration,
-													},
-													null,
-													2,
-												)}
-											</pre>
-										</div>
-									</Section>
-								</div>
+								<DebugSection onResetState={handleResetState} renderSectionHeader={renderSectionHeader} />
 							)}
 
 							{/* About Tab */}
 							{activeTab === "about" && (
-								<div>
-									{renderSectionHeader("about")}
-									<Section>
-										<div className="text-center text-[var(--vscode-descriptionForeground)] text-xs leading-[1.2] px-0 py-0 pr-2 pb-[15px] mt-auto">
-											<p className="break-words m-0 p-0">
-												If you have any questions or feedback, feel free to open an issue at{" "}
-												<VSCodeLink
-													href="https://github.com/presidio-oss/cline-based-code-generator"
-													style={{ display: "inline" }}>
-													https://github.com/presidio-oss/cline-based-code-generator
-												</VSCodeLink>
-											</p>
-											<p className="italic mt-[10px] mb-0 p-0">v{version}</p>
-										</div>
-									</Section>
-								</div>
+								<AboutSection version={version} renderSectionHeader={renderSectionHeader} />
 							)}
 						</TabContent>
 					)
 				})()}
 			</div>
-
-			{/* Unsaved Changes Dialog */}
-			<UnsavedChangesDialog
-				open={isUnsavedChangesDialogOpen}
-				onOpenChange={setIsUnsavedChangesDialogOpen}
-				onConfirm={handleConfirmDiscard}
-				onCancel={handleCancelDiscard}
-			/>
 		</Tab>
 	)
 }
 
-export default memo(SettingsView)
+export default SettingsView

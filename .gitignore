@@ -7,16 +7,16 @@ tmp
 *.vsix
 
 .DS_Store
+.idea
 
 pnpm-lock.yaml
-.hai/
 
-.haiignore
 .clineignore
-
-.env
 .venv
 .actrc
+
+webview-ui/src/**/*.js
+webview-ui/src/**/*.js.map
 
 # Ignore coverage directories and files
 coverage
@@ -25,11 +25,15 @@ coverage
 
 *evals.env
 
-# Generated proto files
-src/shared/proto/*.ts
-src/core/controller/*/methods.ts
-src/core/controller/*/index.ts
-src/core/controller/grpc-service-config.ts
+## Generated files ##
+src/generated/
+src/shared/proto/
 webview-ui/src/services/grpc-client.ts
-src/standalone/server-setup.ts
+
+# E2E Tests
+test-results
+
+# TAG:HAI
+.hai/
 .hai.config
+.haiignore

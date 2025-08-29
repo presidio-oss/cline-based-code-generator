@@ -1,9 +1,8 @@
-import { ChromePath } from "../../../shared/proto/browser"
-import { EmptyRequest } from "../../../shared/proto/common"
+import { ChromePath } from "@shared/proto/cline/browser"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import { Controller } from "../index"
 import { getAllExtensionState } from "../../storage/state"
 import { BrowserSession } from "../../../services/browser/BrowserSession"
-import { getWorkspaceID } from "@/utils/path"
 
 /**
  * Get the detected Chrome executable path
@@ -11,22 +10,21 @@ import { getWorkspaceID } from "@/utils/path"
  * @param request The empty request message
  * @returns The detected Chrome path and whether it's bundled
  */
-export async function getDetectedChromePath(controller: Controller, request: EmptyRequest): Promise<ChromePath> {
+export async function getDetectedChromePath(controller: Controller, _: EmptyRequest): Promise<ChromePath> {
 	try {
-		const workspaceId = getWorkspaceID() || ""
-		const { browserSettings } = await getAllExtensionState(controller.context, workspaceId)
+		const { browserSettings } = await getAllExtensionState(controller.context)
 		const browserSession = new BrowserSession(controller.context, browserSettings)
 		const result = await browserSession.getDetectedChromePath()
 
-		return {
+		return ChromePath.create({
 			path: result.path,
 			isBundled: result.isBundled,
-		}
+		})
 	} catch (error) {
 		console.error("Error getting detected Chrome path:", error)
-		return {
+		return ChromePath.create({
 			path: "",
 			isBundled: false,
-		}
+		})
 	}
 }

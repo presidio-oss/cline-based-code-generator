@@ -1,82 +1,57 @@
+import { clineEnvConfig } from "@/config"
+import { HostProvider } from "@/hosts/host-provider"
+import { AuthService } from "@/services/auth/AuthService"
+import { telemetryService } from "@/services/posthog/telemetry/TelemetryService"
+import { ShowMessageType } from "@/shared/proto/host/window"
+import { getCwd, getDesktopDir, getWorkspaceID, getWorkspacePath } from "@/utils/path"
 import { Anthropic } from "@anthropic-ai/sdk"
+import { buildApiHandler } from "@api/index"
+import { cleanupLegacyCheckpoints } from "@integrations/checkpoints/CheckpointMigration"
+import { downloadTask } from "@integrations/misc/export-markdown"
+import WorkspaceTracker from "@integrations/workspace/WorkspaceTracker"
+import { ClineAccountService } from "@services/account/ClineAccountService"
+import { McpHub } from "@services/mcp/McpHub"
+import { ApiProvider, ModelInfo } from "@shared/api"
+import { ChatContent } from "@shared/ChatContent"
+import { Mode } from "@shared/storage/types"
+import { ClineRulesToggles } from "@shared/cline-rules"
+import { ExtensionMessage, ExtensionState, Platform } from "@shared/ExtensionMessage"
+import { HistoryItem } from "@shared/HistoryItem"
+import { McpMarketplaceCatalog } from "@shared/mcp"
+import { TelemetrySetting } from "@shared/TelemetrySetting"
+import { UserInfo } from "@shared/UserInfo"
+import { WebviewMessage } from "@shared/WebviewMessage"
+import { fileExistsAtPath } from "@utils/fs"
 import axios from "axios"
 import fs from "fs/promises"
 import { setTimeout as setTimeoutPromise } from "node:timers/promises"
 import pWaitFor from "p-wait-for"
 import * as path from "path"
 import * as vscode from "vscode"
+import { ensureMcpServersDirectoryExists, ensureSettingsDirectoryExists, GlobalFileNames } from "../storage/disk"
+import { getAllExtensionState, getGlobalState, getWorkspaceState, storeSecret, updateGlobalState } from "../storage/state"
+import { Task } from "../task"
 import { handleGrpcRequest, handleGrpcRequestCancel } from "./grpc-handler"
-import { handleModelsServiceRequest } from "./models"
-import { EmptyRequest } from "@shared/proto/common"
-import { buildApiHandler } from "@api/index"
-import { cleanupLegacyCheckpoints } from "@integrations/checkpoints/CheckpointMigration"
-import { downloadTask } from "@integrations/misc/export-markdown"
-import { fetchOpenGraphData } from "@integrations/misc/link-preview"
-import { handleFileServiceRequest } from "./file"
-import { getTheme } from "@integrations/theme/getTheme"
-import WorkspaceTracker from "@integrations/workspace/WorkspaceTracker"
-import { ClineAccountService } from "@services/account/ClineAccountService"
-import { BrowserSession } from "@services/browser/BrowserSession"
-import { McpHub } from "@services/mcp/McpHub"
-import { telemetryService } from "@/services/posthog/telemetry/TelemetryService"
-import { ApiProvider, ModelInfo } from "@shared/api"
-import { ChatContent } from "@shared/ChatContent"
-import { ChatSettings } from "@shared/ChatSettings"
-import { ExtensionMessage, ExtensionState, Invoke, Platform } from "@shared/ExtensionMessage"
-import { HistoryItem } from "@shared/HistoryItem"
-import { McpDownloadResponse, McpMarketplaceCatalog, McpServer } from "@shared/mcp"
-import { TelemetrySetting } from "@shared/TelemetrySetting"
-import { WebviewMessage } from "@shared/WebviewMessage"
-import { fileExistsAtPath } from "@utils/fs"
-import { getWorkingState } from "@utils/git"
-import { extractCommitMessage } from "@integrations/git/commit-message-generator"
-import { getTotalTasksSize } from "@utils/storage"
-import {
-	ensureMcpServersDirectoryExists,
-	ensureSettingsDirectoryExists,
-	GlobalFileNames,
-	ensureWorkflowsDirectoryExists,
-} from "../storage/disk"
-import {
-	getAllExtensionState,
-	customGetState,
-	customGetSecret,
-	resetExtensionState,
-	customStoreSecret,
-	updateApiConfiguration,
-	updateEmbeddingConfiguration,
-	customUpdateState,
-} from "../storage/state"
-import { Task, cwd } from "../task"
-import { ClineRulesToggles } from "@shared/cline-rules"
+import { sendMcpMarketplaceCatalogEvent } from "./mcp/subscribeToMcpMarketplaceCatalog"
 import { sendStateUpdate } from "./state/subscribeToState"
-import { refreshClineRulesToggles } from "@core/context/instructions/user-instructions/cline-rules"
-import { refreshExternalRulesToggles } from "@core/context/instructions/user-instructions/external-rules"
-import { refreshWorkflowToggles } from "@core/context/instructions/user-instructions/workflows"
-
-// TAG:HAI
-import HaiFileSystemWatcher from "../../integrations/workspace/HaiFileSystemWatcher"
-import { ExpertManager } from "../experts/ExpertManager"
-import { getWorkspaceID, getWorkspacePath } from "@utils/path"
-import { FileOperations } from "@utils/constants"
-import { ensureFaissPlatformDeps } from "@utils/faiss"
-import { HaiBuildIndexProgress } from "@shared/customApi"
-import { getFormattedDateTime } from "@utils/date"
-import { validateApiConfiguration, validateEmbeddingConfiguration } from "@shared/validate"
-import { IHaiStory } from "../../shared/hai-task"
+import { sendAddToInputEvent } from "./ui/subscribeToAddToInput"
+import { ensureFaissPlatformDeps } from "@/utils/faiss"
+import HaiFileSystemWatcher from "@/integrations/workspace/HaiFileSystemWatcher"
+import { HaiBuildIndexProgress } from "@/shared/customApi"
+import { validateApiConfiguration, validateEmbeddingConfiguration } from "@/utils/validate"
+import { CodeContextAdditionAgent } from "@/integrations/code-prep/CodeContextAddition"
+import { ICodeIndexProgress } from "@/integrations/code-prep/type"
+import { VectorizeCodeAgent } from "@/integrations/code-prep/VectorizeCodeAgent"
 import { CodeContextErrorMessage, CodeIndexStartMessage } from "../webview/customClientProvider"
-import { CodeContextAdditionAgent } from "../../integrations/code-prep/CodeContextAddition"
-import { ICodeIndexProgress } from "../../integrations/code-prep/type"
-import { VectorizeCodeAgent } from "../../integrations/code-prep/VectorizeCodeAgent"
-import { ExpertData } from "@shared/experts"
-import { buildEmbeddingHandler } from "../../embedding"
-import { HaiBuildDefaults } from "@shared/haiDefaults"
-import { deleteFromContextDirectory } from "@utils/delete-helper"
-import { isLocalMcp, getLocalMcpDetails, getLocalMcp, getAllLocalMcps } from "@utils/local-mcp-registry"
-import { getStarCount } from "../../services/github/github"
-import { openFile } from "@integrations/misc/open-file"
-import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
+import { getFormattedDateTime } from "@/utils/date"
+import { getAllLocalMcps, getLocalMcp } from "@/utils/local-mcp-registry"
+import { getStarCount } from "@/services/github/github"
+import { ExpertManager } from "../experts/ExpertManager"
+import { buildEmbeddingHandler } from "@/embedding"
 import { ExpertFileManager } from "../experts/ExpertFileManager"
+import { FileOperations } from "@/utils/constants"
+import { deleteFromContextDirectory } from "@/utils/delete-helper"
+import { posthogClientProvider } from "@/services/posthog/PostHogClientProvider"
 
 /*
 https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default/weather-webview/src/providers/WeatherViewProvider.ts
@@ -84,70 +59,63 @@ https://github.com/microsoft/vscode-webview-ui-toolkit-samples/blob/main/default
 https://github.com/KumarVariable/vscode-extension-sidebar-html/blob/master/src/customSidebarViewProvider.ts
 */
 
-// TAG:HAI
-// URI scheme for expert prompts virtual documents
 export const EXPERT_PROMPT_URI_SCHEME = "hai-expert-prompt"
 
 export class Controller {
+	readonly id: string
 	private postMessage: (message: ExtensionMessage) => Thenable<boolean> | undefined
 
 	private disposables: vscode.Disposable[] = []
 	task?: Task
+
 	workspaceTracker: WorkspaceTracker
 	mcpHub: McpHub
 	accountService: ClineAccountService
-	latestAnnouncementId = "may-22-2025_16:11:00" // update to some unique identifier when we add a new announcement
+	authService: AuthService
+	get latestAnnouncementId(): string {
+		return this.context.extension?.packageJSON?.version?.split(".").slice(0, 2).join(".") ?? ""
+	}
 
 	// TAG:HAI
-	haiTaskList: string = ""
 	fileSystemWatcher: HaiFileSystemWatcher | undefined
 	workspaceId: string
-	private vsCodeWorkSpaceFolderFsPath!: string
-	private codeIndexAbortController: AbortController
-	private isSideBar: boolean
-	private expertManager: ExpertManager | undefined
-	private isCodeIndexInProgress: boolean = false
+	vsCodeWorkSpaceFolderFsPath!: string
+	codeIndexAbortController: AbortController
+	isSideBar: boolean
+	isCodeIndexInProgress: boolean = false
+	expertManager: ExpertManager | undefined
 
 	constructor(
 		readonly context: vscode.ExtensionContext,
-		private readonly outputChannel: vscode.OutputChannel,
 		postMessage: (message: ExtensionMessage) => Thenable<boolean> | undefined,
+		id: string,
 		isSideBar: boolean = true,
 	) {
-		this.outputChannel.appendLine("HAIProvider instantiated")
+		HostProvider.get().logToChannel("HAIProvider instantiated")
+		this.id = id
 		this.postMessage = postMessage
 
-		this.workspaceTracker = new WorkspaceTracker((msg) => this.postMessageToWebview(msg))
+		this.workspaceTracker = new WorkspaceTracker()
 		this.mcpHub = new McpHub(
 			() => ensureMcpServersDirectoryExists(),
 			() => ensureSettingsDirectoryExists(this.context),
 			(msg) => this.postMessageToWebview(msg),
 			this.context.extension?.packageJSON?.version ?? "1.0.0",
 		)
-		this.accountService = new ClineAccountService(
-			(msg) => this.postMessageToWebview(msg),
-			async () => {
-				const { apiConfiguration } = await this.getStateToPostToWebview()
-				return apiConfiguration?.clineApiKey
-			},
-		)
+		this.accountService = ClineAccountService.getInstance()
+		this.authService = AuthService.getInstance(context)
+		this.authService.restoreRefreshTokenAndRetrieveAuthInfo()
 
 		// Clean up legacy checkpoints
-		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath, this.outputChannel).catch((error) => {
+		cleanupLegacyCheckpoints(this.context.globalStorageUri.fsPath).catch((error) => {
 			console.error("Failed to cleanup legacy checkpoints:", error)
 		})
 
 		// TAG:HAI
-		this.codeIndexAbortController = new AbortController()
+		this.initWorkspaceFolderFsPath()
 		this.workspaceId = getWorkspaceID() || ""
+		this.codeIndexAbortController = new AbortController()
 		this.isSideBar = isSideBar
-		this.vsCodeWorkSpaceFolderFsPath = (getWorkspacePath() || "").trim()
-		if (this.vsCodeWorkSpaceFolderFsPath) {
-			this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
-			this.codeIndexBackground()
-		}
-
-		// Register the expert prompt provider
 		const registration = vscode.workspace.registerTextDocumentContentProvider(
 			EXPERT_PROMPT_URI_SCHEME,
 			this.expertPromptProvider,
@@ -156,7 +124,7 @@ export class Controller {
 	}
 
 	// TAG:HAI
-	private async getExpertManager(): Promise<ExpertManager> {
+	async getExpertManager(): Promise<ExpertManager> {
 		if (!this.expertManager) {
 			this.expertManager = new ExpertManager(this.context, this.workspaceId)
 		}
@@ -181,15 +149,26 @@ export class Controller {
 		}
 	}
 
+	private async initWorkspaceFolderFsPath() {
+		this.vsCodeWorkSpaceFolderFsPath = ((await getWorkspacePath()) || "").trim()
+		if (this.vsCodeWorkSpaceFolderFsPath) {
+			console.log("Workspace folder path:", this.vsCodeWorkSpaceFolderFsPath)
+			this.fileSystemWatcher = new HaiFileSystemWatcher(this, this.vsCodeWorkSpaceFolderFsPath)
+			this.codeIndexBackground()
+		}
+	}
+
+	async getCurrentMode(): Promise<Mode> {
+		return ((await getGlobalState(this.context, "mode")) as Mode | undefined) || "act"
+	}
+
 	/*
 	VSCode extensions use the disposable pattern to clean up resources when the sidebar/editor tab is closed by the user or system. This applies to event listening, commands, interacting with the UI, etc.
 	- https://vscode-docs.readthedocs.io/en/stable/extensions/patterns-and-principles/
 	- https://github.com/microsoft/vscode-extension-samples/blob/main/webview-sample/src/extension.ts
 	*/
 	async dispose() {
-		this.outputChannel.appendLine("Disposing HAIProvider...")
 		await this.clearTask()
-		this.outputChannel.appendLine("Cleared task")
 		while (this.disposables.length) {
 			const x = this.disposables.pop()
 			if (x) {
@@ -198,8 +177,6 @@ export class Controller {
 		}
 		this.workspaceTracker.dispose()
 		this.mcpHub.dispose()
-		this.fileSystemWatcher?.dispose()
-		this.outputChannel.appendLine("Disposed all disposables")
 
 		console.error("Controller disposed")
 	}
@@ -207,44 +184,58 @@ export class Controller {
 	// Auth methods
 	async handleSignOut() {
 		try {
-			await customStoreSecret(this.context, "clineApiKey", this.workspaceId, undefined)
-			await customUpdateState(this.context, "userInfo", undefined)
-			await customUpdateState(this.context, "apiProvider", "openrouter")
+			// TODO: update to clineAccountId and then move clineApiKey to a clear function.
+			await storeSecret(this.context, "clineAccountId", undefined)
+			await updateGlobalState(this.context, "userInfo", undefined)
+			await Promise.all([
+				updateGlobalState(this.context, "planModeApiProvider", "openrouter"),
+				updateGlobalState(this.context, "actModeApiProvider", "openrouter"),
+			])
 			await this.postStateToWebview()
-			vscode.window.showInformationMessage("Successfully logged out of HAI")
+			HostProvider.window.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: "Successfully logged out of Cline",
+			})
 		} catch (error) {
-			vscode.window.showErrorMessage("Logout failed")
+			HostProvider.window.showMessage({
+				type: ShowMessageType.INFORMATION,
+				message: "Logout failed",
+			})
 		}
 	}
 
-	async setUserInfo(info?: { displayName: string | null; email: string | null; photoURL: string | null }) {
-		await customUpdateState(this.context, "userInfo", info)
+	async setUserInfo(info?: UserInfo) {
+		await updateGlobalState(this.context, "userInfo", info)
 	}
 
-	async initTask(task?: string, images?: string[], historyItem?: HistoryItem) {
+	async initTask(task?: string, images?: string[], files?: string[], historyItem?: HistoryItem) {
 		await this.clearTask() // ensures that an existing task doesn't exist before starting a new one, although this shouldn't be possible since user must clear task before starting a new one
 		const {
 			apiConfiguration,
-			customInstructions,
+			embeddingConfiguration,
 			autoApprovalSettings,
 			browserSettings,
-			chatSettings,
+			preferredLanguage,
+			openaiReasoningEffort,
+			mode,
 			shellIntegrationTimeout,
+			terminalReuseEnabled,
+			terminalOutputLineLimit,
+			defaultTerminalProfile,
 			enableCheckpointsSetting,
 			isNewUser,
 			taskHistory,
-			embeddingConfiguration,
+			buildContextOptions,
 			expertPrompt,
 			expertName,
 			isDeepCrawlEnabled,
-			buildContextOptions,
-		} = await getAllExtensionState(this.context, this.workspaceId)
+		} = await getAllExtensionState(this.context)
 
 		const NEW_USER_TASK_COUNT_THRESHOLD = 10
 
 		// Check if the user has completed enough tasks to no longer be considered a "new user"
 		if (isNewUser && !historyItem && taskHistory && taskHistory.length >= NEW_USER_TASK_COUNT_THRESHOLD) {
-			await customUpdateState(this.context, "isNewUser", false)
+			await updateGlobalState(this.context, "isNewUser", false)
 			await this.postStateToWebview()
 		}
 
@@ -253,7 +244,7 @@ export class Controller {
 				...autoApprovalSettings,
 				version: (autoApprovalSettings.version ?? 1) + 1,
 			}
-			await customUpdateState(this.context, "autoApprovalSettings", updatedAutoApprovalSettings)
+			await updateGlobalState(this.context, "autoApprovalSettings", updatedAutoApprovalSettings)
 		}
 		this.task = new Task(
 			this.context,
@@ -261,31 +252,38 @@ export class Controller {
 			this.workspaceTracker,
 			(historyItem) => this.updateTaskHistory(historyItem),
 			() => this.postStateToWebview(),
-			(message) => this.postMessageToWebview(message),
 			(taskId) => this.reinitExistingTaskFromId(taskId),
 			() => this.cancelTask(),
 			apiConfiguration,
 			autoApprovalSettings,
 			browserSettings,
-			chatSettings,
-			embeddingConfiguration,
+			preferredLanguage,
+			openaiReasoningEffort,
+			mode,
 			shellIntegrationTimeout,
+			terminalReuseEnabled ?? true,
+			terminalOutputLineLimit ?? 500,
+			defaultTerminalProfile ?? "default",
 			enableCheckpointsSetting ?? true,
-			customInstructions,
+			await getCwd(getDesktopDir()),
+			embeddingConfiguration,
+			task,
+			images,
+			files,
+			historyItem,
+
+			// TAG:HAI
 			expertPrompt,
 			expertName,
 			isDeepCrawlEnabled,
 			buildContextOptions,
-			task,
-			images,
-			historyItem,
 		)
 	}
 
 	async reinitExistingTaskFromId(taskId: string) {
 		const history = await this.getTaskWithId(taskId)
 		if (history) {
-			await this.initTask(undefined, undefined, history.historyItem)
+			await this.initTask(undefined, undefined, undefined, history.historyItem)
 		}
 	}
 
@@ -302,285 +300,8 @@ export class Controller {
 	 */
 	async handleWebviewMessage(message: WebviewMessage) {
 		switch (message.type) {
-			case "authStateChanged":
-				await this.setUserInfo(message.user || undefined)
-				await this.postStateToWebview()
-				break
-			case "webviewDidLaunch":
-				this.postStateToWebview()
-				this.workspaceTracker?.populateFilePaths() // don't await
-				getTheme().then((theme) =>
-					this.postMessageToWebview({
-						type: "theme",
-						text: JSON.stringify(theme),
-					}),
-				)
-				// post last cached models in case the call to endpoint fails
-				this.readOpenRouterModels().then((openRouterModels) => {
-					if (openRouterModels) {
-						this.postMessageToWebview({
-							type: "openRouterModels",
-							openRouterModels,
-						})
-					}
-				})
-				// gui relies on model info to be up-to-date to provide the most accurate pricing, so we need to fetch the latest details on launch.
-				// we do this for all users since many users switch between api providers and if they were to switch back to openrouter it would be showing outdated model info if we hadn't retrieved the latest at this point
-				// (see normalizeApiConfiguration > openrouter)
-				// Prefetch marketplace and OpenRouter models
-
-				customGetState(this.context, "mcpMarketplaceCatalog").then((mcpMarketplaceCatalog) => {
-					if (mcpMarketplaceCatalog) {
-						this.postMessageToWebview({
-							type: "mcpMarketplaceCatalog",
-							mcpMarketplaceCatalog: mcpMarketplaceCatalog as McpMarketplaceCatalog,
-						})
-					}
-				})
-				this.silentlyRefreshMcpMarketplace()
-				handleModelsServiceRequest(this, "refreshOpenRouterModels", EmptyRequest.create()).then(async (response) => {
-					if (response && response.models) {
-						// update model info in state (this needs to be done here since we don't want to update state while settings is open, and we may refresh models there)
-						const { apiConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
-						if (apiConfiguration.openRouterModelId && response.models[apiConfiguration.openRouterModelId]) {
-							await customUpdateState(
-								this.context,
-								"openRouterModelInfo",
-								response.models[apiConfiguration.openRouterModelId],
-							)
-							await this.postStateToWebview()
-						}
-					}
-				})
-
-				// If user already opted in to telemetry, enable telemetry service
-				this.getStateToPostToWebview().then((state) => {
-					const { telemetrySetting } = state
-					const isOptedIn = telemetrySetting !== "disabled"
-					telemetryService.updateTelemetryState(isOptedIn)
-				})
-				break
-			case "showChatView": {
-				this.postMessageToWebview({
-					type: "action",
-					action: "chatButtonClicked",
-				})
-				break
-			}
-			case "newTask":
-				// Code that should run in response to the hello message command
-				//vscode.window.showInformationMessage(message.text!)
-
-				// Send a message to our webview.
-				// You can send any JSON serializable data.
-				// Could also do this in extension .ts
-				//this.postMessageToWebview({ type: "text", text: `Extension: ${Date.now()}` })
-				// initializing new instance of Cline will make sure that any agentically running promises in old instance don't affect our new task. this essentially creates a fresh slate for the new task
-				await this.initTask(message.text, message.images)
-				break
-			case "apiConfiguration":
-				if (message.apiConfiguration) {
-					await updateApiConfiguration(this.context, message.apiConfiguration, this.workspaceId)
-					if (this.task) {
-						this.task.api = buildApiHandler(message.apiConfiguration)
-					}
-				}
-				await this.postStateToWebview()
-				break
-			case "optionsResponse":
-				await this.postMessageToWebview({
-					type: "invoke",
-					invoke: "sendMessage",
-					text: message.text,
-				})
-				break
-			case "openInBrowser":
-				if (message.url) {
-					vscode.env.openExternal(vscode.Uri.parse(message.url))
-				}
-				break
-			case "showAccountViewClicked": {
-				await this.postMessageToWebview({ type: "action", action: "accountButtonClicked" })
-				break
-			}
-			case "fetchUserCreditsData": {
-				await this.fetchUserCreditsData()
-				break
-			}
-			case "openMcpSettings": {
-				const mcpSettingsFilePath = await this.mcpHub?.getMcpSettingsFilePath()
-				if (mcpSettingsFilePath) {
-					await handleFileServiceRequest(this, "openFile", { value: mcpSettingsFilePath })
-				}
-				break
-			}
 			case "fetchMcpMarketplace": {
 				await this.fetchMcpMarketplace(message.bool)
-				break
-			}
-			// case "openMcpMarketplaceServerDetails": {
-			// 	if (message.text) {
-			// 		const response = await fetch(`https://api.cline.bot/v1/mcp/marketplace/item?mcpId=${message.mcpId}`)
-			// 		const details: McpDownloadResponse = await response.json()
-
-			// 		if (details.readmeContent) {
-			// 			// Disable markdown preview markers
-			// 			const config = vscode.workspace.getConfiguration("markdown")
-			// 			await config.update("preview.markEditorSelection", false, true)
-
-			// 			// Create URI with base64 encoded markdown content
-			// 			const uri = vscode.Uri.parse(
-			// 				`${DIFF_VIEW_URI_SCHEME}:${details.name} README?${Buffer.from(details.readmeContent).toString("base64")}`,
-			// 			)
-
-			// 			// close existing
-			// 			const tabs = vscode.window.tabGroups.all
-			// 				.flatMap((tg) => tg.tabs)
-			// 				.filter((tab) => tab.label && tab.label.includes("README") && tab.label.includes("Preview"))
-			// 			for (const tab of tabs) {
-			// 				await vscode.window.tabGroups.close(tab)
-			// 			}
-
-			// 			// Show only the preview
-			// 			await vscode.commands.executeCommand("markdown.showPreview", uri, {
-			// 				sideBySide: true,
-			// 				preserveFocus: true,
-			// 			})
-			// 		}
-			// 	}
-
-			// 	this.postMessageToWebview({ type: "relinquishControl" })
-
-			// 	break
-			// }
-			case "toggleWorkflow": {
-				const { workflowPath, enabled, isGlobal } = message
-				if (workflowPath && typeof enabled === "boolean" && typeof isGlobal === "boolean") {
-					if (isGlobal) {
-						const globalWorkflowToggles =
-							((await customGetState(this.context, "globalWorkflowToggles")) as ClineRulesToggles) || {}
-						globalWorkflowToggles[workflowPath] = enabled
-						await customUpdateState(this.context, "globalWorkflowToggles", globalWorkflowToggles)
-						await this.postStateToWebview()
-					} else {
-						const toggles = ((await customGetState(this.context, "workflowToggles")) as ClineRulesToggles) || {}
-						toggles[workflowPath] = enabled
-						await customUpdateState(this.context, "workflowToggles", toggles)
-						await this.postStateToWebview()
-					}
-				}
-				break
-			}
-			case "requestTotalTasksSize": {
-				this.refreshTotalTasksSize()
-				break
-			}
-			case "fetchLatestMcpServersFromHub": {
-				this.mcpHub?.sendLatestMcpServers()
-				break
-			}
-			case "openExtensionSettings": {
-				const settingsFilter = message.text || ""
-				await vscode.commands.executeCommand(
-					"workbench.action.openSettings",
-					`@ext:presidio-inc.hai-build-code-generator ${settingsFilter}`.trim(), // trim whitespace if no settings filter
-				)
-				break
-			}
-			case "invoke": {
-				if (message.text) {
-					await this.postMessageToWebview({
-						type: "invoke",
-						invoke: message.text as Invoke,
-					})
-				}
-				break
-			}
-			// telemetry
-			case "telemetrySetting": {
-				if (message.telemetrySetting) {
-					await this.updateTelemetrySetting(message.telemetrySetting)
-				}
-				await this.postStateToWebview()
-				break
-			}
-			case "updateSettings": {
-				// api config
-				if (message.apiConfiguration) {
-					await updateApiConfiguration(this.context, message.apiConfiguration, this.workspaceId)
-					if (this.task) {
-						this.task.api = buildApiHandler(message.apiConfiguration)
-					}
-				}
-
-				// custom instructions
-				await this.updateCustomInstructions(message.customInstructionsSetting)
-
-				// telemetry setting
-				if (message.telemetrySetting) {
-					await this.updateTelemetrySetting(message.telemetrySetting)
-				}
-
-				// plan act setting
-				await customUpdateState(this.context, "planActSeparateModelsSetting", message.planActSeparateModelsSetting)
-
-				if (typeof message.enableCheckpointsSetting === "boolean") {
-					await customUpdateState(this.context, "enableCheckpointsSetting", message.enableCheckpointsSetting)
-				}
-
-				if (typeof message.mcpMarketplaceEnabled === "boolean") {
-					await customUpdateState(this.context, "mcpMarketplaceEnabled", message.mcpMarketplaceEnabled)
-				}
-
-				// chat settings (including preferredLanguage and openAIReasoningEffort)
-				if (message.chatSettings) {
-					await customUpdateState(this.context, "chatSettings", message.chatSettings)
-					if (this.task) {
-						this.task.chatSettings = message.chatSettings
-					}
-				}
-
-				// TAG:HAI
-				if (message.embeddingConfiguration) {
-					await updateEmbeddingConfiguration(this.context, message.embeddingConfiguration, this.workspaceId)
-				}
-
-				if (message.buildContextOptions) {
-					await customUpdateState(this.context, "buildContextOptions", message.buildContextOptions ?? undefined)
-					if (this.task) {
-						this.task.buildContextOptions = message.buildContextOptions
-					}
-				}
-
-				if (typeof message.enableInlineEdit === "boolean") {
-					await customUpdateState(this.context, "enableInlineEdit", message.enableInlineEdit)
-				}
-
-				// after settings are updated, post state to webview
-				await this.postStateToWebview()
-
-				await this.postMessageToWebview({ type: "didUpdateSettings" })
-				break
-			}
-			case "clearAllTaskHistory": {
-				const answer = await vscode.window.showWarningMessage(
-					"What would you like to delete?",
-					{ modal: true },
-					"Delete All Except Favorites",
-					"Delete Everything",
-					"Cancel",
-				)
-
-				if (answer === "Delete All Except Favorites") {
-					await this.deleteNonFavoriteTaskHistory()
-					await this.postStateToWebview()
-					this.refreshTotalTasksSize()
-				} else if (answer === "Delete Everything") {
-					await this.deleteAllTaskHistory()
-					await this.postStateToWebview()
-					this.refreshTotalTasksSize()
-				}
-				this.postMessageToWebview({ type: "relinquishControl" })
 				break
 			}
 			case "grpc_request": {
@@ -596,187 +317,55 @@ export class Controller {
 				break
 			}
 
-			// TAG:HAI
-			default:
-				this.customWebViewMessageHandlers(message)
-				break
 			// Add more switch case statements here as more webview message commands
 			// are created within the webview context (i.e. inside media/main.js)
 		}
 	}
 
 	async updateTelemetrySetting(telemetrySetting: TelemetrySetting) {
-		await customUpdateState(this.context, "telemetrySetting", telemetrySetting)
+		await updateGlobalState(this.context, "telemetrySetting", telemetrySetting)
 		const isOptedIn = telemetrySetting !== "disabled"
 		telemetryService.updateTelemetryState(isOptedIn)
+		await this.postStateToWebview()
 	}
 
-	async togglePlanActModeWithChatSettings(chatSettings: ChatSettings, chatContent?: ChatContent) {
-		const didSwitchToActMode = chatSettings.mode === "act"
+	async togglePlanActMode(modeToSwitchTo: Mode, chatContent?: ChatContent): Promise<boolean> {
+		const didSwitchToActMode = modeToSwitchTo === "act"
+
+		// Store mode to global state
+		await updateGlobalState(this.context, "mode", modeToSwitchTo)
 
 		// Capture mode switch telemetry | Capture regardless of if we know the taskId
-		telemetryService.captureModeSwitch(this.task?.taskId ?? "0", chatSettings.mode)
+		telemetryService.captureModeSwitch(this.task?.taskId ?? "0", modeToSwitchTo)
 
-		// Get previous model info that we will revert to after saving current mode api info
-		const {
-			apiConfiguration,
-			previousModeApiProvider: newApiProvider,
-			previousModeModelId: newModelId,
-			previousModeModelInfo: newModelInfo,
-			previousModeVsCodeLmModelSelector: newVsCodeLmModelSelector,
-			previousModeThinkingBudgetTokens: newThinkingBudgetTokens,
-			previousModeReasoningEffort: newReasoningEffort,
-			previousModeAwsBedrockCustomSelected: newAwsBedrockCustomSelected,
-			previousModeAwsBedrockCustomModelBaseId: newAwsBedrockCustomModelBaseId,
-			planActSeparateModelsSetting,
-		} = await getAllExtensionState(this.context, this.workspaceId)
-
-		const shouldSwitchModel = planActSeparateModelsSetting === true
-
-		if (shouldSwitchModel) {
-			// Save the last model used in this mode
-			await customUpdateState(this.context, "previousModeApiProvider", apiConfiguration.apiProvider)
-			await customUpdateState(this.context, "previousModeThinkingBudgetTokens", apiConfiguration.thinkingBudgetTokens)
-			await customUpdateState(this.context, "previousModeReasoningEffort", apiConfiguration.reasoningEffort)
-			switch (apiConfiguration.apiProvider) {
-				case "anthropic":
-				case "vertex":
-				case "gemini":
-				case "asksage":
-				case "openai-native":
-				case "qwen":
-				case "deepseek":
-				case "xai":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.apiModelId)
-					break
-				case "bedrock":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.apiModelId)
-					await customUpdateState(
-						this.context,
-						"previousModeAwsBedrockCustomSelected",
-						apiConfiguration.awsBedrockCustomSelected,
-					)
-					await customUpdateState(
-						this.context,
-						"previousModeAwsBedrockCustomModelBaseId",
-						apiConfiguration.awsBedrockCustomModelBaseId,
-					)
-					break
-				case "openrouter":
-				case "cline":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.openRouterModelId)
-					await customUpdateState(this.context, "previousModeModelInfo", apiConfiguration.openRouterModelInfo)
-					break
-				case "vscode-lm":
-					// Important we don't set modelId to this, as it's an object not string (webview expects model id to be a string)
-					await customUpdateState(
-						this.context,
-						"previousModeVsCodeLmModelSelector",
-						apiConfiguration.vsCodeLmModelSelector,
-					)
-					break
-				case "openai":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.openAiModelId)
-					await customUpdateState(this.context, "previousModeModelInfo", apiConfiguration.openAiModelInfo)
-					break
-				case "ollama":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.ollamaModelId)
-					break
-				case "lmstudio":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.lmStudioModelId)
-					break
-				case "litellm":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.liteLlmModelId)
-					break
-				case "requesty":
-					await customUpdateState(this.context, "previousModeModelId", apiConfiguration.requestyModelId)
-					await customUpdateState(this.context, "previousModeModelInfo", apiConfiguration.requestyModelInfo)
-					break
-			}
-
-			// Restore the model used in previous mode
-			if (
-				newApiProvider ||
-				newModelId ||
-				newThinkingBudgetTokens !== undefined ||
-				newReasoningEffort ||
-				newVsCodeLmModelSelector
-			) {
-				await customUpdateState(this.context, "apiProvider", newApiProvider)
-				await customUpdateState(this.context, "thinkingBudgetTokens", newThinkingBudgetTokens)
-				await customUpdateState(this.context, "reasoningEffort", newReasoningEffort)
-				switch (newApiProvider) {
-					case "anthropic":
-					case "vertex":
-					case "gemini":
-					case "asksage":
-					case "openai-native":
-					case "qwen":
-					case "deepseek":
-					case "xai":
-						await customUpdateState(this.context, "apiModelId", newModelId)
-						break
-					case "bedrock":
-						await customUpdateState(this.context, "apiModelId", newModelId)
-						await customUpdateState(this.context, "awsBedrockCustomSelected", newAwsBedrockCustomSelected)
-						await customUpdateState(this.context, "awsBedrockCustomModelBaseId", newAwsBedrockCustomModelBaseId)
-						break
-					case "openrouter":
-					case "cline":
-						await customUpdateState(this.context, "openRouterModelId", newModelId)
-						await customUpdateState(this.context, "openRouterModelInfo", newModelInfo)
-						break
-					case "vscode-lm":
-						await customUpdateState(this.context, "vsCodeLmModelSelector", newVsCodeLmModelSelector)
-						break
-					case "openai":
-						await customUpdateState(this.context, "openAiModelId", newModelId)
-						await customUpdateState(this.context, "openAiModelInfo", newModelInfo)
-						break
-					case "ollama":
-						await customUpdateState(this.context, "ollamaModelId", newModelId)
-						break
-					case "lmstudio":
-						await customUpdateState(this.context, "lmStudioModelId", newModelId)
-						break
-					case "litellm":
-						await customUpdateState(this.context, "previousModeModelId", apiConfiguration.liteLlmModelId)
-						await customUpdateState(this.context, "previousModeModelInfo", apiConfiguration.liteLlmModelInfo)
-						break
-					case "requesty":
-						await customUpdateState(this.context, "requestyModelId", newModelId)
-						await customUpdateState(this.context, "requestyModelInfo", newModelInfo)
-						break
-				}
-
-				if (this.task) {
-					const { apiConfiguration: updatedApiConfiguration } = await getAllExtensionState(
-						this.context,
-						this.workspaceId,
-					)
-					this.task.api = buildApiHandler(updatedApiConfiguration)
-				}
-			}
+		// Update API handler with new mode (buildApiHandler now selects provider based on mode)
+		if (this.task) {
+			const { apiConfiguration } = await getAllExtensionState(this.context)
+			this.task.api = buildApiHandler({ ...apiConfiguration, taskId: this.task.taskId }, modeToSwitchTo)
 		}
 
-		await customUpdateState(this.context, "chatSettings", chatSettings)
 		await this.postStateToWebview()
 
 		if (this.task) {
-			this.task.chatSettings = chatSettings
-			if (this.task.isAwaitingPlanResponse && didSwitchToActMode) {
-				this.task.didRespondToPlanAskBySwitchingMode = true
+			this.task.mode = modeToSwitchTo
+			if (this.task.taskState.isAwaitingPlanResponse && didSwitchToActMode) {
+				this.task.taskState.didRespondToPlanAskBySwitchingMode = true
 				// Use chatContent if provided, otherwise use default message
-				await this.postMessageToWebview({
-					type: "invoke",
-					invoke: "sendMessage",
-					text: chatContent?.message || "PLAN_MODE_TOGGLE_RESPONSE",
-					images: chatContent?.images,
-				})
+				await this.task.handleWebviewAskResponse(
+					"messageResponse",
+					chatContent?.message || "PLAN_MODE_TOGGLE_RESPONSE",
+					chatContent?.images || [],
+					chatContent?.files || [],
+				)
+
+				return true
 			} else {
 				this.cancelTask()
+				return false
 			}
 		}
+
+		return false
 	}
 
 	async cancelTask() {
@@ -790,9 +379,9 @@ export class Controller {
 			await pWaitFor(
 				() =>
 					this.task === undefined ||
-					this.task.isStreaming === false ||
-					this.task.didFinishAbortingStream ||
-					this.task.isWaitingForFirstChunk, // if only first chunk is processed, then there's no need to wait for graceful abort (closes edits, browser, etc)
+					this.task.taskState.isStreaming === false ||
+					this.task.taskState.didFinishAbortingStream ||
+					this.task.taskState.isWaitingForFirstChunk, // if only first chunk is processed, then there's no need to wait for graceful abort (closes edits, browser, etc)
 				{
 					timeout: 3_000,
 				},
@@ -801,87 +390,68 @@ export class Controller {
 			})
 			if (this.task) {
 				// 'abandoned' will prevent this cline instance from affecting future cline instance gui. this may happen if its hanging on a streaming request
-				this.task.abandoned = true
+				this.task.taskState.abandoned = true
 			}
-			await this.initTask(undefined, undefined, historyItem) // clears task again, so we need to abortTask manually above
+			await this.initTask(undefined, undefined, undefined, historyItem) // clears task again, so we need to abortTask manually above
 			// await this.postStateToWebview() // new Cline instance will post state when it's ready. having this here sent an empty messages array to webview leading to virtuoso having to reload the entire list
 		}
 	}
 
-	async updateCustomInstructions(instructions?: string) {
-		// User may be clearing the field
-		await customUpdateState(this.context, "customInstructions", instructions || undefined)
-		if (this.task) {
-			this.task.customInstructions = instructions || undefined
-		}
-	}
-
-	// Account
-
-	async fetchUserCreditsData() {
+	async handleAuthCallback(customToken: string, provider: string | null = null) {
 		try {
-			await Promise.all([
-				this.accountService?.fetchBalance(),
-				this.accountService?.fetchUsageTransactions(),
-				this.accountService?.fetchPaymentTransactions(),
-			])
-		} catch (error) {
-			console.error("Failed to fetch user credits data:", error)
-		}
-	}
-
-	// Auth
-
-	public async validateAuthState(state: string | null): Promise<boolean> {
-		const storedNonce = await customGetSecret(this.context, "authNonce", this.workspaceId)
-		if (!state || state !== storedNonce) {
-			return false
-		}
-		await customStoreSecret(this.context, "authNonce", this.workspaceId, undefined, true) // Clear after use
-		return true
-	}
-
-	async handleAuthCallback(customToken: string, apiKey: string) {
-		try {
-			// Store API key for API calls
-			await customStoreSecret(this.context, "clineApiKey", this.workspaceId, apiKey, true)
-
-			// Send custom token to webview for Firebase auth
-			await this.postMessageToWebview({
-				type: "authCallback",
-				customToken,
-			})
+			await this.authService.handleAuthCallback(customToken, provider ? provider : "google")
 
 			const clineProvider: ApiProvider = "cline"
-			await customUpdateState(this.context, "apiProvider", clineProvider)
 
-			// Update API configuration with the new provider and API key
-			const { apiConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
+			// Get current settings to determine how to update providers
+			const { planActSeparateModelsSetting } = await getAllExtensionState(this.context)
+			const currentMode = await this.getCurrentMode()
+
+			if (planActSeparateModelsSetting) {
+				// Only update the current mode's provider
+				if (currentMode === "plan") {
+					await updateGlobalState(this.context, "planModeApiProvider", clineProvider)
+				} else {
+					await updateGlobalState(this.context, "actModeApiProvider", clineProvider)
+				}
+			} else {
+				// Update both modes to keep them in sync
+				await Promise.all([
+					updateGlobalState(this.context, "planModeApiProvider", clineProvider),
+					updateGlobalState(this.context, "actModeApiProvider", clineProvider),
+				])
+			}
+
+			// Get the updated API configuration (now includes the updated providers)
+			const { apiConfiguration } = await getAllExtensionState(this.context)
 			const updatedConfig = {
 				...apiConfiguration,
 				apiProvider: clineProvider,
-				clineApiKey: apiKey,
 			}
 
+			// Mark welcome view as completed since user has successfully logged in
+			await updateGlobalState(this.context, "welcomeViewCompleted", true)
+
 			if (this.task) {
-				this.task.api = buildApiHandler(updatedConfig)
+				this.task.api = buildApiHandler({ ...updatedConfig, taskId: this.task.taskId }, currentMode)
 			}
 
 			await this.postStateToWebview()
-			// vscode.window.showInformationMessage("Successfully logged in to Cline")
 		} catch (error) {
 			console.error("Failed to handle auth callback:", error)
-			vscode.window.showErrorMessage("Failed to log in to Cline")
+			HostProvider.window.showMessage({
+				type: ShowMessageType.ERROR,
+				message: "Failed to log in to Cline",
+			})
 			// Even on login failure, we preserve any existing tokens
 			// Only clear tokens on explicit logout
 		}
 	}
 
 	// MCP Marketplace
-
 	private async fetchMcpMarketplaceFromApi(silent: boolean = false): Promise<McpMarketplaceCatalog | undefined> {
 		try {
-			const response = await axios.get("https://api.cline.bot/v1/mcp/marketplace", {
+			const response = await axios.get(`${clineEnvConfig.mcpBaseUrl}/marketplace`, {
 				headers: {
 					"Content-Type": "application/json",
 				},
@@ -893,10 +463,8 @@ export class Controller {
 
 			// Create an array to hold all local MCPs with their star counts
 			const localMcpItems = []
-
 			// Get all local MCPs from registry
 			const localMcpIds = Object.keys(getAllLocalMcps())
-
 			// Fetch GitHub stars for each local MCP
 			for (const mcpId of localMcpIds) {
 				const mcp = getLocalMcp(mcpId)
@@ -925,17 +493,16 @@ export class Controller {
 			}
 
 			// Store in global state
-			await customUpdateState(this.context, "mcpMarketplaceCatalog", catalog)
+			await updateGlobalState(this.context, "mcpMarketplaceCatalog", catalog)
 			return catalog
 		} catch (error) {
 			console.error("Failed to fetch MCP marketplace:", error)
 			if (!silent) {
 				const errorMessage = error instanceof Error ? error.message : "Failed to fetch MCP marketplace"
-				await this.postMessageToWebview({
-					type: "mcpMarketplaceCatalog",
-					error: errorMessage,
+				HostProvider.window.showMessage({
+					type: ShowMessageType.ERROR,
+					message: errorMessage,
 				})
-				vscode.window.showErrorMessage(errorMessage)
 			}
 			return undefined
 		}
@@ -943,9 +510,10 @@ export class Controller {
 
 	private async fetchMcpMarketplaceFromApiRPC(silent: boolean = false): Promise<McpMarketplaceCatalog | undefined> {
 		try {
-			const response = await axios.get("https://api.cline.bot/v1/mcp/marketplace", {
+			const response = await axios.get(`${clineEnvConfig.mcpBaseUrl}/marketplace`, {
 				headers: {
 					"Content-Type": "application/json",
+					"User-Agent": "cline-vscode-extension",
 				},
 			})
 
@@ -972,6 +540,7 @@ export class Controller {
 					})
 				}
 			}
+
 			const catalog: McpMarketplaceCatalog = {
 				items: [
 					...localMcpItems,
@@ -986,7 +555,7 @@ export class Controller {
 			}
 
 			// Store in global state
-			await customUpdateState(this.context, "mcpMarketplaceCatalog", catalog)
+			await updateGlobalState(this.context, "mcpMarketplaceCatalog", catalog)
 			return catalog
 		} catch (error) {
 			console.error("Failed to fetch MCP marketplace:", error)
@@ -1002,10 +571,7 @@ export class Controller {
 		try {
 			const catalog = await this.fetchMcpMarketplaceFromApi(true)
 			if (catalog) {
-				await this.postMessageToWebview({
-					type: "mcpMarketplaceCatalog",
-					mcpMarketplaceCatalog: catalog,
-				})
+				await sendMcpMarketplaceCatalogEvent(catalog)
 			}
 		} catch (error) {
 			console.error("Failed to silently refresh MCP marketplace:", error)
@@ -1029,32 +595,25 @@ export class Controller {
 	private async fetchMcpMarketplace(forceRefresh: boolean = false) {
 		try {
 			// Check if we have cached data
-			const cachedCatalog = (await customGetState(this.context, "mcpMarketplaceCatalog")) as
+			const cachedCatalog = (await getGlobalState(this.context, "mcpMarketplaceCatalog")) as
 				| McpMarketplaceCatalog
 				| undefined
 			if (!forceRefresh && cachedCatalog?.items) {
-				await this.postMessageToWebview({
-					type: "mcpMarketplaceCatalog",
-					mcpMarketplaceCatalog: cachedCatalog,
-				})
+				await sendMcpMarketplaceCatalogEvent(cachedCatalog)
 				return
 			}
 
 			const catalog = await this.fetchMcpMarketplaceFromApi(false)
 			if (catalog) {
-				await this.postMessageToWebview({
-					type: "mcpMarketplaceCatalog",
-					mcpMarketplaceCatalog: catalog,
-				})
+				await sendMcpMarketplaceCatalogEvent(catalog)
 			}
 		} catch (error) {
 			console.error("Failed to handle cached MCP marketplace:", error)
 			const errorMessage = error instanceof Error ? error.message : "Failed to handle cached MCP marketplace"
-			await this.postMessageToWebview({
-				type: "mcpMarketplaceCatalog",
-				error: errorMessage,
+			HostProvider.window.showMessage({
+				type: ShowMessageType.ERROR,
+				message: errorMessage,
 			})
-			vscode.window.showErrorMessage(errorMessage)
 		}
 	}
 
@@ -1075,14 +634,22 @@ export class Controller {
 		}
 
 		const openrouter: ApiProvider = "openrouter"
-		await customUpdateState(this.context, "apiProvider", openrouter)
-		await customStoreSecret(this.context, "openRouterApiKey", this.workspaceId, apiKey)
+		const currentMode = await this.getCurrentMode()
+		await Promise.all([
+			updateGlobalState(this.context, "planModeApiProvider", openrouter),
+			updateGlobalState(this.context, "actModeApiProvider", openrouter),
+		])
+		await storeSecret(this.context, "openRouterApiKey", apiKey)
 		await this.postStateToWebview()
 		if (this.task) {
-			this.task.api = buildApiHandler({
-				apiProvider: openrouter,
+			// Get the updated API configuration (now includes the updated providers)
+			const { apiConfiguration } = await getAllExtensionState(this.context)
+			const updatedConfig = {
+				...apiConfiguration,
 				openRouterApiKey: apiKey,
-			})
+				taskId: this.task.taskId,
+			}
+			this.task.api = buildApiHandler(updatedConfig, currentMode)
 		}
 		// await this.postMessageToWebview({ type: "action", action: "settingsButtonClicked" }) // bad ux if user is on welcome
 	}
@@ -1106,8 +673,8 @@ export class Controller {
 
 	// Context menus and code actions
 
-	getFileMentionFromPath(filePath: string) {
-		const cwd = vscode.workspace.workspaceFolders?.map((folder) => folder.uri.fsPath).at(0)
+	async getFileMentionFromPath(filePath: string) {
+		const cwd = await getCwd()
 		if (!cwd) {
 			return "@/" + filePath
 		}
@@ -1122,7 +689,7 @@ export class Controller {
 		await setTimeoutPromise(100)
 
 		// Post message to webview with the selected code
-		const fileMention = this.getFileMentionFromPath(filePath)
+		const fileMention = await this.getFileMentionFromPath(filePath)
 
 		let input = `${fileMention}\n\`\`\`\n${code}\n\`\`\``
 		if (diagnostics) {
@@ -1130,10 +697,7 @@ export class Controller {
 			input += `\nProblems:\n${problemsString}`
 		}
 
-		await this.postMessageToWebview({
-			type: "addToInput",
-			text: input,
-		})
+		await sendAddToInputEvent(input)
 
 		console.log("addSelectedCodeToChat", code, filePath, languageId)
 	}
@@ -1151,10 +715,7 @@ export class Controller {
 		//     terminalName
 		// })
 
-		await this.postMessageToWebview({
-			type: "addToInput",
-			text: `Terminal output:\n\`\`\`\n${output}\n\`\`\``,
-		})
+		await sendAddToInputEvent(`Terminal output:\n\`\`\`\n${output}\n\`\`\``)
 
 		console.log("addSelectedTerminalOutputToChat", output, terminalName)
 	}
@@ -1165,11 +726,11 @@ export class Controller {
 		await vscode.commands.executeCommand("hai.SidebarProvider.focus")
 		await setTimeoutPromise(100)
 
-		const fileMention = this.getFileMentionFromPath(filePath)
+		const fileMention = await this.getFileMentionFromPath(filePath)
 		const problemsString = this.convertDiagnosticsToProblemsString(diagnostics)
 		await this.initTask(`Fix the following code in ${fileMention}\n\`\`\`\n${code}\n\`\`\`\n\nProblems:\n${problemsString}`)
 
-		console.log("fixWithHAI", code, filePath, languageId, diagnostics, problemsString)
+		console.log("fixWithCline", code, filePath, languageId, diagnostics, problemsString)
 	}
 
 	convertDiagnosticsToProblemsString(diagnostics: vscode.Diagnostic[]) {
@@ -1211,7 +772,7 @@ export class Controller {
 		taskMetadataFilePath: string
 		apiConversationHistory: Anthropic.MessageParam[]
 	}> {
-		const history = ((await customGetState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
+		const history = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
 		const historyItem = history.find((item) => item.id === id)
 		if (historyItem) {
 			const taskDirPath = path.join(this.context.globalStorageUri.fsPath, "tasks", id)
@@ -1239,145 +800,16 @@ export class Controller {
 		throw new Error("Task not found")
 	}
 
-	async showTaskWithId(id: string) {
-		if (id !== this.task?.taskId) {
-			// non-current task
-			const { historyItem } = await this.getTaskWithId(id)
-			await this.initTask(undefined, undefined, historyItem) // clears existing task
-		}
-		await this.postMessageToWebview({
-			type: "action",
-			action: "chatButtonClicked",
-		})
-	}
-
 	async exportTaskWithId(id: string) {
 		const { historyItem, apiConversationHistory } = await this.getTaskWithId(id)
 		await downloadTask(historyItem.ts, apiConversationHistory)
 	}
 
-	async deleteAllTaskHistory() {
-		await this.clearTask()
-		await customUpdateState(this.context, "taskHistory", undefined)
-		try {
-			// Remove all contents of tasks directory
-			const taskDirPath = path.join(this.context.globalStorageUri.fsPath, "tasks")
-			if (await fileExistsAtPath(taskDirPath)) {
-				await fs.rm(taskDirPath, { recursive: true, force: true })
-			}
-			// Remove checkpoints directory contents
-			const checkpointsDirPath = path.join(this.context.globalStorageUri.fsPath, "checkpoints")
-			if (await fileExistsAtPath(checkpointsDirPath)) {
-				await fs.rm(checkpointsDirPath, { recursive: true, force: true })
-			}
-		} catch (error) {
-			vscode.window.showErrorMessage(
-				`Encountered error while deleting task history, there may be some files left behind. Error: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-		// await this.postStateToWebview()
-	}
-
-	async deleteNonFavoriteTaskHistory() {
-		await this.clearTask()
-
-		const taskHistory = ((await customGetState(this.context, "taskHistory")) as HistoryItem[]) || []
-		const favoritedTasks = taskHistory.filter((task) => task.isFavorited === true)
-
-		// If user has no favorited tasks, show a warning message
-		if (favoritedTasks.length === 0) {
-			vscode.window.showWarningMessage("No favorited tasks found. Please favorite tasks before using this option.")
-			await this.postStateToWebview()
-			return
-		}
-
-		await customUpdateState(this.context, "taskHistory", favoritedTasks)
-
-		// Delete non-favorited task directories
-		try {
-			const preserveTaskIds = favoritedTasks.map((task) => task.id)
-			const taskDirPath = path.join(this.context.globalStorageUri.fsPath, "tasks")
-
-			if (await fileExistsAtPath(taskDirPath)) {
-				const taskDirs = await fs.readdir(taskDirPath)
-				for (const taskDir of taskDirs) {
-					if (!preserveTaskIds.includes(taskDir)) {
-						await fs.rm(path.join(taskDirPath, taskDir), { recursive: true, force: true })
-					}
-				}
-			}
-		} catch (error) {
-			vscode.window.showErrorMessage(
-				`Error deleting task history: ${error instanceof Error ? error.message : String(error)}`,
-			)
-		}
-
-		await this.postStateToWebview()
-	}
-
-	async refreshTotalTasksSize() {
-		getTotalTasksSize(this.context.globalStorageUri.fsPath)
-			.then((newTotalSize) => {
-				this.postMessageToWebview({
-					type: "totalTasksSize",
-					totalTasksSize: newTotalSize,
-				})
-			})
-			.catch((error) => {
-				console.error("Error calculating total tasks size:", error)
-			})
-	}
-
-	async deleteTaskWithId(id: string) {
-		console.info("deleteTaskWithId: ", id)
-
-		try {
-			if (id === this.task?.taskId) {
-				await this.clearTask()
-				console.debug("cleared task")
-			}
-
-			const {
-				taskDirPath,
-				apiConversationHistoryFilePath,
-				uiMessagesFilePath,
-				contextHistoryFilePath,
-				taskMetadataFilePath,
-			} = await this.getTaskWithId(id)
-			const legacyMessagesFilePath = path.join(taskDirPath, "claude_messages.json")
-			const updatedTaskHistory = await this.deleteTaskFromState(id)
-
-			// Delete the task files
-			for (const filePath of [
-				apiConversationHistoryFilePath,
-				uiMessagesFilePath,
-				contextHistoryFilePath,
-				taskMetadataFilePath,
-				legacyMessagesFilePath,
-			]) {
-				const fileExists = await fileExistsAtPath(filePath)
-				if (fileExists) {
-					await fs.unlink(filePath)
-				}
-			}
-
-			await fs.rmdir(taskDirPath) // succeeds if the dir is empty
-
-			if (updatedTaskHistory.length === 0) {
-				await this.deleteAllTaskHistory()
-			}
-		} catch (error) {
-			console.debug(`Error deleting task:`, error)
-		}
-
-		this.refreshTotalTasksSize()
-	}
-
 	async deleteTaskFromState(id: string) {
 		// Remove the task from history
-		const taskHistory = ((await customGetState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
+		const taskHistory = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[] | undefined) || []
 		const updatedTaskHistory = taskHistory.filter((task) => task.id !== id)
-		await customUpdateState(this.context, "taskHistory", updatedTaskHistory)
+		await updateGlobalState(this.context, "taskHistory", updatedTaskHistory)
 
 		// Notify the webview that the task has been deleted
 		await this.postStateToWebview()
@@ -1387,57 +819,61 @@ export class Controller {
 
 	async postStateToWebview() {
 		const state = await this.getStateToPostToWebview()
-		// For testing: Bypass gRPC stream and send state directly
-		console.log("[Controller Test Revert] Posting full state via direct 'state' message.")
-		await this.postMessageToWebview({ type: "state", state: state })
-		// await sendStateUpdate(state) // Original line for the GrPC stream
+		await sendStateUpdate(this.id, state)
 	}
 
 	async getStateToPostToWebview(): Promise<ExtensionState> {
 		const {
 			apiConfiguration,
+			embeddingConfiguration,
 			lastShownAnnouncementId,
-			customInstructions,
 			taskHistory,
 			autoApprovalSettings,
 			browserSettings,
-			chatSettings,
+			preferredLanguage,
+			openaiReasoningEffort,
+			mode,
 			userInfo,
 			mcpMarketplaceEnabled,
+			mcpDisplayMode,
 			telemetrySetting,
 			planActSeparateModelsSetting,
 			enableCheckpointsSetting,
 			globalClineRulesToggles,
 			globalWorkflowToggles,
 			shellIntegrationTimeout,
+			terminalReuseEnabled,
+			defaultTerminalProfile,
 			isNewUser,
+			welcomeViewCompleted,
+			mcpResponsesCollapsed,
+			terminalOutputLineLimit,
 
 			// TAG:HAI
-			expertPrompt,
+			enableInlineEdit,
 			buildContextOptions,
 			buildIndexProgress,
-			embeddingConfiguration,
-			enableInlineEdit,
-		} = await getAllExtensionState(this.context, this.workspaceId)
+		} = await getAllExtensionState(this.context)
 
-		const localClineRulesToggles = ((await customGetState(this.context, "localClineRulesToggles")) as ClineRulesToggles) || {}
+		const localClineRulesToggles =
+			((await getWorkspaceState(this.context, "localClineRulesToggles")) as ClineRulesToggles) || {}
 
 		const localWindsurfRulesToggles =
-			((await customGetState(this.context, "localWindsurfRulesToggles")) as ClineRulesToggles) || {}
+			((await getWorkspaceState(this.context, "localWindsurfRulesToggles")) as ClineRulesToggles) || {}
 
 		const localCursorRulesToggles =
-			((await customGetState(this.context, "localCursorRulesToggles")) as ClineRulesToggles) || {}
+			((await getWorkspaceState(this.context, "localCursorRulesToggles")) as ClineRulesToggles) || {}
 
-		const localWorkflowToggles = ((await customGetState(this.context, "workflowToggles")) as ClineRulesToggles) || {}
+		const localWorkflowToggles = ((await getWorkspaceState(this.context, "workflowToggles")) as ClineRulesToggles) || {}
 
 		return {
 			version: this.context.extension?.packageJSON?.version ?? "",
 			apiConfiguration,
-			customInstructions,
+			embeddingConfiguration,
 			uriScheme: vscode.env.uriScheme,
 			currentTaskItem: this.task?.taskId ? (taskHistory || []).find((item) => item.id === this.task?.taskId) : undefined,
-			checkpointTrackerErrorMessage: this.task?.checkpointTrackerErrorMessage,
-			clineMessages: this.task?.clineMessages || [],
+			checkpointTrackerErrorMessage: this.task?.taskState.checkpointTrackerErrorMessage,
+			clineMessages: this.task?.messageStateHandler.getClineMessages() || [],
 			taskHistory: (taskHistory || [])
 				.filter((item) => item.ts && item.task)
 				.sort((a, b) => b.ts - a.ts)
@@ -1446,13 +882,16 @@ export class Controller {
 			platform: process.platform as Platform,
 			autoApprovalSettings,
 			browserSettings,
-			chatSettings,
+			preferredLanguage,
+			openaiReasoningEffort,
+			mode,
 			userInfo,
 			mcpMarketplaceEnabled,
+			mcpDisplayMode,
 			telemetrySetting,
 			planActSeparateModelsSetting,
 			enableCheckpointsSetting: enableCheckpointsSetting ?? true,
-			vscMachineId: vscode.env.machineId,
+			distinctId: telemetryService.distinctId,
 			globalClineRulesToggles: globalClineRulesToggles || {},
 			localClineRulesToggles: localClineRulesToggles || {},
 			localWindsurfRulesToggles: localWindsurfRulesToggles || {},
@@ -1460,23 +899,25 @@ export class Controller {
 			localWorkflowToggles: localWorkflowToggles || {},
 			globalWorkflowToggles: globalWorkflowToggles || {},
 			shellIntegrationTimeout,
+			terminalReuseEnabled,
+			defaultTerminalProfile,
 			isNewUser,
+			welcomeViewCompleted: welcomeViewCompleted as boolean, // Can be undefined but is set to either true or false by the migration that runs on extension launch in extension.ts
+			mcpResponsesCollapsed,
+			terminalOutputLineLimit,
 
 			// TAG:HAI
-			expertPrompt,
-			buildContextOptions,
-			buildIndexProgress,
-			embeddingConfiguration,
+			enableInlineEdit: enableInlineEdit ?? true,
+			buildContextOptions: buildContextOptions || undefined,
 			vscodeWorkspacePath: this.vsCodeWorkSpaceFolderFsPath,
-			enableInlineEdit,
+			buildIndexProgress: buildIndexProgress || undefined,
 		}
 	}
 
 	async clearTask() {
 		if (this.task) {
-			await telemetryService.sendCollectedEvents(this.task.taskId)
 		}
-		this.task?.abortTask()
+		await this.task?.abortTask()
 		this.task = undefined // removes reference to it, so once promises end it will be garbage collected
 	}
 
@@ -1521,14 +962,14 @@ export class Controller {
 	// }
 
 	async updateTaskHistory(item: HistoryItem): Promise<HistoryItem[]> {
-		const history = ((await customGetState(this.context, "taskHistory")) as HistoryItem[]) || []
+		const history = ((await getGlobalState(this.context, "taskHistory")) as HistoryItem[]) || []
 		const existingItemIndex = history.findIndex((h) => h.id === item.id)
 		if (existingItemIndex !== -1) {
 			history[existingItemIndex] = item
 		} else {
 			history.push(item)
 		}
-		await customUpdateState(this.context, "taskHistory", history)
+		await updateGlobalState(this.context, "taskHistory", history)
 		return history
 	}
 
@@ -1544,164 +985,9 @@ export class Controller {
 
 	// secrets
 
-	// Git commit message generation
-
-	async generateGitCommitMessage() {
-		try {
-			// Check if there's a workspace folder open
-			const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath
-			if (!cwd) {
-				vscode.window.showErrorMessage("No workspace folder open")
-				return
-			}
-
-			// Get the git diff
-			const gitDiff = await getWorkingState(cwd)
-			if (gitDiff === "No changes in working directory") {
-				vscode.window.showInformationMessage("No changes in workspace for commit message")
-				return
-			}
-
-			// Show a progress notification
-			await vscode.window.withProgress(
-				{
-					location: vscode.ProgressLocation.Notification,
-					title: "Generating commit message...",
-					cancellable: false,
-				},
-				async (progress, token) => {
-					try {
-						// Format the git diff into a prompt
-						const prompt = `Based on the following git diff, generate a concise and descriptive commit message:
-
-${gitDiff.length > 5000 ? gitDiff.substring(0, 5000) + "\n\n[Diff truncated due to size]" : gitDiff}
-
-The commit message should:
-1. Start with a short summary (50-72 characters)
-2. Use the imperative mood (e.g., "Add feature" not "Added feature")
-3. Describe what was changed and why
-4. Be clear and descriptive
-
-Commit message:`
-
-						// Get the current API configuration
-						const { apiConfiguration } = await getAllExtensionState(this.context, this.workspaceId)
-
-						// Build the API handler
-						const apiHandler = buildApiHandler(apiConfiguration)
-
-						// Create a system prompt
-						const systemPrompt =
-							"You are a helpful assistant that generates concise and descriptive git commit messages based on git diffs."
-
-						// Create a message for the API
-						const messages = [
-							{
-								role: "user" as const,
-								content: prompt,
-							},
-						]
-
-						// Call the API directly
-						const stream = apiHandler.createMessage(systemPrompt, messages)
-
-						// Collect the response
-						let response = ""
-						for await (const chunk of stream) {
-							if (chunk.type === "text") {
-								response += chunk.text
-							}
-						}
-
-						// Extract the commit message
-						const commitMessage = extractCommitMessage(response)
-
-						// Apply the commit message to the Git input box
-						if (commitMessage) {
-							// Get the Git extension API
-							const gitExtension = vscode.extensions.getExtension("vscode.git")?.exports
-							if (gitExtension) {
-								const api = gitExtension.getAPI(1)
-								if (api && api.repositories.length > 0) {
-									const repo = api.repositories[0]
-									repo.inputBox.value = commitMessage
-									vscode.window.showInformationMessage("Commit message generated and applied")
-								} else {
-									vscode.window.showErrorMessage("No Git repositories found")
-								}
-							} else {
-								vscode.window.showErrorMessage("Git extension not found")
-							}
-						} else {
-							vscode.window.showErrorMessage("Failed to generate commit message")
-						}
-					} catch (innerError) {
-						const innerErrorMessage = innerError instanceof Error ? innerError.message : String(innerError)
-						vscode.window.showErrorMessage(`Failed to generate commit message: ${innerErrorMessage}`)
-					}
-				},
-			)
-		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error)
-			vscode.window.showErrorMessage(`Failed to generate commit message: ${errorMessage}`)
-		}
-	}
+	// dev
 
 	// TAG:HAI
-
-	async getOllamaEmbeddingModels(baseUrl?: string) {
-		try {
-			if (!baseUrl) {
-				baseUrl = "http://localhost:11434"
-			}
-			if (!URL.canParse(baseUrl)) {
-				return []
-			}
-			const response = await axios.get(`${baseUrl}/api/tags`)
-			const modelsArray = response.data?.models?.map((model: any) => model.name) || []
-			const models = [...new Set<string>(modelsArray)]
-			// TODO: Currently OLLAM local API doen't support diffrentiate between embedding and chat models
-			// so we are only considering models that have the following inclusion, as OLLAMA release new
-			// models this list has to be updated, or we have to wait for OLLAMA to support this natively.
-			// And diretctly fetching from the Public remote API is not also avaialble.
-			// https://ollama.com/search?c=embedding
-			const PUBLIC_KNOWN_MODELS = [
-				"nomic-embed-text",
-				"mxbai-embed-large",
-				"snowflake-arctic-embed",
-				"bge-m3",
-				"all-minilm",
-				"bge-large",
-				"snowflake-arctic-embed2",
-				"paraphrase-multilingual",
-				"granite-embedding",
-			]
-			return models.filter((model: string) =>
-				PUBLIC_KNOWN_MODELS.some((known) => model.toLowerCase().includes(known.toLowerCase())),
-			)
-		} catch (error) {
-			return []
-		}
-	}
-
-	async resetState() {
-		vscode.window.showInformationMessage("Resetting state...")
-		if (!this.codeIndexAbortController.signal.aborted) {
-			this.codeIndexAbortController.abort()
-			this.isCodeIndexInProgress = false
-		}
-		await resetExtensionState(this.context, this.workspaceId)
-		if (this.task) {
-			this.task.abortTask()
-			this.task = undefined
-		}
-		vscode.window.showInformationMessage("State reset")
-		await this.postStateToWebview()
-		await this.postMessageToWebview({
-			type: "action",
-			action: "chatButtonClicked",
-		})
-	}
 
 	expertPromptProvider = new (class implements vscode.TextDocumentContentProvider {
 		provideTextDocumentContent(uri: vscode.Uri): string {
@@ -1715,9 +1001,9 @@ Commit message:`
 		}
 
 		await ensureFaissPlatformDeps()
-		const state = (await customGetState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
+		const state = (await getGlobalState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
 		const updateProgressState = async (data: Partial<HaiBuildIndexProgress>) => {
-			const state = (await customGetState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
+			const state = (await getGlobalState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
 			const stateVal = Object.assign(state ?? {}, {
 				...(data.type === "codeContext" && data.isInProgress === false && data.progress === 100
 					? {
@@ -1734,7 +1020,7 @@ Commit message:`
 				...data,
 			})
 			if (!this.codeIndexAbortController.signal.aborted || data.isInProgress === false) {
-				await customUpdateState(this.context, "buildIndexProgress", stateVal)
+				await updateGlobalState(this.context, "buildIndexProgress", stateVal)
 				await this.postStateToWebview()
 			}
 		}
@@ -1750,9 +1036,9 @@ Commit message:`
 			this.context,
 			this.workspaceId,
 		)
-		const isValidApiConfiguration = validateApiConfiguration(apiConfiguration) === undefined
+		const currentMode = await this.getCurrentMode()
+		const isValidApiConfiguration = validateApiConfiguration(currentMode, apiConfiguration) === undefined
 		const isValidEmbeddingConfiguration = validateEmbeddingConfiguration(embeddingConfiguration) === undefined
-
 		if (isValidApiConfiguration && isValidEmbeddingConfiguration) {
 			try {
 				if (!this.vsCodeWorkSpaceFolderFsPath) {
@@ -1770,15 +1056,15 @@ Commit message:`
 						}
 						if (userConfirmation === "No") {
 							buildContextOptions.useIndex = false
-							this.customWebViewMessageHandlers({
-								type: "buildContextOptions",
-								buildContextOptions: buildContextOptions,
-							})
+							await updateGlobalState(this.context, "buildContextOptions", buildContextOptions)
+							if (this.task) {
+								this.task.buildContextOptions = buildContextOptions
+							}
+							await this.postStateToWebview()
 							return
 						}
 						if (userConfirmation === "Open Settings") {
-							await this.postMessageToWebview({ type: "action", action: "settingsButtonClicked" })
-							return
+							await vscode.commands.executeCommand("hai.settingsButtonClicked")
 						}
 					}
 
@@ -1804,6 +1090,7 @@ Commit message:`
 									.withSource(this.vsCodeWorkSpaceFolderFsPath)
 									.withLLMApiConfig(apiConfiguration)
 									.withBuildContextOptions(buildContextOptions)
+									.withCurrentMode(currentMode)
 									.build()
 								this.codeIndexAbortController.signal.addEventListener("abort", async () => {
 									codeContextAgent.stop()
@@ -1814,7 +1101,9 @@ Commit message:`
 									this.isCodeIndexInProgress = false
 								})
 								codeContextAgent.on("progress", async (progress: ICodeIndexProgress) => {
-									this.outputChannel.appendLine(`codeContextAgentProgress ${progress.type} ${progress.value}%`)
+									HostProvider.get().logToChannel(
+										`codeContextAgentProgress ${progress.type} ${progress.value}%`,
+									)
 									console.log(`codeContextAgentProgress ${JSON.stringify(progress, null, 2)}`)
 									// If user cancels the operation from notification, we need to cancel the operation
 									if (token.isCancellationRequested) {
@@ -1858,7 +1147,10 @@ Commit message:`
 								})
 								codeContextAgent.on("error", async (error: { message: string; error: any }) => {
 									console.error("Error during code context:", error.message, error.error)
-									vscode.window.showErrorMessage(`Code context failed: ${error.message}`)
+									HostProvider.window.showMessage({
+										type: ShowMessageType.ERROR,
+										message: `Code context failed: ${error.message}`,
+									})
 
 									this.codeIndexAbortController.abort()
 									this.isCodeIndexInProgress = false
@@ -1893,7 +1185,7 @@ Commit message:`
 								this.isCodeIndexInProgress = false
 							})
 							vectorizeCodeAgent.on("progress", async (progress: ICodeIndexProgress) => {
-								this.outputChannel.appendLine(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
+								HostProvider.get().logToChannel(`vectorizeCodeAgentProgress: ${progress.type} ${progress.value}%`)
 								console.log(`vectorizeCodeAgentProgress ${JSON.stringify(progress, null, 2)}`)
 								// If user cancels the operation from notification, we need to cancel the operation
 								if (token.isCancellationRequested) {
@@ -1936,7 +1228,10 @@ Commit message:`
 							})
 							vectorizeCodeAgent.on("error", async (error: { message: string; error: any }) => {
 								console.error("Error during indexing:", error.message, error.error)
-								vscode.window.showErrorMessage(`Indexing failed: ${error.message}`)
+								HostProvider.window.showMessage({
+									type: ShowMessageType.ERROR,
+									message: `Indexing failed: ${error.message}`,
+								})
 								this.codeIndexAbortController.abort()
 								this.isCodeIndexInProgress = false
 							})
@@ -1957,7 +1252,7 @@ Commit message:`
 				}
 			} catch (error) {
 				console.error("codeIndexBackground", "Error listing files in workspace:", error)
-				vscode.window.showErrorMessage(CodeContextErrorMessage)
+				HostProvider.window.showMessage({ type: ShowMessageType.ERROR, message: CodeContextErrorMessage })
 				this.isCodeIndexInProgress = false
 			}
 		}
@@ -1982,342 +1277,6 @@ Commit message:`
 		}
 	}
 
-	async readHaiTaskList(url: string): Promise<IHaiStory[]> {
-		try {
-			const fs = require("fs")
-			const path = require("path")
-			let haiTaskList: IHaiStory[] = []
-			const files = fs.readdirSync(`${url}/PRD`)
-			files
-				.filter((file: string) => file.match(/\-feature.json$/))
-				.forEach((file: string) => {
-					const content = fs.readFileSync(path.join(`${url}/PRD`, file), "utf-8")
-					const prdId = file.split("-")[0].replace("PRD", "")
-					const parsedFeaturesList = JSON.parse(content).features
-					const featuresListWithPrdId = parsedFeaturesList.map((feature: any) => ({
-						...feature,
-						prdId: prdId,
-					}))
-					haiTaskList = [...haiTaskList, ...featuresListWithPrdId]
-				})
-			return haiTaskList
-		} catch (e) {
-			console.error("Error reading hai task list", e)
-		}
-		return []
-	}
-
-	fetchTaskFromSelectedFolder(path: string, ts: string) {
-		this.readHaiTaskList(path).then((res: IHaiStory[]) => {
-			// this.haiTaskList = res
-			if (res.length === 0) {
-				vscode.window.showInformationMessage("No tasks found in the selected folder")
-			}
-			this.postMessageToWebview({
-				type: "haiTaskData",
-				haiTaskData: { tasks: res, folder: path, ts },
-			}).then()
-		})
-	}
-
-	chooseHaiProject(path?: string) {
-		if (!path) {
-			const options: vscode.OpenDialogOptions = {
-				canSelectMany: false,
-				openLabel: "Open",
-				canSelectFiles: false,
-				canSelectFolders: true,
-			}
-
-			vscode.window.showOpenDialog(options).then((fileUri) => {
-				if (fileUri && fileUri[0]) {
-					console.log("Selected file: " + fileUri[0].fsPath)
-
-					const ts = getFormattedDateTime()
-					this.fetchTaskFromSelectedFolder(fileUri[0].fsPath, ts)
-					customUpdateState(this.context, "haiConfig", { folder: fileUri[0].fsPath, ts })
-				}
-			})
-		} else {
-			const ts = getFormattedDateTime()
-			this.fetchTaskFromSelectedFolder(path, ts)
-			customUpdateState(this.context, "haiConfig", { folder: path, ts })
-		}
-	}
-
-	async customWebViewMessageHandlers(message: WebviewMessage) {
-		const expertManager = await this.getExpertManager()
-		switch (message.type) {
-			case "requestOllamaEmbeddingModels":
-				const ollamaEmbeddingModels = await this.getOllamaEmbeddingModels(message.text)
-				this.postMessageToWebview({
-					type: "ollamaEmbeddingModels",
-					ollamaEmbeddingModels,
-				})
-				break
-			case "showToast":
-				switch (message.toast?.toastType) {
-					case "info":
-						vscode.window.showInformationMessage(message.toast.message)
-						break
-					case "error":
-						vscode.window.showErrorMessage(message.toast.message)
-						break
-					case "warning":
-						vscode.window.showWarningMessage(message.toast.message)
-						break
-				}
-				break
-			case "selectExpert":
-				const expertName = message.text || ""
-				const expertPrompt = message.prompt || ""
-				const isDeepCrawlEnabled = !!message.isDeepCrawlEnabled
-				await customUpdateState(this.context, "expertPrompt", expertPrompt || undefined)
-				await customUpdateState(this.context, "expertName", expertName || undefined)
-				await customUpdateState(this.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
-				if (!isDeepCrawlEnabled) {
-					await this.updateExpertPrompt(message.prompt, expertName)
-				}
-				break
-			case "viewExpertPrompt":
-				const viewExpertName = message.text || ""
-
-				if (message.isDefault && message.prompt) {
-					try {
-						const encodedContent = Buffer.from(message.prompt).toString("base64")
-						const uri = vscode.Uri.parse(`${EXPERT_PROMPT_URI_SCHEME}:${viewExpertName}.md?${encodedContent}`)
-						const document = await vscode.workspace.openTextDocument(uri)
-						await vscode.window.showTextDocument(document, { preview: false })
-					} catch (error) {
-						console.error("Error creating or opening the virtual document:", error)
-					}
-				} else {
-					const expertManager = await this.getExpertManager()
-					const promptPath = await expertManager.getExpertPromptPath(this.vsCodeWorkSpaceFolderFsPath, viewExpertName)
-					if (promptPath) {
-						openFile(promptPath)
-					} else {
-						vscode.window.showErrorMessage(`Could not find prompt file for expert: ${viewExpertName}`)
-					}
-				}
-				break
-			case "saveExpert":
-				if (message.text) {
-					const expert = JSON.parse(message.text) as ExpertData
-					await expertManager.saveExpert(this.vsCodeWorkSpaceFolderFsPath, expert)
-					await this.loadExperts()
-				}
-				break
-			case "deleteExpert":
-				if (message.text) {
-					const expertToDelete = message.text
-					const { expertName } = await getAllExtensionState(this.context, this.workspaceId)
-
-					// Delete the expert
-					const expertManager = await this.getExpertManager()
-					await expertManager.deleteExpert(this.vsCodeWorkSpaceFolderFsPath, expertToDelete)
-
-					// Clear selected expert state if the deleted expert was selected
-					if (expertName === expertToDelete) {
-						await customUpdateState(this.context, "expertName", undefined)
-						await customUpdateState(this.context, "expertPrompt", undefined)
-						await customUpdateState(this.context, "isDeepCrawlEnabled", false)
-					}
-
-					// Reload experts to update the UI
-					await this.loadExperts()
-					await this.loadDefaultExperts()
-				}
-				break
-			case "loadExperts":
-				await this.loadExperts()
-				break
-			case "loadDefaultExperts":
-				await this.loadDefaultExperts()
-				break
-			case "refreshDocumentLink":
-				if (message.text && message.expert) {
-					await expertManager.refreshDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
-				}
-				await this.loadExperts()
-				break
-			case "deleteDocumentLink":
-				if (message.text && message.expert) {
-					try {
-						await expertManager.deleteDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
-						await this.loadExperts()
-					} catch (error) {
-						console.error(`Failed to delete document link for expert ${message.expert}:`, error)
-						vscode.window.showErrorMessage(`Failed to delete document link: ${error.message}`)
-					}
-				}
-				break
-			case "addDocumentLink":
-				if (message.text && message.expert) {
-					try {
-						await expertManager.addDocumentLink(this.vsCodeWorkSpaceFolderFsPath, message.expert, message.text)
-						await this.loadExperts()
-					} catch (error) {
-						console.error(`Failed to add document link for expert ${message.expert}:`, error)
-						vscode.window.showErrorMessage(`Failed to add document link: ${error.message}`)
-					}
-				}
-				break
-			case "onHaiConfigure":
-				const isConfigureEnabled = message.bool !== undefined ? message.bool : true
-
-				if (isConfigureEnabled) {
-					this.chooseHaiProject(message?.text)
-				} else {
-					customUpdateState(this.context, "haiConfig", {})
-				}
-
-				break
-
-			case "embeddingConfiguration":
-				if (message.embeddingConfiguration) {
-					await updateEmbeddingConfiguration(this.context, message.embeddingConfiguration, this.workspaceId)
-				}
-				await this.postStateToWebview()
-				break
-			case "validateLLMConfig":
-				let isValid = false
-				if (message.apiConfiguration) {
-					// If no validation error is encountered, validate the LLM configuration by sending a test message.
-					if (!message.text) {
-						try {
-							const apiHandler = buildApiHandler({ ...message.apiConfiguration, maxRetries: 0 })
-							isValid = await apiHandler.validateAPIKey()
-						} catch (error) {
-							vscode.window.showErrorMessage(`LLM validation failed: ${error}`)
-						}
-					}
-				}
-
-				if (!message.text) {
-					this.postMessageToWebview({
-						type: "llmConfigValidation",
-						bool: isValid,
-					})
-				}
-				await customUpdateState(this.context, "isApiConfigurationValid", isValid)
-				break
-			case "validateEmbeddingConfig":
-				let isEmbeddingValid = false
-				if (message.embeddingConfiguration) {
-					// If no validation error is encountered, validate the Embedding configuration by sending a test message.
-					if (!message.text) {
-						try {
-							const embeddingHandler = buildEmbeddingHandler({
-								...message.embeddingConfiguration,
-								maxRetries: 0,
-							})
-							isEmbeddingValid = await embeddingHandler.validateAPIKey()
-						} catch (error) {
-							vscode.window.showErrorMessage(`Embedding validation failed: ${error}`)
-						}
-					}
-				}
-
-				if (!message.text) {
-					this.postMessageToWebview({
-						type: "embeddingConfigValidation",
-						bool: isEmbeddingValid,
-					})
-				}
-				await customUpdateState(this.context, "isEmbeddingConfigurationValid", isEmbeddingValid)
-				break
-			case "openHistory":
-				this.postMessageToWebview({ type: "action", action: "historyButtonClicked" })
-				break
-			case "openHaiTasks":
-				this.postMessageToWebview({ type: "action", action: "haiBuildTaskListClicked" })
-				break
-			case "stopIndex":
-				console.log("Stopping Code index")
-				this.codeIndexAbortController?.abort()
-				break
-			case "startIndex":
-				console.log("Starting Code index")
-				await customUpdateState(this.context, "codeIndexUserConfirmation", true)
-				this.codeIndexAbortController = new AbortController()
-				this.codeIndexBackground(undefined, undefined, true)
-				break
-			case "resetIndex":
-				console.log("Re-indexing workspace")
-				const resetIndex = await vscode.window.showWarningMessage(
-					"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning.",
-					"Yes",
-					"No",
-				)
-				if (resetIndex === "Yes") {
-					const haiFolderPath = path.join(this.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultContextDirectory)
-					if (await fileExistsAtPath(haiFolderPath)) {
-						await fs.rmdir(haiFolderPath, { recursive: true })
-					}
-					this.codeIndexAbortController = new AbortController()
-					await this.resetIndex()
-					this.codeIndexBackground(undefined, undefined, true)
-					break
-				}
-				break
-			case "writeTaskStatus":
-				// write status to the file
-				const folder = message.folder
-				const taskId = message?.taskId ?? ""
-				const status = message?.status
-				const taskIdMatch = taskId.match(/^(\d+)-US(\d+)-TASK(\d+)$/)
-				if (!folder || !taskIdMatch || !status) {
-					const message = `Failed to update task status. Error: Either folder, taskId or status is invalid.`
-					vscode.window.showErrorMessage(message)
-				} else {
-					const [_, prdId, usId, taskId] = taskIdMatch
-					const prdFeatureFilePath = path.join(`${folder}`, "PRD", `PRD${prdId}-feature.json`)
-					try {
-						const fileContent = await fs.readFile(prdFeatureFilePath, "utf-8")
-						const prdFeatureJson = JSON.parse(fileContent)
-						const feature = prdFeatureJson["features"].find((feature: { id: string }) => feature.id === `US${usId}`)
-						if (feature) {
-							const selectedTask = feature["tasks"].find((task: { id: string }) => task.id === `TASK${taskId}`)
-							selectedTask.status = status
-						}
-
-						await fs.writeFile(prdFeatureFilePath, JSON.stringify(prdFeatureJson, null, 2), "utf-8")
-						const message = `Successfully marked task as ${status.toLowerCase()}.`
-						vscode.window.showInformationMessage(message)
-						await this.postMessageToWebview({
-							type: "writeTaskStatus",
-							writeTaskStatusResult: {
-								success: true,
-								message,
-								status,
-							},
-						})
-					} catch (error) {
-						const message = `Failed to mark task as ${status.toLowerCase()}. Error: ${error.message}`
-						vscode.window.showErrorMessage(message)
-					}
-				}
-				break
-			case "buildContextOptions":
-				await customUpdateState(this.context, "buildContextOptions", message.buildContextOptions ?? undefined)
-				if (this.task) {
-					this.task.buildContextOptions = message.buildContextOptions
-				}
-				await this.postStateToWebview()
-				break
-		}
-	}
-
-	async updateTelemetryConfig() {
-		// Create new posthost client
-		posthogClientProvider.initPostHogClient()
-
-		// Update langfuse and posthog instance in telemetry
-		telemetryService.initPostHogClient()
-		telemetryService.initLangfuseClient()
-	}
-
 	async updateExpertPrompt(prompt?: string, expertName?: string) {
 		let additionalContext = ""
 
@@ -2327,7 +1286,7 @@ Commit message:`
 
 		const updatedPrompt = prompt ? `${prompt}${additionalContext}` : additionalContext
 
-		await customUpdateState(this.context, "expertPrompt", updatedPrompt || undefined)
+		await updateGlobalState(this.context, "expertPrompt", updatedPrompt || undefined)
 
 		if (this.task) {
 			this.task.expertPrompt = updatedPrompt || undefined
@@ -2336,33 +1295,29 @@ Commit message:`
 		await this.postStateToWebview()
 	}
 
-	async resetIndex() {
-		await customUpdateState(this.context, "buildIndexProgress", {
-			progress: 0,
-			type: "codeIndex",
-			isInProgress: false,
-		})
-		await this.postStateToWebview()
+	async updateTelemetryConfig() {
+		// Refresh PostHog client and update Langfuse instance in telemetry
+		await posthogClientProvider.initPostHogClient()
+		await telemetryService.initLangfuseClient()
 	}
 
 	async loadExperts() {
-		const expertManager = await this.getExpertManager()
-		const { experts, selectedExpert } = await expertManager.readExperts(this.vsCodeWorkSpaceFolderFsPath)
-		await this.postMessageToWebview({
-			type: "expertsUpdated",
-			experts,
-			selectedExpert,
-		})
-	}
-
-	async loadDefaultExperts() {
-		const expertManager = await this.getExpertManager()
-		const { experts, selectedExpert } = await expertManager.loadDefaultExperts()
-		await this.postMessageToWebview({
-			type: "defaultExpertsLoaded",
-			experts,
-			selectedExpert,
-		})
+		// Reload experts when expert files change - calls the same gRPC function as the webview
+		const { manageExperts } = await import("./state/manageExperts")
+		try {
+			console.log("Reloading experts...")
+			await manageExperts(this, { loadExperts: true }).then((response) => {
+				this.postMessageToWebview({
+					type: "grpc_response",
+					grpc_response: {
+						message: response,
+						request_id: "customExpertsLoaded",
+					},
+				})
+			})
+		} catch (error) {
+			console.error("Failed to reload experts:", error)
+		}
 	}
 
 	private async getExpertDocumentsContent(expertName: string): Promise<string> {

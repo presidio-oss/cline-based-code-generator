@@ -30,7 +30,9 @@ const linkContainerStyle: CSSProperties = { margin: "0" }
 const linkStyle: CSSProperties = { display: "inline" }
 
 /*
-You must update the latestAnnouncementId in ClineProvider for new announcements to show to users. This new id will be compared with what's in state for the 'last announcement shown', and if it's different then the announcement will render. As soon as an announcement is shown, the id will be updated in state. This ensures that announcements are not shown more than once, even if the user doesn't close it themselves.
+Announcements are automatically shown when the major.minor version changes (for ex 3.19.x → 3.20.x or 4.0.x). 
+The latestAnnouncementId is now automatically generated from the extension's package.json version. 
+Patch releases (3.19.1 → 3.19.2) will not trigger new announcements.
 */
 const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 	const minorVersion = version.split(".").slice(0, 2).join(".") // 2.0.0 -> 2.0
@@ -61,6 +63,37 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 					}}>
 					<ul style={ulStyle}>
 						<li>
+							<b>Optimized for Claude 4:</b> HAI is now optimized to work with the Claude 4 family of models,
+							resulting in improved performance, reliability, and new capabilities.
+						</li>
+						<li>
+							<b>Gemini CLI Provider:</b> Added a new Gemini CLI provider that allows you to use your local Gemini
+							CLI authentication to access Gemini models for free.
+						</li>
+						<li>
+							<b>WebFetch Tool:</b> Gemini 2.5 Pro and Claude 4 models now support the WebFetch tool, allowing HAI
+							to retrieve and summarize web content directly in conversations.
+						</li>
+						<li>
+							<b>Self Knowledge:</b> When using frontier models, HAI is self-aware about his capabilities and
+							featureset.
+						</li>
+						<li>
+							<b>Improved Diff Editing:</b> Improved diff editing to achieve record lows in diff edit failures for
+							frontier models.
+						</li>
+						<li>
+							<b>Claude 4 Models:</b> Now with support for Anthropic Claude Sonnet 4 and Claude Opus 4 in both
+							Anthropic and Vertex providers.
+						</li>
+						<li>
+							<b>New Settings Page:</b> Redesigned settings, now split into tabs for easier navigation and a cleaner
+							experience.
+						</li>
+						<li>
+							<b>Nebius AI Studio:</b> Added Nebius AI Studio as a new provider. (Thanks @Aktsvigun!)
+						</li>
+						<li>
 							<b>Workflows:</b> Create and manage workflow files that can be injected into conversations via slash
 							commands, making it easy to automate repetitive tasks.
 						</li>
@@ -71,29 +104,6 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 						<li>
 							<b>Global Endpoint for Vertex AI:</b> Improved availability and reduced rate limiting errors for
 							Vertex AI users.
-						</li>
-						<li>
-							<b>New User Experience:</b> Special components and guidance for new users to help them get started
-							with Cline.
-						</li>
-						<li>
-							<b>UI Improvements:</b> Fixed loading states and improved settings organization for a smoother
-							experience.
-						</li>
-						<li>
-							<b>Task Timeline:</b> See the history of your coding journey with a visual timeline of checkpoints.
-						</li>
-						<li>
-							<b>UX Improvements:</b> Type while Cline works, smarter auto-scrolling, and copy buttons for task
-							headers and messages.
-						</li>
-						<li>
-							<b>Gemini prompt caching:</b> Gemini and Vertex providers now support prompt caching and price
-							tracking.
-						</li>
-						<li>
-							<b>Global Cline Rules:</b> Store multiple rules files in Documents/Cline/Rules to share between
-							projects.
 						</li>
 					</ul>
 				</AccordionItem>

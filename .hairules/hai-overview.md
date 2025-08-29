@@ -164,6 +164,7 @@ Key providers include:
 - **OpenRouter**: Meta-provider supporting multiple model providers
 - **AWS Bedrock**: Integration with Amazon's AI services
 - **Gemini**: Google's AI models
+- **Cerebras**: High-performance inference with Llama, Qwen, and DeepSeek models
 - **Ollama**: Local model hosting
 - **LM Studio**: Local model hosting
 - **VSCode LM**: VSCode's built-in language models
@@ -220,7 +221,7 @@ class Task {
       await pWaitFor(() => this.userMessageContentReady)
       
       // 4. Continue loop with tool result
-      const recDidEndLoop = await this.recursivelyMakeHAIRequests(
+      const recDidEndLoop = await this.recursivelyMakeClineRequests(
         this.userMessageContent
       )
     }
@@ -430,7 +431,7 @@ The Task class provides robust task state management and resumption capabilities
 class Task {
   async resumeTaskFromHistory() {
     // 1. Load saved state
-    this.clineMessages = await getSavedHAIMessages(this.getContext(), this.taskId)
+    this.clineMessages = await getSavedClineMessages(this.getContext(), this.taskId)
     this.apiConversationHistory = await getSavedApiConversationHistory(this.getContext(), this.taskId)
 
     // 2. Handle interrupted tool executions
@@ -462,7 +463,7 @@ class Task {
   private async saveTaskState() {
     // Save conversation history
     await saveApiConversationHistory(this.getContext(), this.taskId, this.apiConversationHistory)
-    await saveHAIMessages(this.getContext(), this.taskId, this.clineMessages)
+    await saveClineMessages(this.getContext(), this.taskId, this.clineMessages)
     
     // Create checkpoint
     const commitHash = await this.checkpointTracker?.commit()
@@ -715,7 +716,7 @@ The Controller class manages MCP servers through the McpHub service:
 class Controller {
   mcpHub?: McpHub
 
-  constructor(context: vscode.ExtensionContext, outputChannel: vscode.OutputChannel, webviewProvider: WebviewProvider) {
+  constructor(context: vscode.ExtensionContext, webviewProvider: WebviewProvider) {
     this.mcpHub = new McpHub(this)
   }
 
@@ -734,7 +735,7 @@ class Controller {
     const task = `Set up the MCP server from ${mcpDetails.githubUrl}...`
 
     // Initialize task and show chat view
-    await this.initHAIWithTask(task)
+    await this.initClineWithTask(task)
   }
 }
 ```

@@ -13,9 +13,9 @@ export class CorMatrixService {
 
 	private constructor() {}
 
-	private static getInstance(): CorMatrix {
+	private static async getInstance(): Promise<CorMatrix> {
 		if (!this._instance || (this._instance && !this._instance.isEnabled())) {
-			const config = HaiConfig.getCorMatrixConfig()
+			const config = await HaiConfig.getCorMatrixConfig()
 			this._instance = new CorMatrix({
 				appName: this.APP_NAME,
 				baseURL: config?.baseURL,
@@ -27,8 +27,8 @@ export class CorMatrixService {
 		return this._instance
 	}
 
-	static track(metrics: ToolMetrics): void {
-		const instance = this.getInstance()
+	static async track(metrics: ToolMetrics): Promise<void> {
+		const instance = await this.getInstance()
 		if (metrics.diff && metrics.path) {
 			for (const change of metrics.diff) {
 				if (change.added) {

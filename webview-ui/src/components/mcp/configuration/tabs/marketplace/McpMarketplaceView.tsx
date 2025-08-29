@@ -11,17 +11,20 @@ import {
 import { McpMarketplaceItem } from "@shared/mcp"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { vscode } from "@/utils/vscode"
+import { McpServiceClient } from "@/services/grpc-client"
+import { EmptyRequest } from "@shared/proto/cline/common"
 import McpMarketplaceCard from "./McpMarketplaceCard"
 import McpSubmitCard from "./McpSubmitCard"
 const McpMarketplaceView = () => {
-	const { mcpServers } = useExtensionState()
-	const [items, setItems] = useState<McpMarketplaceItem[]>([])
+	const { mcpServers, mcpMarketplaceCatalog, setMcpMarketplaceCatalog, mcpMarketplaceEnabled } = useExtensionState()
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [isRefreshing, setIsRefreshing] = useState(false)
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
-	const [sortBy, setSortBy] = useState<"newest" | "stars" | "name" | "downloadCount">("downloadCount")
+	const [sortBy, setSortBy] = useState<"newest" | "stars" | "name" | "downloadCount">("newest")
+
+	const items = mcpMarketplaceCatalog?.items || []
 
 	const categories = useMemo(() => {
 		const uniqueCategories = new Set(items.map((item) => item.category))
@@ -68,33 +71,18 @@ const McpMarketplaceView = () => {
 	}, [items, searchQuery, selectedCategory, sortBy])
 
 	useEffect(() => {
-		const handleMessage = (event: MessageEvent) => {
-			const message = event.data
-			if (message.type === "mcpMarketplaceCatalog") {
-				if (message.error) {
-					setError(message.error)
-				} else {
-					setItems(message.mcpMarketplaceCatalog?.items || [])
-					setError(null)
-				}
-				setIsLoading(false)
-				setIsRefreshing(false)
-			} else if (message.type === "mcpDownloadDetails") {
-				if (message.error) {
-					setError(message.error)
-				}
-			}
-		}
-
-		window.addEventListener("message", handleMessage)
-
-		// Fetch marketplace catalog
+		// Fetch marketplace catalog on initial load
 		fetchMarketplace()
-
-		return () => {
-			window.removeEventListener("message", handleMessage)
-		}
 	}, [])
+
+	useEffect(() => {
+		// Update loading state when catalog arrives
+		if (mcpMarketplaceCatalog?.items) {
+			setIsLoading(false)
+			setIsRefreshing(false)
+			setError(null)
+		}
+	}, [mcpMarketplaceCatalog])
 
 	const fetchMarketplace = (forceRefresh: boolean = false) => {
 		if (forceRefresh) {
@@ -103,7 +91,19 @@ const McpMarketplaceView = () => {
 			setIsLoading(true)
 		}
 		setError(null)
-		vscode.postMessage({ type: "fetchMcpMarketplace", bool: forceRefresh })
+
+		if (mcpMarketplaceEnabled) {
+			McpServiceClient.refreshMcpMarketplace(EmptyRequest.create({}))
+				.then((response) => {
+					setMcpMarketplaceCatalog(response)
+				})
+				.catch((error) => {
+					console.error("Error refreshing MCP marketplace:", error)
+					setError("Failed to load marketplace data")
+					setIsLoading(false)
+					setIsRefreshing(false)
+				})
+		}
 	}
 
 	if (isLoading || isRefreshing) {
@@ -287,7 +287,9 @@ const McpMarketplaceView = () => {
 							: "No MCP servers found in the marketplace"}
 					</div>
 				) : (
-					filteredItems.map((item) => <McpMarketplaceCard key={item.mcpId} item={item} installedServers={mcpServers} />)
+					filteredItems.map((item) => (
+						<McpMarketplaceCard key={item.mcpId} item={item} installedServers={mcpServers} setError={setError} />
+					))
 				)}
 				<McpSubmitCard />
 			</div>

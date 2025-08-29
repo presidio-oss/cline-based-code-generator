@@ -18,19 +18,32 @@ import { getShell } from "../../utils/shell"
 import osName from "os-name"
 import { McpHub } from "../../services/mcp/McpHub"
 import { BrowserSettings } from "../../shared/BrowserSettings"
+import { USE_EXPERIMENTAL_CLAUDE4_FEATURES } from "../task"
+import { SYSTEM_PROMPT_CLAUDE4_EXPERIMENTAL } from "./model_prompts/claude4-experimental"
+import { SYSTEM_PROMPT_CLAUDE4 } from "./model_prompts/claude4"
 
 export const SYSTEM_PROMPT = async (
 	cwd: string,
 	supportsBrowserUse: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
+	isNextGenModel: boolean,
 
 	// TAG:HAI
 	supportsCodeIndex: boolean,
 	expertPrompt?: string,
 	isDeepCrawlEnabled?: boolean,
 	expertName?: string,
-) => `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
+) => {
+	if (isNextGenModel && USE_EXPERIMENTAL_CLAUDE4_FEATURES) {
+		return SYSTEM_PROMPT_CLAUDE4_EXPERIMENTAL(cwd, supportsBrowserUse, mcpHub, browserSettings)
+	}
+
+	if (isNextGenModel) {
+		return SYSTEM_PROMPT_CLAUDE4(cwd, supportsBrowserUse, mcpHub, browserSettings)
+	}
+
+	return `${expertPrompt || "You are HAI, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices."}
 
 ====
 
@@ -147,8 +160,8 @@ Usage:
 <list_code_definition_names>
 <path>Directory path here</path>
 </list_code_definition_names>${
-	supportsBrowserUse
-		? `
+		supportsBrowserUse
+			? `
 
 ## browser_action
 Description: Request to interact with browser (Puppeteer). Returns screenshot & console logs (except 'close'). 1 action per message, wait for response.
@@ -178,8 +191,8 @@ Usage:
 <coordinate>x,y coordinates (optional)</coordinate>
 <text>Text to type (optional)</text>
 </browser_action>`
-		: ""
-}
+			: ""
+	}
 
 ## use_mcp_tool
 Description: Request to use a tool provided by a connected MCP server. Each MCP server can provide multiple tools with different capabilities. Tools have defined input schemas that specify required and optional parameters.
@@ -638,6 +651,7 @@ You complete tasks **iteratively** by breaking them into clear steps and working
    - Apply user feedback to refine results if needed.
    - **Avoid unnecessary back-and-forth**—do not end responses with open-ended questions or offers for further assistance
 ${customObjectivePrompt(supportsCodeIndex)}`
+}
 
 export function addUserInstructions(
 	settingsCustomInstructions?: string,

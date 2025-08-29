@@ -124,7 +124,6 @@ export class AwsBedrockHandler implements ApiHandler {
 			: rawModelId
 
 		const enable1mContextWindow = rawModelId.endsWith(CLAUDE_SONNET_4_1M_SUFFIX)
-
 		const model = this.getModel()
 
 		// This baseModelId is used to indicate the capabilities of the model.
@@ -146,7 +145,7 @@ export class AwsBedrockHandler implements ApiHandler {
 		}
 
 		// Default: Use Anthropic Converse API for all Anthropic models
-		yield* this.createAnthropicMessage(systemPrompt, messages, modelId, model, enable1mContextWindow)
+		yield* this.createAnthropicMessage(systemPrompt, messages, modelId, model)
 	}
 
 	getModel(): { id: string; info: ModelInfo } {
@@ -750,7 +749,6 @@ export class AwsBedrockHandler implements ApiHandler {
 		messages: Anthropic.Messages.MessageParam[],
 		modelId: string,
 		model: { id: string; info: ModelInfo },
-		enable1mContextWindow: boolean,
 	): ApiStream {
 		// Format messages for Anthropic model using unified formatter
 		const formattedMessages = this.formatMessagesForConverseAPI(messages)
@@ -781,18 +779,15 @@ export class AwsBedrockHandler implements ApiHandler {
 			messages: messagesWithCache,
 			system: systemMessages,
 			inferenceConfig: this.getInferenceConfig(model.info, "anthropic"),
-			additionalModelRequestFields: {
-				// Add thinking configuration as per LangChain documentation
-				...(reasoningOn && {
-					thinking: {
-						type: "enabled",
-						budget_tokens: budget_tokens,
-					},
-				}),
-				...(enable1mContextWindow && {
-					anthropic_beta: ["context-1m-2025-08-07"],
-				}),
-			},
+			// Add thinking configuration as per LangChain documentation
+			additionalModelRequestFields: reasoningOn
+				? {
+						thinking: {
+							type: "enabled",
+							budget_tokens: budget_tokens,
+						},
+					}
+				: undefined,
 		})
 
 		// Execute the streaming request using unified handler
@@ -971,20 +966,25 @@ export class AwsBedrockHandler implements ApiHandler {
 	}
 
 	async validateAPIKey(): Promise<boolean> {
-		let output = false
 		try {
 			const stream = this.createMessage(
 				'You are a helpful AI. The user will send a test message — please reply with "OK"',
 				[{ role: "user", content: "Test" }],
 			)
 
-			for await (const _ of stream) {
-				output = true
-				break
+			for await (const chunk of stream) {
+				if (chunk.type === "text" && chunk.text.includes("[ERROR]")) {
+					console.error("API validation failed with error:", chunk.text)
+					return false
+				}
+				if (chunk.type === "text" && !chunk.text.includes("[ERROR]")) {
+					return true
+				}
 			}
+			return false
 		} catch (error) {
 			console.error("Error validating Bedrock credentials: ", error)
+			return false
 		}
-		return output
 	}
 }

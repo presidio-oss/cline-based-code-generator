@@ -1,6 +1,6 @@
 import { Controller } from ".."
-import { Empty } from "../../../shared/proto/common"
-import { AskResponseRequest } from "../../../shared/proto/task"
+import { Empty } from "@shared/proto/cline/common"
+import { AskResponseRequest } from "@shared/proto/cline/task"
 import { ClineAskResponse } from "../../../shared/WebviewMessage"
 
 /**
@@ -35,7 +35,7 @@ export async function askResponse(controller: Controller, request: AskResponseRe
 		}
 
 		// Call the task's handler for webview responses
-		await controller.task.handleWebviewAskResponse(responseType, request.text, request.images)
+		await controller.task.handleWebviewAskResponse(responseType, request.text, request.images, request.files)
 
 		return Empty.create()
 	} catch (error) {

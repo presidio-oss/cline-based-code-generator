@@ -1,48 +1,56 @@
-import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
-import React, { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
-import DynamicTextArea from "react-textarea-autosize"
-import { useClickAway, useDeepCompareEffect, useEvent, useWindowSize } from "react-use"
-import styled from "styled-components"
 import { mentionRegex, mentionRegexGlobal } from "@shared/context-mentions"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
+import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
+import { FileSearchRequest, RelativePathsRequest } from "@shared/proto/cline/file"
+import { UpdateApiConfigurationRequest, UpdateEmbeddingConfigurationRequest } from "@shared/proto/cline/models"
+import { PlanActMode, TogglePlanActModeRequest } from "@shared/proto/cline/state"
+import { convertApiConfigurationToProto } from "@shared/proto-conversions/models/api-configuration-conversion"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import type React from "react"
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import DynamicTextArea from "react-textarea-autosize"
+import { useClickAway, useDeepCompareEffect, useWindowSize } from "react-use"
+import styled from "styled-components"
+import ContextMenu from "@/components/chat/ContextMenu"
+import { CHAT_CONSTANTS } from "@/components/chat/chat-view/constants"
+import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
+import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
+import Thumbnails from "@/components/common/Thumbnails"
+import Tooltip from "@/components/common/Tooltip"
+import ApiOptions from "@/components/settings/ApiOptions"
+import { getModeSpecificFields, normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
+import { FileServiceClient, ModelsServiceClient, StateServiceClient } from "@/services/grpc-client"
 import {
 	ContextMenuOptionType,
+	getContextMenuOptionIndex,
 	getContextMenuOptions,
 	insertMention,
 	insertMentionDirectly,
 	removeMention,
+	type SearchResult,
 	shouldShowContextMenu,
-	SearchResult,
 } from "@/utils/context-mentions"
+import { useMetaKeyDetection, useShortcut } from "@/utils/hooks"
 import {
-	SlashCommand,
-	slashCommandDeleteRegex,
-	shouldShowSlashCommandsMenu,
 	getMatchingSlashCommands,
 	insertSlashCommand,
 	removeSlashCommand,
+	type SlashCommand,
+	shouldShowSlashCommandsMenu,
+	slashCommandDeleteRegex,
 	validateSlashCommand,
 } from "@/utils/slash-commands"
-import { useMetaKeyDetection, useShortcut } from "@/utils/hooks"
-import { validateApiConfiguration, validateModelId } from "@/utils/validate"
-import { vscode } from "@/utils/vscode"
-import { EmptyRequest } from "@shared/proto/common"
-import { FileServiceClient, StateServiceClient } from "@/services/grpc-client"
-import { CODE_BLOCK_BG_COLOR } from "@/components/common/CodeBlock"
-import Thumbnails from "@/components/common/Thumbnails"
-import Tooltip from "@/components/common/Tooltip"
-import ApiOptions, { normalizeApiConfiguration } from "@/components/settings/ApiOptions"
-import { MAX_IMAGES_PER_MESSAGE } from "@/components/chat/ChatView"
-import ContextMenu from "@/components/chat/ContextMenu"
-import SlashCommandMenu from "@/components/chat/SlashCommandMenu"
-import { ChatSettings } from "@shared/ChatSettings"
-import ServersToggleModal from "./ServersToggleModal"
+import { validateApiConfiguration, validateEmbeddingConfiguration, validateModelId } from "@/utils/validate"
 import ClineRulesToggleModal from "../cline-rules/ClineRulesToggleModal"
-import { PlanActMode } from "@shared/proto/state"
+import ServersToggleModal from "./ServersToggleModal"
+import { Mode } from "@shared/storage/types"
 
 // TAG:HAI
 import { DocumentStatus, ExpertData } from "@shared/experts.ts"
+import { manageExperts } from "../settings/utils/settingsHandlers"
+import { convertEmbeddingConfigurationToProto } from "@shared/proto-conversions/models/embedding-configuration-conversion"
+
+const { MAX_IMAGES_AND_FILES_PER_MESSAGE } = CHAT_CONSTANTS
 
 const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: number }> => {
 	return new Promise((resolve, reject) => {
@@ -62,17 +70,22 @@ const getImageDimensions = (dataUrl: string): Promise<{ width: number; height: n
 	})
 }
 
+// Set to "File" option by default
+const DEFAULT_CONTEXT_MENU_OPTION = getContextMenuOptionIndex(ContextMenuOptionType.File)
+
 interface ChatTextAreaProps {
 	inputValue: string
 	activeQuote: string | null
 	setInputValue: (value: string) => void
 	sendingDisabled: boolean
 	placeholderText: string
+	selectedFiles: string[]
 	selectedImages: string[]
 	setSelectedImages: React.Dispatch<React.SetStateAction<string[]>>
+	setSelectedFiles: React.Dispatch<React.SetStateAction<string[]>>
 	onSend: () => void
-	onSelectImages: () => void
-	shouldDisableImages: boolean
+	onSelectFilesAndImages: () => void
+	shouldDisableFilesAndImages: boolean
 	onHeightChange?: (height: number) => void
 	onFocusChange?: (isFocused: boolean) => void
 }
@@ -86,7 +99,9 @@ interface GitCommit {
 
 const PLAN_MODE_COLOR = "var(--vscode-inputValidation-warningBorder)"
 
-const SwitchOption = styled.div<{ isActive: boolean }>`
+const SwitchOption = styled.div.withConfig({
+	shouldForwardProp: (prop) => !["isActive"].includes(prop),
+})<{ isActive: boolean }>`
 	padding: 2px 8px;
 	color: ${(props) => (props.isActive ? "white" : "var(--vscode-input-foreground)")};
 	z-index: 1;
@@ -115,7 +130,9 @@ const SwitchContainer = styled.div<{ disabled: boolean }>`
 	user-select: none; // Prevent text selection
 `
 
-const Slider = styled.div<{ isAct: boolean; isPlan?: boolean }>`
+const Slider = styled.div.withConfig({
+	shouldForwardProp: (prop) => !["isAct", "isPlan"].includes(prop),
+})<{ isAct: boolean; isPlan?: boolean }>`
 	position: absolute;
 	height: 100%;
 	width: 50%;
@@ -388,25 +405,20 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			setInputValue,
 			sendingDisabled,
 			placeholderText,
+			selectedFiles,
 			selectedImages,
 			setSelectedImages,
+			setSelectedFiles,
 			onSend,
-			onSelectImages,
-			shouldDisableImages,
+			onSelectFilesAndImages,
+			shouldDisableFilesAndImages,
 			onHeightChange,
 			onFocusChange,
 		},
 		ref,
 	) => {
-		const {
-			filePaths,
-			chatSettings,
-			apiConfiguration,
-			openRouterModels,
-			platform,
-			localWorkflowToggles,
-			globalWorkflowToggles,
-		} = useExtensionState()
+		const { filePaths, mode, apiConfiguration, openRouterModels, platform, localWorkflowToggles, globalWorkflowToggles } =
+			useExtensionState()
 		const [isTextAreaFocused, setIsTextAreaFocused] = useState(false)
 		const [isDraggingOver, setIsDraggingOver] = useState(false)
 		const [gitCommits, setGitCommits] = useState<GitCommit[]>([])
@@ -436,8 +448,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const buttonRef = useRef<HTMLDivElement>(null)
 		const [arrowPosition, setArrowPosition] = useState(0)
 		const [menuPosition, setMenuPosition] = useState(0)
-		const [shownTooltipMode, setShownTooltipMode] = useState<ChatSettings["mode"] | null>(null)
-
+		const [shownTooltipMode, setShownTooltipMode] = useState<Mode | null>(null)
 		const [pendingInsertions, setPendingInsertions] = useState<string[]>([])
 		const shiftHoldTimerRef = useRef<NodeJS.Timeout | null>(null)
 		const [showUnsupportedFileError, setShowUnsupportedFileError] = useState(false)
@@ -467,7 +478,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		// Fetch git commits when Git is selected or when typing a hash
 		useEffect(() => {
 			if (selectedType === ContextMenuOptionType.Git || /^[a-f0-9]+$/i.test(searchQuery)) {
-				FileServiceClient.searchCommits({ value: searchQuery || "" })
+				FileServiceClient.searchCommits(StringRequest.create({ value: searchQuery || "" }))
 					.then((response) => {
 						if (response.commits) {
 							const commits: GitCommit[] = response.commits.map(
@@ -487,46 +498,21 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			}
 		}, [selectedType, searchQuery])
 
+		// TAG:HAI
 		useDeepCompareEffect(() => {
 			const messageHandler = (event: MessageEvent) => {
-				const message: ExtensionMessage = event.data
-
+				const message = event.data
 				switch (message.type) {
-					case "fileSearchResults": {
-						// Only update results if they match the current query or if there's no mentionsRequestId - better UX
-						if (!message.mentionsRequestId || message.mentionsRequestId === currentSearchQueryRef.current) {
-							setFileSearchResults(message.results || [])
-							setSearchLoading(false)
-						}
-						break
-					}
-
-					// TAG:HAI
-					case "expertsUpdated": {
-						if (message.experts) {
-							setCustomExperts(message.experts)
-
-							// Check if currently selected expert still exists
-							if (selectedExpert && !message.experts.find((expert) => expert.name === selectedExpert.name)) {
-								setSelectedExpert(null)
-							}
-
-							// Set selected expert if provided
-							if (message.selectedExpert) {
-								setSelectedExpert(message.selectedExpert)
-							}
-						}
-						break
-					}
-					case "defaultExpertsLoaded": {
-						if (message.experts) {
-							setDefaultExperts(message.experts)
-
+					case "grpc_response":
+						if (message.grpc_response?.message?.key === "defaultExpertsLoaded") {
+							setDefaultExperts(message.grpc_response.message.experts)
 							// Check if currently selected expert still exists in default experts
 							if (
 								selectedExpert &&
 								selectedExpert.isDefault &&
-								!message.experts.find((expert) => expert.name === selectedExpert.name)
+								!message.grpc_response.message.experts.find(
+									(expert: { name: string }) => expert.name === selectedExpert.name,
+								)
 							) {
 								setSelectedExpert(null)
 							}
@@ -536,26 +522,59 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								setSelectedExpert(message.selectedExpert)
 							}
 						}
-						break
-					}
-					case "embeddingConfigValidation":
-						setIsEmbeddingValid(!!message.bool)
-						break
-					default:
-						console.warn(`Unhandled message type: ${message.type}`)
+						if (message.grpc_response?.message?.key === "customExpertsLoaded") {
+							setCustomExperts(message.grpc_response.message.experts)
+							// Check if currently selected expert still exists
+							if (
+								selectedExpert &&
+								!message.grpc_response.message.experts.find(
+									(expert: { name: string }) => expert.name === selectedExpert.name,
+								)
+							) {
+								setSelectedExpert(null)
+							}
+
+							// Set selected expert if provided
+							if (message.selectedExpert) {
+								setSelectedExpert(message.selectedExpert)
+							}
+						}
 				}
 			}
 
 			window.addEventListener("message", messageHandler)
 
-			// Load experts data on component mount
-			vscode.postMessage({ type: "loadExperts" })
-			vscode.postMessage({ type: "loadDefaultExperts" })
+			manageExperts("loadDefaultExperts")
+			manageExperts("loadExperts")
+
 			if (embeddingConfiguration?.provider === "none") {
 				setIsEmbeddingValid(null)
 				return
 			}
-			vscode.postMessage({ type: "validateEmbeddingConfig", embeddingConfiguration })
+			const validateEmbedding = async () => {
+				const error = validateEmbeddingConfiguration(embeddingConfiguration)
+				if (error) {
+					setIsEmbeddingValid(null)
+					return
+				}
+
+				try {
+					if (!embeddingConfiguration) {
+						setIsEmbeddingValid(null)
+						return
+					}
+					const protoConfig = convertEmbeddingConfigurationToProto(embeddingConfiguration)
+					const result = await ModelsServiceClient.validateEmbeddingConfigurationProto(
+						UpdateEmbeddingConfigurationRequest.create({
+							embeddingConfiguration: protoConfig,
+						}),
+					)
+					setIsEmbeddingValid(result.value)
+				} catch (error) {
+					setIsEmbeddingValid(false)
+				}
+			}
+			validateEmbedding()
 
 			return () => {
 				window.removeEventListener("message", messageHandler)
@@ -735,7 +754,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					if (event.key === "Escape") {
 						// event.preventDefault()
 						setSelectedType(null)
-						setSelectedMenuIndex(3) // File by default
+						setSelectedMenuIndex(DEFAULT_CONTEXT_MENU_OPTION)
 						return
 					}
 
@@ -958,12 +977,14 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 						// Set a timeout to debounce the search requests
 						searchTimeoutRef.current = setTimeout(() => {
-							FileServiceClient.searchFiles({
-								query: query,
-								mentionsRequestId: query,
-							})
+							FileServiceClient.searchFiles(
+								FileSearchRequest.create({
+									query: query,
+									mentionsRequestId: query,
+								}),
+							)
 								.then((results) => {
-									setFileSearchResults(results.results || [])
+									setFileSearchResults((results.results || []) as SearchResult[])
 									setSearchLoading(false)
 								})
 								.catch((error) => {
@@ -973,7 +994,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								})
 						}, 200) // 200ms debounce
 					} else {
-						setSelectedMenuIndex(3) // Set to "File" option by default
+						setSelectedMenuIndex(DEFAULT_CONTEXT_MENU_OPTION)
 					}
 				} else {
 					setSearchQuery("")
@@ -1046,7 +1067,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					const [type, subtype] = item.type.split("/")
 					return type === "image" && acceptedTypes.includes(subtype)
 				})
-				if (!shouldDisableImages && imageItems.length > 0) {
+				if (!shouldDisableFilesAndImages && imageItems.length > 0) {
 					e.preventDefault()
 					const imagePromises = imageItems.map((item) => {
 						return new Promise<string | null>((resolve) => {
@@ -1083,13 +1104,28 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
 					//.map((dataUrl) => dataUrl.split(",")[1]) // strip the mime type prefix, sharp doesn't need it
 					if (dataUrls.length > 0) {
-						setSelectedImages((prevImages) => [...prevImages, ...dataUrls].slice(0, MAX_IMAGES_PER_MESSAGE))
+						const filesAndImagesLength = selectedImages.length + selectedFiles.length
+						const availableSlots = MAX_IMAGES_AND_FILES_PER_MESSAGE - filesAndImagesLength
+
+						if (availableSlots > 0) {
+							const imagesToAdd = Math.min(dataUrls.length, availableSlots)
+							setSelectedImages((prevImages) => [...prevImages, ...dataUrls.slice(0, imagesToAdd)])
+						}
 					} else {
 						console.warn("No valid images were processed")
 					}
 				}
 			},
-			[shouldDisableImages, setSelectedImages, cursorPosition, setInputValue, inputValue, showDimensionErrorMessage],
+			[
+				shouldDisableFilesAndImages,
+				setSelectedImages,
+				selectedImages,
+				selectedFiles,
+				cursorPosition,
+				setInputValue,
+				inputValue,
+				showDimensionErrorMessage,
+			],
 		)
 
 		const handleThumbnailsHeightChange = useCallback((height: number) => {
@@ -1097,10 +1133,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		}, [])
 
 		useEffect(() => {
-			if (selectedImages.length === 0) {
+			if (selectedImages.length === 0 && selectedFiles.length === 0) {
 				setThumbnailsHeight(0)
 			}
-		}, [selectedImages])
+		}, [selectedImages, selectedFiles])
 
 		const handleMenuMouseDown = useCallback(() => {
 			setIsMouseDownOnMenu(true)
@@ -1162,12 +1198,20 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		)
 
 		// Separate the API config submission logic
-		const submitApiConfig = useCallback(() => {
-			const apiValidationResult = validateApiConfiguration(apiConfiguration)
-			const modelIdValidationResult = validateModelId(apiConfiguration, openRouterModels)
+		const submitApiConfig = useCallback(async () => {
+			const apiValidationResult = validateApiConfiguration(mode, apiConfiguration)
+			const modelIdValidationResult = validateModelId(mode, apiConfiguration, openRouterModels)
 
-			if (!apiValidationResult && !modelIdValidationResult) {
-				vscode.postMessage({ type: "apiConfiguration", apiConfiguration })
+			if (!apiValidationResult && !modelIdValidationResult && apiConfiguration) {
+				try {
+					await ModelsServiceClient.updateApiConfigurationProto(
+						UpdateApiConfigurationRequest.create({
+							apiConfiguration: convertApiConfigurationToProto(apiConfiguration),
+						}),
+					)
+				} catch (error) {
+					console.error("Failed to update API configuration:", error)
+				}
 			} else {
 				StateServiceClient.getLatestState(EmptyRequest.create())
 					.then(() => {
@@ -1187,25 +1231,27 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				submitApiConfig()
 				changeModeDelay = 250 // necessary to let the api config update (we send message and wait for it to be saved) FIXME: this is a hack and we ideally should check for api config changes, then wait for it to be saved, before switching modes
 			}
-			setTimeout(() => {
-				const newMode = chatSettings.mode === "plan" ? PlanActMode.ACT : PlanActMode.PLAN
-				StateServiceClient.togglePlanActMode({
-					chatSettings: {
-						mode: newMode,
-						preferredLanguage: chatSettings.preferredLanguage,
-						openAIReasoningEffort: chatSettings.openAIReasoningEffort,
-					},
-					chatContent: {
-						message: inputValue.trim() ? inputValue : undefined,
-						images: selectedImages.length > 0 ? selectedImages : undefined,
-					},
-				})
+			setTimeout(async () => {
+				const convertedProtoMode = mode === "plan" ? PlanActMode.ACT : PlanActMode.PLAN
+				const response = await StateServiceClient.togglePlanActModeProto(
+					TogglePlanActModeRequest.create({
+						mode: convertedProtoMode,
+						chatContent: {
+							message: inputValue.trim() ? inputValue : undefined,
+							images: selectedImages,
+							files: selectedFiles,
+						},
+					}),
+				)
 				// Focus the textarea after mode toggle with slight delay
 				setTimeout(() => {
+					if (response.value) {
+						setInputValue("")
+					}
 					textAreaRef.current?.focus()
 				}, 100)
 			}, changeModeDelay)
-		}, [chatSettings.mode, showModelSelector, submitApiConfig, inputValue, selectedImages])
+		}, [mode, showModelSelector, submitApiConfig, inputValue, selectedImages, selectedFiles])
 
 		useShortcut("Meta+Shift+a", onModeToggle, { disableTextInputs: false }) // important that we don't disable the text input here
 
@@ -1275,14 +1321,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleExpertSelect = useCallback((expert: ExpertData | null) => {
 			setSelectedExpert(expert)
 			setShowExpertsSelector(false)
-
-			// Send the selected expert's prompt to the extension
-			vscode.postMessage({
-				type: "selectExpert",
-				text: expert?.name || "",
-				prompt: expert?.prompt || "",
-				isDeepCrawlEnabled: expert?.deepCrawl || false,
-			})
+			manageExperts("selectExpert", expert)
 		}, [])
 
 		const handleExpertsButtonClick = useCallback(() => {
@@ -1310,7 +1349,16 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 
 		// Get model display name
 		const modelDisplayName = useMemo(() => {
-			const { selectedProvider, selectedModelId } = normalizeApiConfiguration(apiConfiguration)
+			const { selectedProvider, selectedModelId } = normalizeApiConfiguration(apiConfiguration, mode)
+			const {
+				vsCodeLmModelSelector,
+				togetherModelId,
+				fireworksModelId,
+				lmStudioModelId,
+				ollamaModelId,
+				liteLlmModelId,
+				requestyModelId,
+			} = getModeSpecificFields(apiConfiguration, mode)
 			const unknownModel = "unknown"
 			if (!apiConfiguration) return unknownModel
 			switch (selectedProvider) {
@@ -1319,25 +1367,25 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				case "openai":
 					return `openai-compat:${selectedModelId}`
 				case "vscode-lm":
-					return `vscode-lm:${apiConfiguration.vsCodeLmModelSelector ? `${apiConfiguration.vsCodeLmModelSelector.vendor ?? ""}/${apiConfiguration.vsCodeLmModelSelector.family ?? ""}` : unknownModel}`
+					return `vscode-lm:${vsCodeLmModelSelector ? `${vsCodeLmModelSelector.vendor ?? ""}/${vsCodeLmModelSelector.family ?? ""}` : unknownModel}`
 				case "together":
-					return `${selectedProvider}:${apiConfiguration.togetherModelId}`
+					return `${selectedProvider}:${togetherModelId}`
 				case "fireworks":
-					return `fireworks:${apiConfiguration.fireworksModelId}`
+					return `fireworks:${fireworksModelId}`
 				case "lmstudio":
-					return `${selectedProvider}:${apiConfiguration.lmStudioModelId}`
+					return `${selectedProvider}:${lmStudioModelId}`
 				case "ollama":
-					return `${selectedProvider}:${apiConfiguration.ollamaModelId}`
+					return `${selectedProvider}:${ollamaModelId}`
 				case "litellm":
-					return `${selectedProvider}:${apiConfiguration.liteLlmModelId}`
+					return `${selectedProvider}:${liteLlmModelId}`
 				case "requesty":
-					return `${selectedProvider}:${apiConfiguration.requestyModelId}`
+					return `${selectedProvider}:${requestyModelId}`
 				case "anthropic":
 				case "openrouter":
 				default:
 					return `${selectedProvider}:${selectedModelId}`
 			}
-		}, [apiConfiguration])
+		}, [apiConfiguration, mode])
 
 		// Calculate arrow position and menu position based on button location
 		useEffect(() => {
@@ -1493,7 +1541,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				}
 				setIntendedCursorPosition(initialCursorPos)
 
-				FileServiceClient.getRelativePaths({ uris: validUris })
+				FileServiceClient.getRelativePaths(RelativePathsRequest.create({ uris: validUris }))
 					.then((response) => {
 						if (response.paths.length > 0) {
 							setPendingInsertions((prev) => [...prev, ...response.paths])
@@ -1520,7 +1568,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 				return type === "image" && acceptedTypes.includes(subtype)
 			})
 
-			if (shouldDisableImages || imageFiles.length === 0) {
+			if (shouldDisableFilesAndImages || imageFiles.length === 0) {
 				return
 			}
 
@@ -1528,7 +1576,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			const dataUrls = imageDataArray.filter((dataUrl): dataUrl is string => dataUrl !== null)
 
 			if (dataUrls.length > 0) {
-				setSelectedImages((prevImages) => [...prevImages, ...dataUrls].slice(0, MAX_IMAGES_PER_MESSAGE))
+				const filesAndImagesLength = selectedImages.length + selectedFiles.length
+				const availableSlots = MAX_IMAGES_AND_FILES_PER_MESSAGE - filesAndImagesLength
+
+				if (availableSlots > 0) {
+					const imagesToAdd = Math.min(dataUrls.length, availableSlots)
+					setSelectedImages((prevImages) => [...prevImages, ...dataUrls.slice(0, imagesToAdd)])
+				}
 			} else {
 				console.warn("No valid images were processed")
 			}
@@ -1648,7 +1702,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									fontWeight: "bold",
 									fontSize: "12px",
 								}}>
-								Only image files are supported
+								Files other than images are currently disabled
 							</span>
 						</div>
 					)}
@@ -1715,12 +1769,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							borderRight: 0,
 							borderTop: 0,
 							borderColor: "transparent",
-							borderBottom: `${thumbnailsHeight + 6}px solid transparent`,
-							padding: "9px 28px 3px 9px",
+							borderBottom: `${thumbnailsHeight}px solid transparent`,
+							padding: "9px 28px 9px 9px",
 						}}
 					/>
 					<DynamicTextArea
 						data-testid="chat-input"
+						minRows={3}
 						ref={(el) => {
 							if (typeof ref === "function") {
 								ref(el)
@@ -1772,13 +1827,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							borderLeft: 0,
 							borderRight: 0,
 							borderTop: 0,
-							borderBottom: `${thumbnailsHeight + 6}px solid transparent`,
+							borderBottom: `${thumbnailsHeight}px solid transparent`,
 							borderColor: "transparent",
 							// borderRight: "54px solid transparent",
 							// borderLeft: "9px solid transparent", // NOTE: react-textarea-autosize doesn't calculate correct height when using borderLeft/borderRight so we need to use horizontal padding instead
 							// Instead of using boxShadow, we use a div with a border to better replicate the behavior when the textarea is focused
 							// boxShadow: "0px 0px 0px 1px var(--vscode-input-border)",
-							padding: "9px 28px 3px 9px",
+							padding: "9px 28px 9px 9px",
 							cursor: "text",
 							flex: 1,
 							zIndex: 1,
@@ -1786,16 +1841,23 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								isDraggingOver && !showUnsupportedFileError // Only show drag outline if not showing error
 									? "2px dashed var(--vscode-focusBorder)"
 									: isTextAreaFocused
-										? `1px solid ${chatSettings.mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`
+										? `1px solid ${mode === "plan" ? PLAN_MODE_COLOR : "var(--vscode-focusBorder)"}`
 										: "none",
 							outlineOffset: isDraggingOver && !showUnsupportedFileError ? "1px" : "0px", // Add offset for drag-over outline
 						}}
 						onScroll={() => updateHighlights()}
 					/>
-					{selectedImages.length > 0 && (
+					{!inputValue && selectedImages.length === 0 && selectedFiles.length === 0 && (
+						<div className="absolute bottom-4 left-[25px] right-[60px] text-[10px] text-[var(--vscode-input-placeholderForeground)] opacity-70 whitespace-nowrap overflow-hidden text-ellipsis pointer-events-none z-[1]">
+							Type @ for context, / for slash commands & workflows, hold shift to drag in files/images
+						</div>
+					)}
+					{(selectedImages.length > 0 || selectedFiles.length > 0) && (
 						<Thumbnails
 							images={selectedImages}
+							files={selectedFiles}
 							setImages={setSelectedImages}
+							setFiles={setSelectedFiles}
 							onHeightChange={handleThumbnailsHeightChange}
 							style={{
 								position: "absolute",
@@ -1812,9 +1874,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							position: "absolute",
 							right: 23,
 							display: "flex",
-							alignItems: "flex-center",
+							alignItems: "flex-end",
 							height: textAreaBaseHeight || 31,
 							bottom: 9.5, // should be 10 but doesn't look good on mac
+							paddingBottom: "8px",
 							zIndex: 2,
 						}}>
 						<div
@@ -1885,21 +1948,21 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								</VSCodeButton>
 							</Tooltip>
 
-							<Tooltip tipText="Add Images">
+							<Tooltip tipText="Add Files & Images">
 								<VSCodeButton
-									data-testid="images-button"
+									data-testid="files-button"
 									appearance="icon"
-									aria-label="Add Images"
-									disabled={shouldDisableImages}
+									aria-label="Add Files & Images"
+									disabled={shouldDisableFilesAndImages}
 									onClick={() => {
-										if (!shouldDisableImages) {
-											onSelectImages()
+										if (!shouldDisableFilesAndImages) {
+											onSelectFilesAndImages()
 										}
 									}}
 									style={{ padding: "0px 0px", height: "20px" }}>
 									<ButtonContainer>
 										<span
-											className="codicon codicon-device-camera flex items-center"
+											className="codicon codicon-add flex items-center"
 											style={{ fontSize: "14px", marginBottom: -3 }}
 										/>
 									</ButtonContainer>
@@ -2022,7 +2085,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 											apiErrorMessage={undefined}
 											modelIdErrorMessage={undefined}
 											isPopup={true}
-											saveImmediately={true} // Ensure popup saves immediately
+											currentMode={mode}
 										/>
 									</ModelSelectorTooltip>
 								)}
@@ -2036,15 +2099,19 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						tipText={`In ${shownTooltipMode === "act" ? "Act" : "Plan"}  mode, HAI will ${shownTooltipMode === "act" ? "complete the task immediately" : "gather information to architect a plan"}`}
 						hintText={`Toggle w/ ${metaKeyChar}+Shift+A`}>
 						<SwitchContainer data-testid="mode-switch" disabled={false} onClick={onModeToggle}>
-							<Slider isAct={chatSettings.mode === "act"} isPlan={chatSettings.mode === "plan"} />
+							<Slider isAct={mode === "act"} isPlan={mode === "plan"} />
 							<SwitchOption
-								isActive={chatSettings.mode === "plan"}
+								isActive={mode === "plan"}
+								role="switch"
+								aria-checked={mode === "plan"}
 								onMouseOver={() => setShownTooltipMode("plan")}
 								onMouseLeave={() => setShownTooltipMode(null)}>
 								Plan
 							</SwitchOption>
 							<SwitchOption
-								isActive={chatSettings.mode === "act"}
+								isActive={mode === "act"}
+								role="switch"
+								aria-checked={mode === "act"}
 								onMouseOver={() => setShownTooltipMode("act")}
 								onMouseLeave={() => setShownTooltipMode(null)}>
 								Act
