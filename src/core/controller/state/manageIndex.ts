@@ -1,4 +1,4 @@
-import { updateGlobalState } from "@/core/storage/state"
+import { updateGlobalState, updateWorkspaceState } from "@/core/storage/state"
 import { Controller } from ".."
 import { Empty } from "@shared/proto/cline/common"
 import { ManageIndexRequest } from "@shared/proto/cline/state"
@@ -44,7 +44,7 @@ export async function manageIndex(controller: Controller, request: ManageIndexRe
 					await fs.rmdir(haiFolderPath, { recursive: true })
 				}
 				controller.codeIndexAbortController = new AbortController()
-				await updateGlobalState(controller.context, "buildIndexProgress", {
+				await updateWorkspaceState(controller.context, "buildIndexProgress", {
 					progress: 0,
 					type: "codeIndex",
 					isInProgress: false,

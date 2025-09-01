@@ -155,10 +155,9 @@ export type GlobalStateKey =
 	| "expertPrompt"
 	| "expertName"
 	| "isDeepCrawlEnabled"
-	| "buildIndexProgress"
-	| "buildContextOptions"
 	| "codeIndexUserConfirmation"
 	| "enableInlineEdit"
+
 	// Embedding configuration global state keys
 	| "embeddingProvider"
 	| "embeddingModelId"
@@ -172,4 +171,10 @@ export type GlobalStateKey =
 	| "embeddingOllamaModelId"
 	| "embeddingMaxRetries"
 
-export type LocalStateKey = "localClineRulesToggles" | "localCursorRulesToggles" | "localWindsurfRulesToggles" | "workflowToggles"
+export type LocalStateKey =
+	| "localClineRulesToggles"
+	| "localCursorRulesToggles"
+	| "localWindsurfRulesToggles"
+	| "workflowToggles"
+	| "buildContextOptions"
+	| "buildIndexProgress"

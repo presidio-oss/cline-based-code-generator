@@ -29,7 +29,14 @@ import pWaitFor from "p-wait-for"
 import * as path from "path"
 import * as vscode from "vscode"
 import { ensureMcpServersDirectoryExists, ensureSettingsDirectoryExists, GlobalFileNames } from "../storage/disk"
-import { getAllExtensionState, getGlobalState, getWorkspaceState, storeSecret, updateGlobalState } from "../storage/state"
+import {
+	getAllExtensionState,
+	getGlobalState,
+	getWorkspaceState,
+	storeSecret,
+	updateGlobalState,
+	updateWorkspaceState,
+} from "../storage/state"
 import { Task } from "../task"
 import { handleGrpcRequest, handleGrpcRequestCancel } from "./grpc-handler"
 import { sendMcpMarketplaceCatalogEvent } from "./mcp/subscribeToMcpMarketplaceCatalog"
@@ -1001,9 +1008,9 @@ export class Controller {
 		}
 
 		await ensureFaissPlatformDeps()
-		const state = (await getGlobalState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
+		const state = (await getWorkspaceState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
 		const updateProgressState = async (data: Partial<HaiBuildIndexProgress>) => {
-			const state = (await getGlobalState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
+			const state = (await getWorkspaceState(this.context, "buildIndexProgress")) as HaiBuildIndexProgress | undefined
 			const stateVal = Object.assign(state ?? {}, {
 				...(data.type === "codeContext" && data.isInProgress === false && data.progress === 100
 					? {
@@ -1020,7 +1027,7 @@ export class Controller {
 				...data,
 			})
 			if (!this.codeIndexAbortController.signal.aborted || data.isInProgress === false) {
-				await updateGlobalState(this.context, "buildIndexProgress", stateVal)
+				await updateWorkspaceState(this.context, "buildIndexProgress", stateVal)
 				await this.postStateToWebview()
 			}
 		}
@@ -1056,7 +1063,7 @@ export class Controller {
 						}
 						if (userConfirmation === "No") {
 							buildContextOptions.useIndex = false
-							await updateGlobalState(this.context, "buildContextOptions", buildContextOptions)
+							await updateWorkspaceState(this.context, "buildContextOptions", buildContextOptions)
 							if (this.task) {
 								this.task.buildContextOptions = buildContextOptions
 							}
