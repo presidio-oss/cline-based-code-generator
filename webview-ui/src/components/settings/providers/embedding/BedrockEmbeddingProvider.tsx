@@ -41,7 +41,7 @@ export const BedrockEmbeddingProvider = ({ showModelOptions, isPopup }: BedrockE
 				<span style={{ fontWeight: 500 }}>AWS Session Token (optional)</span>
 			</DebouncedTextField>
 
-			<DropdownContainer>
+			<DropdownContainer zIndex={1001}>
 				<label htmlFor="embedding-aws-region">
 					<span style={{ fontWeight: 500 }}>
 						AWS Region <span style={{ color: "var(--vscode-errorForeground)" }}>*</span>

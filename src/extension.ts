@@ -127,6 +127,9 @@ export async function activate(context: vscode.ExtensionContext) {
 
 	telemetryService.captureExtensionActivated(installId)
 
+	// Update telemetry configuration during extension activation
+	await sidebarWebview.controller.updateTelemetryConfig()
+
 	context.subscriptions.push(
 		vscode.commands.registerCommand("hai.plusButtonClicked", async (webview: any) => {
 			console.log("[DEBUG] plusButtonClicked", webview)
