@@ -809,8 +809,6 @@ export class ToolExecutor {
 
 						await this.saveCheckpoint()
 
-						fileDiff = undefined
-
 						break
 					}
 				} catch (error) {
@@ -818,6 +816,7 @@ export class ToolExecutor {
 					await this.diffViewProvider.revertChanges()
 					await this.diffViewProvider.reset()
 					await this.saveCheckpoint()
+					fileDiff = undefined
 					break
 				} finally {
 					if (fileDiff) {
