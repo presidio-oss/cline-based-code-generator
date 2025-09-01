@@ -8,3 +8,5 @@ src/core/prompts/model_prompts/claude4.ts
 evals/
 docs/
 out/
+hai-docs/
+hai_old_docs/

@@ -109,20 +109,6 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 				</AccordionItem>
 			</Accordion>
 			<div style={hrStyle} />
-			<p style={linkContainerStyle}>
-				Join us on{" "}
-				<VSCodeLink style={linkStyle} href="https://x.com/cline">
-					X,
-				</VSCodeLink>{" "}
-				<VSCodeLink style={linkStyle} href="https://discord.gg/cline">
-					discord,
-				</VSCodeLink>{" "}
-				or{" "}
-				<VSCodeLink style={linkStyle} href="https://www.reddit.com/r/cline/">
-					r/cline
-				</VSCodeLink>
-				for more updates!
-			</p>
 		</div>
 	)
 }
