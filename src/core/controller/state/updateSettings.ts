@@ -1,7 +1,12 @@
 import { Controller } from ".."
 import { Empty } from "@shared/proto/cline/common"
 import { PlanActMode, UpdateSettingsRequest } from "@shared/proto/cline/state"
-import { updateApiConfiguration, updateEmbeddingConfiguration, updateGlobalState } from "../../storage/state"
+import {
+	updateApiConfiguration,
+	updateEmbeddingConfiguration,
+	updateGlobalState,
+	updateWorkspaceState,
+} from "../../storage/state"
 import { buildApiHandler } from "../../../api"
 import {
 	convertProtoApiConfigurationToApiConfiguration,
@@ -113,7 +118,7 @@ export async function updateSettings(controller: Controller, request: UpdateSett
 		// Update build context options
 		if (request.buildContextOptions !== undefined) {
 			console.log("Updating build context options:", request.buildContextOptions)
-			await updateGlobalState(controller.context, "buildContextOptions", request.buildContextOptions)
+			await updateWorkspaceState(controller.context, "buildContextOptions", request.buildContextOptions)
 		}
 
 		// Post updated state to webview

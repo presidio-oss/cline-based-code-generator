@@ -346,9 +346,9 @@ export async function getAllExtensionState(context: vscode.ExtensionContext, wor
 		getSecret(context, "huaweiCloudMaasApiKey") as Promise<string | undefined>,
 
 		// TAG:HAI
-		getGlobalState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
+		getWorkspaceState(context, "buildContextOptions") as Promise<HaiBuildContextOptions | undefined>,
 		getGlobalState(context, "enableInlineEdit") as Promise<boolean | undefined>,
-		getGlobalState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
+		getWorkspaceState(context, "buildIndexProgress") as Promise<HaiBuildIndexProgress | undefined>,
 		getGlobalState(context, "expertPrompt") as Promise<string | undefined>,
 		getGlobalState(context, "expertName") as Promise<string | undefined>,
 		getGlobalState(context, "isDeepCrawlEnabled") as Promise<boolean | undefined>,
