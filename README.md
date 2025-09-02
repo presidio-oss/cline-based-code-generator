@@ -179,7 +179,7 @@ Track AI code retention patterns and analyze how much AI-generated code remains 
 - **Optional Integration**: Activate through workspace configuration when needed
 - **Zero Performance Impact**: Background processing with graceful degradation
 
-For detailed setup and configuration, see our [COR-Matrix Integration Guide](hai-docs/features/cormatrix-integration.md).
+For detailed setup and configuration, see our [COR-Matrix Integration Guide](hai-docs/extended-feature-set/cormatrix-integration.md).
 
 ---
 
