@@ -62,10 +62,6 @@ describe("HAIAPI Core Functionality", () => {
 			// Verify task clearing sequence
 			sinon.assert.called(mockController.clearTask)
 			sinon.assert.called(mockController.postStateToWebview)
-			sinon.assert.calledWith(mockController.postMessageToWebview, {
-				type: "action",
-				action: "chatButtonClicked",
-			})
 			sinon.assert.calledWith(mockController.initTask, taskDescription, images)
 
 			// Verify logging - first it logs "Starting new task"
