@@ -1,55 +1,67 @@
 import {
 	ApiConfiguration,
 	ApiProvider,
-	ModelInfo,
 	anthropicDefaultModelId,
 	anthropicModels,
+	askSageDefaultModelId,
+	askSageModels,
+	basetenDefaultModelId,
+	basetenModels,
 	bedrockDefaultModelId,
 	bedrockModels,
+	cerebrasDefaultModelId,
+	cerebrasModels,
+	claudeCodeDefaultModelId,
+	claudeCodeModels,
 	deepSeekDefaultModelId,
 	deepSeekModels,
+	doubaoDefaultModelId,
+	doubaoModels,
+	fireworksDefaultModelId,
+	fireworksModels,
 	geminiDefaultModelId,
 	geminiModels,
+	groqDefaultModelId,
+	groqModels,
+	huaweiCloudMaasDefaultModelId,
+	huaweiCloudMaasModels,
+	huggingFaceDefaultModelId,
+	huggingFaceModels,
+	internationalQwenDefaultModelId,
+	internationalQwenModels,
+	internationalZAiDefaultModelId,
+	internationalZAiModels,
+	liteLlmModelInfoSaneDefaults,
+	ModelInfo,
+	mainlandQwenDefaultModelId,
+	mainlandQwenModels,
+	mainlandZAiDefaultModelId,
+	mainlandZAiModels,
 	mistralDefaultModelId,
 	mistralModels,
+	moonshotDefaultModelId,
+	moonshotModels,
+	nebiusDefaultModelId,
+	nebiusModels,
 	openAiModelInfoSaneDefaults,
 	openAiNativeDefaultModelId,
 	openAiNativeModels,
 	openRouterDefaultModelId,
 	openRouterDefaultModelInfo,
+	qwenCodeDefaultModelId,
+	qwenCodeModels,
 	requestyDefaultModelId,
 	requestyDefaultModelInfo,
-	mainlandQwenModels,
-	internationalQwenModels,
-	mainlandQwenDefaultModelId,
-	internationalQwenDefaultModelId,
+	sambanovaDefaultModelId,
+	sambanovaModels,
+	sapAiCoreDefaultModelId,
+	sapAiCoreModels,
+	vercelAiGatewayDefaultModelId,
+	vercelAiGatewayDefaultModelInfo,
 	vertexDefaultModelId,
 	vertexModels,
-	askSageModels,
-	askSageDefaultModelId,
 	xaiDefaultModelId,
 	xaiModels,
-	sambanovaModels,
-	sambanovaDefaultModelId,
-	doubaoModels,
-	doubaoDefaultModelId,
-	liteLlmModelInfoSaneDefaults,
-	moonshotModels,
-	moonshotDefaultModelId,
-	huggingFaceModels,
-	huggingFaceDefaultModelId,
-	nebiusModels,
-	nebiusDefaultModelId,
-	cerebrasModels,
-	cerebrasDefaultModelId,
-	sapAiCoreModels,
-	sapAiCoreDefaultModelId,
-	claudeCodeDefaultModelId,
-	claudeCodeModels,
-	groqModels,
-	groqDefaultModelId,
-	huaweiCloudMaasModels,
-	huaweiCloudMaasDefaultModelId,
 } from "@shared/api"
 import {
 	bedrockEmbeddingDefaultModelId,
@@ -134,6 +146,8 @@ export function normalizeApiConfiguration(
 			const qwenDefaultId =
 				apiConfiguration?.qwenApiLine === "china" ? mainlandQwenDefaultModelId : internationalQwenDefaultModelId
 			return getProviderData(qwenModels, qwenDefaultId)
+		case "qwen-code":
+			return getProviderData(qwenCodeModels, qwenCodeDefaultModelId)
 		case "doubao":
 			return getProviderData(doubaoModels, doubaoDefaultModelId)
 		case "mistral":
@@ -192,7 +206,10 @@ export function normalizeApiConfiguration(
 			return {
 				selectedProvider: provider,
 				selectedModelId: ollamaModelId || "",
-				selectedModelInfo: openAiModelInfoSaneDefaults,
+				selectedModelInfo: {
+					...openAiModelInfoSaneDefaults,
+					contextWindow: Number(apiConfiguration?.ollamaApiOptionsCtxNum ?? 32768),
+				},
 			}
 		case "lmstudio":
 			const lmStudioModelId =
@@ -200,7 +217,10 @@ export function normalizeApiConfiguration(
 			return {
 				selectedProvider: provider,
 				selectedModelId: lmStudioModelId || "",
-				selectedModelInfo: openAiModelInfoSaneDefaults,
+				selectedModelInfo: {
+					...openAiModelInfoSaneDefaults,
+					contextWindow: Number(apiConfiguration?.lmStudioMaxTokens ?? 32768),
+				},
 			}
 		case "vscode-lm":
 			const vsCodeLmModelSelector =
@@ -259,6 +279,21 @@ export function normalizeApiConfiguration(
 				selectedModelId: groqModelId || groqDefaultModelId,
 				selectedModelInfo: groqModelInfo || groqModels[groqDefaultModelId],
 			}
+		case "baseten":
+			const basetenModelId =
+				currentMode === "plan" ? apiConfiguration?.planModeBasetenModelId : apiConfiguration?.actModeBasetenModelId
+			const basetenModelInfo =
+				currentMode === "plan" ? apiConfiguration?.planModeBasetenModelInfo : apiConfiguration?.actModeBasetenModelInfo
+			const finalBasetenModelId = basetenModelId || basetenDefaultModelId
+			return {
+				selectedProvider: provider,
+				selectedModelId: finalBasetenModelId,
+				selectedModelInfo: basetenModelInfo ||
+					basetenModels[finalBasetenModelId as keyof typeof basetenModels] ||
+					basetenModels[basetenDefaultModelId] || {
+						description: "Baseten model",
+					},
+			}
 		case "sapaicore":
 			return getProviderData(sapAiCoreModels, sapAiCoreDefaultModelId)
 		case "huawei-cloud-maas":
@@ -274,6 +309,36 @@ export function normalizeApiConfiguration(
 				selectedProvider: provider,
 				selectedModelId: huaweiCloudMaasModelId || huaweiCloudMaasDefaultModelId,
 				selectedModelInfo: huaweiCloudMaasModelInfo || huaweiCloudMaasModels[huaweiCloudMaasDefaultModelId],
+			}
+		case "vercel-ai-gateway":
+			const vercelAiGatewayModelId =
+				currentMode === "plan"
+					? apiConfiguration?.planModeVercelAiGatewayModelId
+					: apiConfiguration?.actModeVercelAiGatewayModelId
+			const vercelAiGatewayModelInfo =
+				currentMode === "plan"
+					? apiConfiguration?.planModeVercelAiGatewayModelInfo
+					: apiConfiguration?.actModeVercelAiGatewayModelInfo
+			return {
+				selectedProvider: provider,
+				selectedModelId: vercelAiGatewayModelId || vercelAiGatewayDefaultModelId,
+				selectedModelInfo: vercelAiGatewayModelInfo || vercelAiGatewayDefaultModelInfo,
+			}
+		case "zai":
+			const zaiModels = apiConfiguration?.zaiApiLine === "china" ? mainlandZAiModels : internationalZAiModels
+			const zaiDefaultId =
+				apiConfiguration?.zaiApiLine === "china" ? mainlandZAiDefaultModelId : internationalZAiDefaultModelId
+			return getProviderData(zaiModels, zaiDefaultId)
+		case "fireworks":
+			const fireworksModelId =
+				currentMode === "plan" ? apiConfiguration?.planModeFireworksModelId : apiConfiguration?.actModeFireworksModelId
+			return {
+				selectedProvider: provider,
+				selectedModelId: fireworksModelId || fireworksDefaultModelId,
+				selectedModelInfo:
+					fireworksModelId && fireworksModelId in fireworksModels
+						? fireworksModels[fireworksModelId as keyof typeof fireworksModels]
+						: fireworksModels[fireworksDefaultModelId],
 			}
 		default:
 			return getProviderData(anthropicModels, anthropicDefaultModelId)
@@ -303,8 +368,10 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			openAiModelId: undefined,
 			openRouterModelId: undefined,
 			groqModelId: undefined,
+			basetenModelId: undefined,
 			huggingFaceModelId: undefined,
 			huaweiCloudMaasModelId: undefined,
+			vercelAiGatewayModelId: undefined,
 
 			// Model info objects
 			openAiModelInfo: undefined,
@@ -312,7 +379,9 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 			openRouterModelInfo: undefined,
 			requestyModelInfo: undefined,
 			groqModelInfo: undefined,
+			basetenModelInfo: undefined,
 			huggingFaceModelInfo: undefined,
+			vercelAiGatewayModelInfo: undefined,
 			vsCodeLmModelSelector: undefined,
 
 			// AWS Bedrock fields
@@ -344,10 +413,13 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 		openRouterModelId:
 			mode === "plan" ? apiConfiguration.planModeOpenRouterModelId : apiConfiguration.actModeOpenRouterModelId,
 		groqModelId: mode === "plan" ? apiConfiguration.planModeGroqModelId : apiConfiguration.actModeGroqModelId,
+		basetenModelId: mode === "plan" ? apiConfiguration.planModeBasetenModelId : apiConfiguration.actModeBasetenModelId,
 		huggingFaceModelId:
 			mode === "plan" ? apiConfiguration.planModeHuggingFaceModelId : apiConfiguration.actModeHuggingFaceModelId,
 		huaweiCloudMaasModelId:
 			mode === "plan" ? apiConfiguration.planModeHuaweiCloudMaasModelId : apiConfiguration.actModeHuaweiCloudMaasModelId,
+		vercelAiGatewayModelId:
+			mode === "plan" ? apiConfiguration.planModeVercelAiGatewayModelId : apiConfiguration.actModeVercelAiGatewayModelId,
 
 		// Model info objects
 		openAiModelInfo: mode === "plan" ? apiConfiguration.planModeOpenAiModelInfo : apiConfiguration.actModeOpenAiModelInfo,
@@ -357,8 +429,13 @@ export function getModeSpecificFields(apiConfiguration: ApiConfiguration | undef
 		requestyModelInfo:
 			mode === "plan" ? apiConfiguration.planModeRequestyModelInfo : apiConfiguration.actModeRequestyModelInfo,
 		groqModelInfo: mode === "plan" ? apiConfiguration.planModeGroqModelInfo : apiConfiguration.actModeGroqModelInfo,
+		basetenModelInfo: mode === "plan" ? apiConfiguration.planModeBasetenModelInfo : apiConfiguration.actModeBasetenModelInfo,
 		huggingFaceModelInfo:
 			mode === "plan" ? apiConfiguration.planModeHuggingFaceModelInfo : apiConfiguration.actModeHuggingFaceModelInfo,
+		vercelAiGatewayModelInfo:
+			mode === "plan"
+				? apiConfiguration.planModeVercelAiGatewayModelInfo
+				: apiConfiguration.actModeVercelAiGatewayModelInfo,
 		vsCodeLmModelSelector:
 			mode === "plan" ? apiConfiguration.planModeVsCodeLmModelSelector : apiConfiguration.actModeVsCodeLmModelSelector,
 
@@ -472,6 +549,13 @@ export async function syncModeConfigurations(
 			updates.actModeHuggingFaceModelInfo = sourceFields.huggingFaceModelInfo
 			break
 
+		case "baseten":
+			updates.planModeBasetenModelId = sourceFields.basetenModelId
+			updates.actModeBasetenModelId = sourceFields.basetenModelId
+			updates.planModeBasetenModelInfo = sourceFields.basetenModelInfo
+			updates.actModeBasetenModelInfo = sourceFields.basetenModelInfo
+			break
+
 		case "together":
 			updates.planModeTogetherModelId = sourceFields.togetherModelId
 			updates.actModeTogetherModelId = sourceFields.togetherModelId
@@ -496,6 +580,12 @@ export async function syncModeConfigurations(
 			updates.planModeHuaweiCloudMaasModelInfo = sourceFields.huaweiCloudMaasModelInfo
 			updates.actModeHuaweiCloudMaasModelInfo = sourceFields.huaweiCloudMaasModelInfo
 			break
+		case "vercel-ai-gateway":
+			updates.planModeVercelAiGatewayModelId = sourceFields.vercelAiGatewayModelId
+			updates.actModeVercelAiGatewayModelId = sourceFields.vercelAiGatewayModelId
+			updates.planModeVercelAiGatewayModelInfo = sourceFields.vercelAiGatewayModelInfo
+			updates.actModeVercelAiGatewayModelInfo = sourceFields.vercelAiGatewayModelInfo
+			break
 
 		// Providers that use apiProvider + apiModelId fields
 		case "anthropic":
@@ -513,6 +603,7 @@ export async function syncModeConfigurations(
 		case "sambanova":
 		case "cerebras":
 		case "sapaicore":
+		case "zai":
 		default:
 			updates.planModeApiModelId = sourceFields.apiModelId
 			updates.actModeApiModelId = sourceFields.apiModelId

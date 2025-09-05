@@ -1,7 +1,7 @@
 import * as Sentry from "@sentry/browser"
 import * as vscode from "vscode"
-import { telemetryService } from "../posthog/telemetry/TelemetryService"
 import * as pkg from "../../../package.json"
+import { telemetryService } from "../posthog/PostHogClientProvider"
 import { ClineError } from "./ClineError"
 
 let telemetryLevel = vscode.workspace.getConfiguration("telemetry").get<string>("telemetryLevel", "all")
@@ -68,9 +68,9 @@ export class ErrorService {
 		}
 	}
 
-	static logException(error: Error | ClineError): void {
+	public logException(error: Error | ClineError): void {
 		// Don't log if telemetry is off
-		const isUserManuallyOptedIn = telemetryService.isTelemetryEnabled()
+		const isUserManuallyOptedIn = vscode.env.isTelemetryEnabled
 		if (!isUserManuallyOptedIn || !ErrorService.isEnabled()) {
 			return
 		}
@@ -78,9 +78,9 @@ export class ErrorService {
 		Sentry.captureException(error)
 	}
 
-	static logMessage(message: string, level: "error" | "warning" | "log" | "debug" | "info" = "log"): void {
+	public logMessage(message: string, level: "error" | "warning" | "log" | "debug" | "info" = "log"): void {
 		// Don't log if telemetry is off
-		const isUserManuallyOptedIn = telemetryService.isTelemetryEnabled()
+		const isUserManuallyOptedIn = vscode.env.isTelemetryEnabled
 		if (!isUserManuallyOptedIn || !ErrorService.isEnabled()) {
 			return
 		}
@@ -97,7 +97,7 @@ export class ErrorService {
 		return ErrorService.serviceEnabled
 	}
 
-	static toClineError(rawError: any, modelId?: string, providerId?: string): ClineError {
+	public toClineError(rawError: any, modelId?: string, providerId?: string): ClineError {
 		return ClineError.transform(rawError, modelId, providerId)
 	}
 }

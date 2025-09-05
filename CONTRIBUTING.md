@@ -76,7 +76,7 @@ Anyone can contribute code to HAI Build, but we ask that you follow these guidel
     - Run `npm run lint` to check code style
     - Run `npm run format` to automatically format code
     - All PRs must pass CI checks which include both linting and formatting
-    - Address any ESLint warnings or errors before submitting
+    - Address any warnings or errors from linter before submitting
     - Follow TypeScript best practices and maintain type safety
 
 3. **Testing**

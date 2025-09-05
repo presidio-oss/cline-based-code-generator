@@ -130,11 +130,21 @@ vscode.Uri = {
 			toJSON: () => uriString,
 			with: (change) => {
 				const newUrl = new URL(uriString)
-				if (change.scheme) newUrl.protocol = change.scheme + ":"
-				if (change.authority) newUrl.hostname = change.authority
-				if (change.path) newUrl.pathname = change.path
-				if (change.query) newUrl.search = "?" + change.query
-				if (change.fragment) newUrl.hash = "#" + change.fragment
+				if (change.scheme) {
+					newUrl.protocol = change.scheme + ":"
+				}
+				if (change.authority) {
+					newUrl.hostname = change.authority
+				}
+				if (change.path) {
+					newUrl.pathname = change.path
+				}
+				if (change.query) {
+					newUrl.search = "?" + change.query
+				}
+				if (change.fragment) {
+					newUrl.hash = "#" + change.fragment
+				}
 				return vscode.Uri.parse(newUrl.toString())
 			},
 		}
@@ -163,7 +173,7 @@ vscode.Uri = {
 	},
 }
 
-// Export the terminal manager globally for Cline core to use
+// Export the terminal manager globally for HAI core to use
 global.standaloneTerminalManager = globalTerminalManager
 
 console.log("Finished loading stub impls...")

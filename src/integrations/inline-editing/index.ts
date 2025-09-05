@@ -1,10 +1,10 @@
+import { type ApiHandler, buildApiHandler } from "@core/api"
 import * as vscode from "vscode"
-import type { ApiConfiguration } from "../../shared/api"
-import { type ApiHandler, buildApiHandler } from "../../api"
-import { getGlobalState } from "@/core/storage/state"
-import { Mode } from "@/shared/storage/types"
+import { Controller } from "@/core/controller"
 import { HostProvider } from "@/hosts/host-provider"
 import { ShowMessageType } from "@/shared/proto/index.host"
+import { Mode } from "@/shared/storage/types"
+import type { ApiConfiguration } from "../../shared/api"
 
 export class InlineEditingProvider {
 	private api!: ApiHandler
@@ -13,6 +13,7 @@ export class InlineEditingProvider {
 	constructor(
 		private currentMode?: Mode,
 		private context?: vscode.ExtensionContext,
+		private controller?: Controller,
 		private apiConfiguration?: ApiConfiguration,
 	) {
 		if (apiConfiguration && this.currentMode) {
@@ -32,6 +33,11 @@ export class InlineEditingProvider {
 
 	withContext(context: vscode.ExtensionContext) {
 		this.context = context
+		return this
+	}
+
+	withController(controller: Controller) {
+		this.controller = controller
 		return this
 	}
 
@@ -155,7 +161,7 @@ export class InlineEditingProvider {
 				const progressDisposable = vscode.languages.registerCodeLensProvider(
 					{ scheme: "file" },
 					{
-						provideCodeLenses: async (document, token) => {
+						provideCodeLenses: async (_document, _token) => {
 							const range = new vscode.Range(buttonLine, 0, buttonLine, 0)
 							const codeLens = new vscode.CodeLens(range)
 							codeLens.command = {
@@ -356,7 +362,7 @@ export class InlineEditingProvider {
 	async registerCodeLensProvider() {
 		this.activeCodeLensProvider?.dispose()
 		const isEditing = this.isEditing
-		const isInlineEditEnabled = this.context ? ((await getGlobalState(this.context, "enableInlineEdit")) ?? true) : true
+		const isInlineEditEnabled = this.controller?.cacheService.getGlobalStateKey("enableInlineEdit")
 		const provider = vscode.languages.registerCodeLensProvider("*", {
 			provideCodeLenses(document) {
 				const editor = vscode.window.activeTextEditor

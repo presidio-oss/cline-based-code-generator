@@ -1,8 +1,10 @@
+import { setTimeout as setTimeoutPromise } from "node:timers/promises"
+import { sendMcpServersUpdate } from "@core/controller/mcp/subscribeToMcpServers"
+import { GlobalFileNames } from "@core/storage/disk"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
-import { StdioClientTransport, getDefaultEnvironment } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js"
+import { getDefaultEnvironment, StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js"
-import ReconnectingEventSource from "reconnecting-eventsource"
 import {
 	CallToolResultSchema,
 	ListResourcesResultSchema,
@@ -10,16 +12,6 @@ import {
 	ListToolsResultSchema,
 	ReadResourceResultSchema,
 } from "@modelcontextprotocol/sdk/types.js"
-import { sendMcpServersUpdate } from "@core/controller/mcp/subscribeToMcpServers"
-import { convertMcpServersToProtoMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
-import chokidar, { FSWatcher } from "chokidar"
-import { setTimeout as setTimeoutPromise } from "node:timers/promises"
-import deepEqual from "fast-deep-equal"
-import * as fs from "fs/promises"
-import * as path from "path"
-import * as vscode from "vscode"
-import { z } from "zod"
-import { FileChangeEvent_ChangeType, SubscribeToFileRequest } from "../../shared/proto/host/watch"
 import {
 	DEFAULT_MCP_TIMEOUT_SECONDS,
 	McpResource,
@@ -30,23 +22,30 @@ import {
 	McpToolCallResponse,
 	MIN_MCP_TIMEOUT_SECONDS,
 } from "@shared/mcp"
+import { convertMcpServersToProtoMcpServers } from "@shared/proto-conversions/mcp/mcp-server-conversion"
 import { fileExistsAtPath } from "@utils/fs"
 import { secondsToMs } from "@utils/time"
-import { GlobalFileNames } from "@core/storage/disk"
-import { ExtensionMessage } from "@shared/ExtensionMessage"
-import { DEFAULT_REQUEST_TIMEOUT_MS } from "./constants"
-import { McpConnection, McpServerConfig, Transport } from "./types"
-import { BaseConfigSchema, ServerConfigSchema, McpSettingsSchema } from "./schemas"
+import chokidar, { FSWatcher } from "chokidar"
+import deepEqual from "fast-deep-equal"
+import * as fs from "fs/promises"
+import * as path from "path"
+import ReconnectingEventSource from "reconnecting-eventsource"
+import * as vscode from "vscode"
+import { z } from "zod"
 import { HostProvider } from "@/hosts/host-provider"
+import { TelemetryService } from "@/services/posthog/telemetry/TelemetryService"
 import { ShowMessageType } from "@/shared/proto/host/window"
+import { DEFAULT_REQUEST_TIMEOUT_MS } from "./constants"
+import { BaseConfigSchema, McpSettingsSchema, ServerConfigSchema } from "./schemas"
+import { McpConnection, McpServerConfig, Transport } from "./types"
 export class McpHub {
 	getMcpServersPath: () => Promise<string>
 	private getSettingsDirectoryPath: () => Promise<string>
-	private postMessageToWebview: (message: ExtensionMessage) => Promise<void>
 	private clientVersion: string
+	private telemetryService: TelemetryService
 
 	private disposables: vscode.Disposable[] = []
-	private settingsWatcher?: vscode.FileSystemWatcher
+	private settingsWatcher?: FSWatcher
 	private fileWatchers: Map<string, FSWatcher> = new Map()
 	connections: McpConnection[] = []
 	isConnecting: boolean = false
@@ -65,13 +64,13 @@ export class McpHub {
 	constructor(
 		getMcpServersPath: () => Promise<string>,
 		getSettingsDirectoryPath: () => Promise<string>,
-		postMessageToWebview: (message: ExtensionMessage) => Promise<void>,
 		clientVersion: string,
+		telemetryService: TelemetryService,
 	) {
 		this.getMcpServersPath = getMcpServersPath
 		this.getSettingsDirectoryPath = getSettingsDirectoryPath
-		this.postMessageToWebview = postMessageToWebview
 		this.clientVersion = clientVersion
+		this.telemetryService = telemetryService
 		this.watchMcpSettingsFile()
 		this.initializeMcpServers()
 	}
@@ -108,7 +107,7 @@ export class McpHub {
 			// Parse JSON file content
 			try {
 				config = JSON.parse(content)
-			} catch (error) {
+			} catch (_error) {
 				HostProvider.window.showMessage({
 					type: ShowMessageType.ERROR,
 					message: "Invalid MCP settings format. Please ensure your settings follow the correct JSON format.",
@@ -136,41 +135,31 @@ export class McpHub {
 	private async watchMcpSettingsFile(): Promise<void> {
 		const settingsPath = await this.getMcpSettingsFilePath()
 
-		// Subscribe to file changes using the gRPC WatchService
-		console.log("[DEBUG] subscribing to mcp file changes")
-		const cancelSubscription = HostProvider.watch.subscribeToFile(
-			SubscribeToFileRequest.create({
-				path: settingsPath,
-			}),
-			{
-				onResponse: async (response) => {
-					// console.log(
-					// 	`[DEBUG] MCP settings ${response.type === FileChangeEvent_ChangeType.CHANGED ? "changed" : "event"}`,
-					// )
-
-					// Only process the file if it was changed (not created or deleted)
-					if (response.type === FileChangeEvent_ChangeType.CHANGED) {
-						const settings = await this.readAndValidateMcpSettingsFile()
-						if (settings) {
-							try {
-								await this.updateServerConnections(settings.mcpServers)
-							} catch (error) {
-								console.error("Failed to process MCP settings change:", error)
-							}
-						}
-					}
-				},
-				onError: (error) => {
-					console.error("Error watching MCP settings file:", error)
-				},
-				onComplete: () => {
-					//console.log("[DEBUG] MCP settings file watch completed")
-				},
+		this.settingsWatcher = chokidar.watch(settingsPath, {
+			persistent: true, // Keep the process running as long as files are being watched
+			ignoreInitial: true, // Don't fire 'add' events when discovering the file initially
+			awaitWriteFinish: {
+				// Wait for writes to finish before emitting events (handles chunked writes)
+				stabilityThreshold: 100, // Wait 100ms for file size to remain constant (matches the debounce from subscribeToFile.ts)
+				pollInterval: 100, // Check file size every 100ms while waiting for stability
 			},
-		)
+			atomic: true, // Handle atomic writes where editors write to a temp file then rename (prevents duplicate events)
+		})
 
-		// Add the cancellation function to disposables
-		this.disposables.push({ dispose: cancelSubscription })
+		this.settingsWatcher.on("change", async () => {
+			const settings = await this.readAndValidateMcpSettingsFile()
+			if (settings) {
+				try {
+					await this.updateServerConnections(settings.mcpServers)
+				} catch (error) {
+					console.error("Failed to process MCP settings change:", error)
+				}
+			}
+		})
+
+		this.settingsWatcher.on("error", (error) => {
+			console.error("Error watching MCP settings file:", error)
+		})
 	}
 
 	private async initializeMcpServers(): Promise<void> {
@@ -180,7 +169,7 @@ export class McpHub {
 		}
 	}
 
-	private findConnection(name: string, source: "rpc" | "internal"): McpConnection | undefined {
+	private findConnection(name: string, _source: "rpc" | "internal"): McpConnection | undefined {
 		return this.connections.find((conn) => conn.server.name === name)
 	}
 
@@ -193,7 +182,7 @@ export class McpHub {
 		this.connections = this.connections.filter((conn) => conn.server.name !== name)
 
 		if (config.disabled) {
-			console.log(`[MCP Debug] Creating disabled connection object for server "${name}"`)
+			//console.log(`[MCP Debug] Creating disabled connection object for server "${name}"`)
 			// Create a connection object for disabled server so it appears in UI
 			const disabledConnection: McpConnection = {
 				server: {
@@ -260,7 +249,7 @@ export class McpHub {
 					if (stderrStream) {
 						stderrStream.on("data", async (data: Buffer) => {
 							const output = data.toString()
-							const isInfoLog = /INFO/i.test(output)
+							const isInfoLog = !/\berror\b/i.test(output)
 
 							if (isInfoLog) {
 								console.log(`Server "${name}" info:`, output)
@@ -289,7 +278,7 @@ export class McpHub {
 					}
 					const reconnectingEventSourceOptions = {
 						max_retry_time: 5000,
-						withCredentials: config.headers?.["Authorization"] ? true : false,
+						withCredentials: !!config.headers?.["Authorization"],
 					}
 					global.EventSource = ReconnectingEventSource
 					transport = new SSEClientTransport(new URL(config.url), {
@@ -348,7 +337,7 @@ export class McpHub {
 			connection.server.error = ""
 
 			// Register notification handler for real-time messages
-			console.log(`[MCP Debug] Setting up notification handlers for server: ${name}`)
+			//console.log(`[MCP Debug] Setting up notification handlers for server: ${name}`)
 			//console.log(`[MCP Debug] Client instance:`, connection.client)
 			//console.log(`[MCP Debug] Transport type:`, config.type)
 
@@ -372,25 +361,25 @@ export class McpHub {
 
 				// Set the notification handler
 				connection.client.setNotificationHandler(NotificationMessageSchema as any, async (notification: any) => {
-					console.log(`[MCP Notification] ${name}:`, JSON.stringify(notification, null, 2))
+					//console.log(`[MCP Notification] ${name}:`, JSON.stringify(notification, null, 2))
 
 					const params = notification.params || {}
 					const level = params.level || "info"
 					const data = params.data || params.message || ""
 					const logger = params.logger || ""
 
-					console.log(`[MCP Message Notification] ${name}: level=${level}, data=${data}, logger=${logger}`)
+					//console.log(`[MCP Message Notification] ${name}: level=${level}, data=${data}, logger=${logger}`)
 
 					// Format the message
 					const message = logger ? `[${logger}] ${data}` : data
 
 					// Send notification directly to active task if callback is set
 					if (this.notificationCallback) {
-						console.log(`[MCP Debug] Sending notification to active task: ${message}`)
+						//console.log(`[MCP Debug] Sending notification to active task: ${message}`)
 						this.notificationCallback(name, level, message)
 					} else {
 						// Fallback: store for later retrieval
-						console.log(`[MCP Debug] No active task, storing notification: ${message}`)
+						//console.log(`[MCP Debug] No active task, storing notification: ${message}`)
 						this.pendingNotifications.push({
 							serverName: name,
 							level,
@@ -398,26 +387,12 @@ export class McpHub {
 							timestamp: Date.now(),
 						})
 					}
-
-					// Forward to webview if available
-					if (this.postMessageToWebview) {
-						await this.postMessageToWebview({
-							type: "mcpNotification",
-							serverName: name,
-							notification: {
-								level,
-								data,
-								logger,
-								timestamp: Date.now(),
-							},
-						} as any)
-					}
 				})
-				console.log(`[MCP Debug] Successfully set notifications/message handler for ${name}`)
+				//console.log(`[MCP Debug] Successfully set notifications/message handler for ${name}`)
 
 				// Also set a fallback handler for any other notification types
 				connection.client.fallbackNotificationHandler = async (notification: any) => {
-					console.log(`[MCP Fallback Notification] ${name}:`, JSON.stringify(notification, null, 2))
+					//console.log(`[MCP Fallback Notification] ${name}:`, JSON.stringify(notification, null, 2))
 
 					// Show in VS Code for visibility
 					HostProvider.window.showMessage({
@@ -425,7 +400,7 @@ export class McpHub {
 						message: `MCP ${name}: ${notification.method || "unknown"} - ${JSON.stringify(notification.params || {})}`,
 					})
 				}
-				console.log(`[MCP Debug] Successfully set fallback notification handler for ${name}`)
+				//console.log(`[MCP Debug] Successfully set fallback notification handler for ${name}`)
 			} catch (error) {
 				console.error(`[MCP Debug] Error setting notification handlers for ${name}:`, error)
 			}
@@ -499,7 +474,7 @@ export class McpHub {
 				timeout: DEFAULT_REQUEST_TIMEOUT_MS,
 			})
 			return response?.resources || []
-		} catch (error) {
+		} catch (_error) {
 			// console.error(`Failed to fetch resources for ${serverName}:`, error)
 			return []
 		}
@@ -523,7 +498,7 @@ export class McpHub {
 			)
 
 			return response?.resourceTemplates || []
-		} catch (error) {
+		} catch (_error) {
 			// console.error(`Failed to fetch resource templates for ${serverName}:`, error)
 			return []
 		}
@@ -644,7 +619,7 @@ export class McpHub {
 	private setupFileWatcher(name: string, config: Extract<McpServerConfig, { type: "stdio" }>) {
 		const filePath = config.args?.find((arg: string) => arg.includes("build/index.js"))
 		if (filePath) {
-			// we use chokidar instead of onDidSaveTextDocument because it doesn't require the file to be open in the editor. The settings config is better suited for onDidSave since that will be manually updated by the user or Cline (and we want to detect save events, not every file change)
+			// we use chokidar instead of onDidSaveTextDocument because it doesn't require the file to be open in the editor. The settings config is better suited for onDidSave since that will be manually updated by the user or HAI (and we want to detect save events, not every file change)
 			const watcher = chokidar.watch(filePath, {
 				// persistent: true,
 				// ignoreInitial: true,
@@ -837,7 +812,12 @@ export class McpHub {
 		)
 	}
 
-	async callTool(serverName: string, toolName: string, toolArguments?: Record<string, unknown>): Promise<McpToolCallResponse> {
+	async callTool(
+		serverName: string,
+		toolName: string,
+		toolArguments: Record<string, unknown> | undefined,
+		ulid: string,
+	): Promise<McpToolCallResponse> {
 		const connection = this.connections.find((conn) => conn.server.name === serverName)
 		if (!connection) {
 			throw new Error(
@@ -859,23 +839,53 @@ export class McpHub {
 			console.error(`Failed to parse timeout configuration for server ${serverName}: ${error}`)
 		}
 
-		const result = await connection.client.request(
-			{
-				method: "tools/call",
-				params: {
-					name: toolName,
-					arguments: toolArguments,
-				},
-			},
-			CallToolResultSchema,
-			{
-				timeout,
-			},
+		this.telemetryService.captureMcpToolCall(
+			ulid,
+			serverName,
+			toolName,
+			"started",
+			undefined,
+			toolArguments ? Object.keys(toolArguments) : undefined,
 		)
 
-		return {
-			...result,
-			content: result.content ?? [],
+		try {
+			const result = await connection.client.request(
+				{
+					method: "tools/call",
+					params: {
+						name: toolName,
+						arguments: toolArguments,
+					},
+				},
+				CallToolResultSchema,
+				{
+					timeout,
+				},
+			)
+
+			this.telemetryService.captureMcpToolCall(
+				ulid,
+				serverName,
+				toolName,
+				"success",
+				undefined,
+				toolArguments ? Object.keys(toolArguments) : undefined,
+			)
+
+			return {
+				...result,
+				content: result.content ?? [],
+			}
+		} catch (error) {
+			this.telemetryService.captureMcpToolCall(
+				ulid,
+				serverName,
+				toolName,
+				"error",
+				error instanceof Error ? error.message : String(error),
+				toolArguments ? Object.keys(toolArguments) : undefined,
+			)
+			throw error
 		}
 	}
 
@@ -1119,7 +1129,7 @@ export class McpHub {
 	 */
 	setNotificationCallback(callback: (serverName: string, level: string, message: string) => void): void {
 		this.notificationCallback = callback
-		console.log("[MCP Debug] Notification callback set")
+		//console.log("[MCP Debug] Notification callback set")
 	}
 
 	/**
@@ -1127,7 +1137,7 @@ export class McpHub {
 	 */
 	clearNotificationCallback(): void {
 		this.notificationCallback = undefined
-		console.log("[MCP Debug] Notification callback cleared")
+		//console.log("[MCP Debug] Notification callback cleared")
 	}
 
 	async dispose(): Promise<void> {
@@ -1141,7 +1151,7 @@ export class McpHub {
 		}
 		this.connections = []
 		if (this.settingsWatcher) {
-			this.settingsWatcher.dispose()
+			await this.settingsWatcher.close()
 		}
 		this.disposables.forEach((d) => d.dispose())
 	}

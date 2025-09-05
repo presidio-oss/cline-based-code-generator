@@ -1,9 +1,8 @@
-import { Controller } from "@/core/controller"
+import { buildApiHandler } from "@core/api"
 import { Boolean } from "@shared/proto/cline/common"
 import { UpdateApiConfigurationRequest } from "@shared/proto/cline/models"
 import { convertProtoToApiConfiguration } from "@shared/proto-conversions/models/api-configuration-conversion"
-import { buildApiHandler } from "@/api"
-import { Mode } from "@shared/storage/types"
+import { Controller } from "@/core/controller"
 import { validateApiConfiguration } from "@/utils/validate"
 
 export async function validateApiConfigurationProto(

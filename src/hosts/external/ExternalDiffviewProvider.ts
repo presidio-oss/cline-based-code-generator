@@ -1,6 +1,6 @@
+import { status } from "@grpc/grpc-js"
 import { HostProvider } from "@/hosts/host-provider"
 import { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
-import { status } from "@grpc/grpc-js"
 
 export class ExternalDiffViewProvider extends DiffViewProvider {
 	private activeDiffEditorId: string | undefined
@@ -74,19 +74,16 @@ export class ExternalDiffViewProvider extends DiffViewProvider {
 		if (!this.activeDiffEditorId) {
 			return undefined
 		}
-		return (await HostProvider.diff.getDocumentText({ diffId: this.activeDiffEditorId })).content
-	}
-
-	protected override async getNewDiagnosticProblems(): Promise<string> {
-		console.log(`Called ExternalDiffViewProvider.getNewDiagnosticProblems() stub`)
-		return ""
-	}
-
-	protected override async closeDiffView(): Promise<void> {
-		if (!this.activeDiffEditorId) {
-			return
+		try {
+			return (await HostProvider.diff.getDocumentText({ diffId: this.activeDiffEditorId })).content
+		} catch (err) {
+			console.log("Error getting contents of diff editor", err)
+			return undefined
 		}
-		await HostProvider.diff.closeDiff({ diffId: this.activeDiffEditorId })
+	}
+
+	protected override async closeAllDiffViews(): Promise<void> {
+		await HostProvider.diff.closeAllDiffs({})
 		this.activeDiffEditorId = undefined
 	}
 

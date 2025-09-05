@@ -1,11 +1,11 @@
-import * as vscode from "vscode"
+import { Controller } from "@core/controller"
+import { ClineMessage } from "@shared/ExtensionMessage"
+import { HistoryItem } from "@shared/HistoryItem"
 import * as fs from "fs/promises"
 import * as path from "path"
-import { Controller } from "@core/controller"
-import { HistoryItem } from "@shared/HistoryItem"
-import { ClineMessage } from "@shared/ExtensionMessage"
-import { ShowMessageType } from "@/shared/proto/host/window"
+import * as vscode from "vscode"
 import { HostProvider } from "@/hosts/host-provider"
+import { ShowMessageType } from "@/shared/proto/host/window"
 
 /**
  * Registers development-only commands for task manipulation.
@@ -128,7 +128,7 @@ function createRealisticMessageSequence(baseTimestamp: number, taskPrompt: strin
 
 	// Create a realistic message sequence
 	const messages: ClineMessage[] = [
-		// Initial task message - uses "say" with "text" which is the format used in Cline.ts
+		// Initial task message - uses "say" with "text" which is the format used in HAI.ts
 		{
 			ts: baseTimestamp,
 			type: "say",

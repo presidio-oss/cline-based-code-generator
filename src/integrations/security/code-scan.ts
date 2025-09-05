@@ -1,12 +1,12 @@
-import { existsSync, readFileSync } from "node:fs"
+import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { isBinaryFileSync } from "isbinaryfile"
-import { buildApiHandler } from "../../api"
+import { buildApiHandler } from "@/core/api"
+import { Mode } from "@/shared/storage/types"
 import { ApiConfiguration } from "../../shared/api"
-import { getApiStreamResponse } from "../code-prep/helper"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
 import { fileExists } from "../../utils/runtime-downloader"
-import { Mode } from "@/shared/storage/types"
+import { getApiStreamResponse } from "../code-prep/helper"
 
 export class CodeScanner {
 	private apiConfig!: ApiConfiguration

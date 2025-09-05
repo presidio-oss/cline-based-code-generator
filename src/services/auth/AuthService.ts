@@ -1,13 +1,13 @@
-import vscode from "vscode"
+import { featureFlagsService, telemetryService } from "@services/posthog/PostHogClientProvider"
+import { AuthState, UserInfo } from "@shared/proto/cline/account"
+import { type EmptyRequest, String } from "@shared/proto/cline/common"
 import { clineEnvConfig } from "@/config"
 import { Controller } from "@/core/controller"
 import { getRequestRegistry, type StreamingResponseHandler } from "@/core/controller/grpc-handler"
-import { storeSecret } from "@/core/storage/state"
-import { telemetryService } from "@services/posthog/telemetry/TelemetryService"
-import { AuthState, UserInfo } from "@shared/proto/cline/account"
-import { type EmptyRequest, String } from "@shared/proto/cline/common"
-import { FirebaseAuthProvider } from "./providers/FirebaseAuthProvider"
+import { HostProvider } from "@/hosts/host-provider"
+import { FEATURE_FLAGS } from "@/shared/services/feature-flags/feature-flags"
 import { openExternal } from "@/utils/env"
+import { FirebaseAuthProvider } from "./providers/FirebaseAuthProvider"
 
 const DefaultClineAccountURI = `${clineEnvConfig.appBaseUrl}/auth`
 let authProviders: any[] = []
@@ -56,17 +56,15 @@ export class AuthService {
 	protected _clineAuthInfo: ClineAuthInfo | null = null
 	protected _provider: { provider: FirebaseAuthProvider } | null = null
 	protected _activeAuthStatusUpdateSubscriptions = new Set<[Controller, StreamingResponseHandler<AuthState>]>()
-	protected _context: vscode.ExtensionContext
+	protected _controller: Controller
 
 	/**
 	 * Creates an instance of AuthService.
-	 * @param config - Configuration for the service, including the URI for authentication.
-	 * @param authProvider - Optional authentication provider to use.
 	 * @param controller - Optional reference to the Controller instance.
 	 */
-	protected constructor(context: vscode.ExtensionContext, config: ServiceConfig, authProvider?: any) {
-		const providerName = authProvider || "firebase"
-		this._config = Object.assign({ URI: DefaultClineAccountURI }, config)
+	protected constructor(controller: Controller) {
+		const providerName = "firebase"
+		this._config = { URI: DefaultClineAccountURI }
 
 		// Fetch AuthProviders
 		// TODO:  Deliver this config from the backend securely
@@ -95,39 +93,37 @@ export class AuthService {
 
 		this._setProvider(authProviders.find((authProvider) => authProvider.name === providerName).name)
 
-		this._context = context
+		this._controller = controller
 	}
 
 	/**
 	 * Gets the singleton instance of AuthService.
-	 * @param config - Configuration for the service, including the URI for authentication.
-	 * @param authProvider - Optional authentication provider to use.
 	 * @param controller - Optional reference to the Controller instance.
 	 * @returns The singleton instance of AuthService.
 	 */
-	public static getInstance(context?: vscode.ExtensionContext, config?: ServiceConfig, authProvider?: any): AuthService {
+	public static getInstance(controller?: Controller): AuthService {
 		if (!AuthService.instance) {
-			if (!context) {
+			if (!controller) {
 				console.warn("Extension context was not provided to AuthService.getInstance, using default context")
-				context = {} as vscode.ExtensionContext
+				controller = {} as Controller
 			}
 			if (process.env.E2E_TEST) {
 				// Use require instead of import to avoid circular dependency issues
 				// eslint-disable-next-line @typescript-eslint/no-var-requires
 				const { AuthServiceMock } = require("./AuthServiceMock")
-				AuthService.instance = AuthServiceMock.getInstance(context, config || {}, authProvider)
+				AuthService.instance = AuthServiceMock.getInstance(controller)
 			} else {
-				AuthService.instance = new AuthService(context, config || {}, authProvider)
+				AuthService.instance = new AuthService(controller)
 			}
 		}
-		if (context !== undefined && AuthService.instance) {
-			AuthService.instance.context = context
+		if (controller !== undefined && AuthService.instance) {
+			AuthService.instance.controller = controller
 		}
 		return AuthService.instance!
 	}
 
-	set context(context: vscode.ExtensionContext) {
-		this._context = context
+	set controller(controller: Controller) {
+		this._controller = controller
 	}
 
 	get authProvider(): any {
@@ -195,7 +191,8 @@ export class AuthService {
 			throw new Error("Authentication URI is not configured")
 		}
 
-		const callbackUrl = `${vscode.env.uriScheme || "vscode"}://presidio-inc.hai-build-code-generator/auth`
+		const callbackHost = await HostProvider.get().getCallbackUri()
+		const callbackUrl = `${callbackHost}/auth`
 
 		// Use URL object for more graceful query construction
 		const authUrl = new URL(this._config.URI)
@@ -228,15 +225,10 @@ export class AuthService {
 		}
 
 		try {
-			this._clineAuthInfo = await this._provider.provider.signIn(this._context, token, provider)
+			this._clineAuthInfo = await this._provider.provider.signIn(this._controller, token, provider)
 			this._authenticated = true
 
-			if (this._clineAuthInfo) {
-				telemetryService.identifyAccount(this._clineAuthInfo.userInfo)
-			}
-
 			await this.sendAuthStatusUpdate()
-			// return this._clineAuthInfo
 		} catch (error) {
 			console.error("Error signing in with custom token:", error)
 			throw error
@@ -248,7 +240,7 @@ export class AuthService {
 	 * This is typically called when the user logs out.
 	 */
 	async clearAuthToken(): Promise<void> {
-		await storeSecret(this._context, "clineAccountId", undefined)
+		this._controller.cacheService.setSecret("clineAccountId", undefined)
 	}
 
 	/**
@@ -261,10 +253,9 @@ export class AuthService {
 		}
 
 		try {
-			this._clineAuthInfo = await this._provider.provider.retrieveClineAuthInfo(this._context)
+			this._clineAuthInfo = await this._provider.provider.retrieveClineAuthInfo(this._controller)
 			if (this._clineAuthInfo) {
 				this._authenticated = true
-				telemetryService.identifyAccount(this._clineAuthInfo.userInfo)
 				await this.sendAuthStatusUpdate()
 			} else {
 				console.warn("No user found after restoring auth token")
@@ -328,6 +319,15 @@ export class AuthService {
 					authInfo,
 					false, // Not the last message
 				)
+
+				// Identify the user in telemetry if available
+				// Fetch the feature flags for the user
+				if (this._clineAuthInfo?.userInfo?.id) {
+					telemetryService.identifyAccount(this._clineAuthInfo.userInfo)
+					for (const flag of Object.values(FEATURE_FLAGS)) {
+						await featureFlagsService?.isFeatureFlagEnabled(flag)
+					}
+				}
 
 				// Update the state in the webview
 				if (controller) {

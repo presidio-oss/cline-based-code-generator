@@ -1,14 +1,11 @@
-import * as vscode from "vscode"
 import { v4 as uuidv4 } from "uuid"
-import fs from "fs"
-import { DocumentLink, DocumentStatus } from "../../shared/experts"
+import * as vscode from "vscode"
 import { CrawlResult, UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
-import { getAllExtensionState, getGlobalState } from "../storage/state"
-import { buildApiHandler } from "../../api"
-import { Mode } from "../../shared/storage/types"
+import { DocumentLink, DocumentStatus } from "../../shared/experts"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
+import { buildApiHandler } from "../api"
+import { CacheService } from "../storage/CacheService"
 import { ExpertFileManager } from "./ExpertFileManager"
-import path from "path"
 
 /**
  * Handles document processing operations
@@ -16,6 +13,7 @@ import path from "path"
 export class DocumentProcessor {
 	private extensionContext: vscode.ExtensionContext
 	private workspaceId: string
+	private cacheService: CacheService
 	private systemPrompt: string
 	private fileManager: ExpertFileManager
 	private urlContentFetcher: UrlContentFetcher
@@ -33,9 +31,10 @@ export class DocumentProcessor {
 	/**
 	 * Create a new DocumentProcessor
 	 */
-	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, cacheService: CacheService) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
+		this.cacheService = cacheService
 		this.systemPrompt = HaiBuildDefaults.defaultMarkDownSummarizer
 		this.fileManager = new ExpertFileManager()
 		this.urlContentFetcher = new UrlContentFetcher(this.extensionContext)
@@ -82,7 +81,7 @@ export class DocumentProcessor {
 			await this.urlContentFetcher.launchBrowser()
 
 			// Read existing status data
-			let existingStatusData = await this.fileManager.readStatusFile(statusFilePath)
+			const existingStatusData = await this.fileManager.readStatusFile(statusFilePath)
 
 			for (const link of documentLinks) {
 				// Find or create entry in status data
@@ -199,8 +198,8 @@ export class DocumentProcessor {
 	 */
 	public async summarizeMarkdownContent(markdownContent: string): Promise<string> {
 		let content = ""
-		const { apiConfiguration } = await getAllExtensionState(this.extensionContext, this.workspaceId)
-		const mode = ((await getGlobalState(this.extensionContext, "mode")) as Mode | undefined) || "act"
+		const apiConfiguration = this.cacheService.getApiConfiguration()
+		const mode = this.cacheService.getGlobalStateKey("mode")
 		const llmApi = buildApiHandler(apiConfiguration, mode)
 
 		const apiStream = llmApi.createMessage(this.systemPrompt, [
@@ -237,7 +236,7 @@ export class DocumentProcessor {
 		const { faissStatusFilePath } = this.fileManager.getExpertPaths(workspacePath, expertName)
 
 		// Initialize or update status file in .faiss directory
-		let faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
+		const faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
 
 		// Find or create entry for this URL
 		let linkIndex = faissStatusData.findIndex((link) => link.url === url)
@@ -257,9 +256,6 @@ export class DocumentProcessor {
 		// Update status file before crawling
 		await this.fileManager.updateFaissStatusFile(faissStatusFilePath, faissStatusData)
 
-		// Store reference to this instance for use in the crawler
-		const self = this
-
 		try {
 			await this.urlContentFetcher.launchBrowser()
 
@@ -270,8 +266,8 @@ export class DocumentProcessor {
 				urlFilter: (link) => link.startsWith(url),
 				onPageCrawlComplete: async (data: CrawlResult) => {
 					// Forward to vector store manager using the instance reference
-					if (self.onCrawlComplete) {
-						await self.onCrawlComplete(data.content, expertName, workspacePath, data.url, data.parentUrl || "")
+					if (this.onCrawlComplete) {
+						await this.onCrawlComplete(data.content, expertName, workspacePath, data.url, data.parentUrl || "")
 					}
 				},
 			})

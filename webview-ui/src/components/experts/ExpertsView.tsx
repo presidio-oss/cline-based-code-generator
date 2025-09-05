@@ -1,22 +1,21 @@
-import React, { useState, useEffect, memo, useMemo } from "react"
-import styled from "styled-components"
+import { UpdateEmbeddingConfigurationRequest } from "@shared/proto/cline/models"
+import { convertEmbeddingConfigurationToProto } from "@shared/proto-conversions/models/embedding-configuration-conversion"
 import {
 	VSCodeButton,
-	VSCodeTextField,
-	VSCodeTextArea,
-	VSCodeProgressRing,
 	VSCodeCheckbox,
+	VSCodeProgressRing,
+	VSCodeTextArea,
+	VSCodeTextField,
 } from "@vscode/webview-ui-toolkit/react"
-import { DocumentLink as LocalDocumentLink, DocumentStatus, ExpertData } from "../../../../src/shared/experts"
+import React, { memo, useEffect, useMemo, useState } from "react"
+import styled from "styled-components"
+import { ModelsServiceClient } from "@/services/grpc-client"
+import { validateEmbeddingConfiguration } from "@/utils/validate"
+import { DocumentStatus, ExpertData, DocumentLink as LocalDocumentLink } from "../../../../src/shared/experts"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { capitalizeFirstLetter, formatTimestamp } from "../../utils/format"
-import { manageExperts } from "../settings/utils/settingsHandlers"
 import { showErrorToast, showWarningToast } from "../../utils/toast"
-import { validateEmbeddingConfiguration } from "@/utils/validate"
-import { convertEmbeddingConfigurationToProto } from "@shared/proto-conversions/models/embedding-configuration-conversion"
-import { UpdateEmbeddingConfigurationRequest } from "@shared/proto/cline/models"
-import { ModelsServiceClient } from "@/services/grpc-client"
-import { set } from "zod"
+import { manageExperts } from "../settings/utils/settingsHandlers"
 
 interface ExpertsViewProps {
 	onDone: () => void
@@ -65,6 +64,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						setDefaultExperts(message.grpc_response.message.experts)
 					}
 					if (message.grpc_response?.message?.key === "customExpertsLoaded") {
+						console.log("Custom experts loaded:", message.grpc_response.message.experts)
 						setCustomExperts(message.grpc_response.message.experts)
 					}
 			}
@@ -237,7 +237,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 
 	return (
 		<Container>
-			<input type="file" ref={fileInputRef} accept=".md" onChange={handleFileSelect} style={{ display: "none" }} />
+			<input accept=".md" onChange={handleFileSelect} ref={fileInputRef} style={{ display: "none" }} type="file" />
 			<Header>
 				<h3>EXPERTS</h3>
 			</Header>
@@ -253,7 +253,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								<ExpertCard key={exp.name} onClick={() => handleOpenExpertPrompt(exp.name)}>
 									<IconContainer>
 										{exp.iconComponent ? (
-											<img src={exp.iconComponent} alt={`${exp.name} icon`} width="24" height="24" />
+											<img alt={`${exp.name} icon`} height="24" src={exp.iconComponent} width="24" />
 										) : (
 											<span
 												className="codicon codicon-person"
@@ -296,13 +296,13 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													/>
 												</VSCodeButton>
 												<span
+													onClick={() => handleSelectExpert(exp)}
 													style={{
 														overflow: "hidden",
 														textOverflow: "ellipsis",
 														whiteSpace: "nowrap",
 														cursor: "pointer",
-													}}
-													onClick={() => handleSelectExpert(exp)}>
+													}}>
 													{exp.name}
 												</span>
 											</ExpertRowLeftSide>
@@ -354,10 +354,10 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																		DocumentStatus.COMPLETED ? (
 																			<span className="codicon codicon-check" />
 																		) : link.status.toLowerCase() ===
-																		  DocumentStatus.FAILED ? (
+																			DocumentStatus.FAILED ? (
 																			<span className="codicon codicon-error" />
 																		) : link.status.toLowerCase() ===
-																		  DocumentStatus.PROCESSING ? (
+																			DocumentStatus.PROCESSING ? (
 																			<div
 																				style={{
 																					transform: "scale(0.8)",
@@ -387,6 +387,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																<DocumentButtons>
 																	<VSCodeButton
 																		appearance="icon"
+																		disabled={exp.deepCrawl && !isEmbeddingValid}
 																		onClick={(e) => {
 																			e.stopPropagation()
 																			manageExperts("refreshDocumentLink", {
@@ -394,7 +395,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																				url: link.url,
 																			})
 																		}}
-																		disabled={exp.deepCrawl && !isEmbeddingValid}
 																		title={
 																			exp.deepCrawl && !isEmbeddingValid
 																				? "Document operations are disabled due to invalid embedding configuration"
@@ -429,6 +429,7 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																	) : (
 																		<VSCodeButton
 																			appearance="icon"
+																			disabled={exp.deepCrawl && !isEmbeddingValid}
 																			onClick={(e) => {
 																				e.stopPropagation()
 																				setDocumentLinkInDeleteConfirmation({
@@ -436,7 +437,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																					linkUrl: link.url,
 																				})
 																			}}
-																			disabled={exp.deepCrawl && !isEmbeddingValid}
 																			title={
 																				exp.deepCrawl && !isEmbeddingValid
 																					? "Document operations are disabled due to invalid embedding configuration"
@@ -455,8 +455,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													<DocumentAccordionItem>
 														<div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
 															<VSCodeTextField
-																value={inlineEditingDoc?.linkUrl}
-																placeholder="Enter document link"
 																onChange={(e) => {
 																	setInlineDocLinkError(null) // Reset error on input change
 																	setInlineEditingDoc((prev) =>
@@ -468,7 +466,9 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 																			: null,
 																	)
 																}}
+																placeholder="Enter document link"
 																style={{ flexGrow: 1 }}
+																value={inlineEditingDoc?.linkUrl}
 															/>
 															{inlineDocLinkError && (
 																<p
@@ -549,17 +549,17 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 													(exp.documentLinks ?? []).length < 3 && (
 														<VSCodeButton
 															appearance="secondary"
+															disabled={exp.deepCrawl && !isEmbeddingValid}
 															onClick={() => {
 																setInlineEditingDoc({ expertName: exp.name, linkUrl: "" })
 																setInlineDocLinkError(null) // Reset error when starting inline editing
 															}}
-															disabled={exp.deepCrawl && !isEmbeddingValid}
+															style={{ width: "100%", marginTop: "8px" }}
 															title={
 																exp.deepCrawl && !isEmbeddingValid
 																	? "Document operations are disabled due to invalid embedding configuration"
 																	: undefined
-															}
-															style={{ width: "100%", marginTop: "8px" }}>
+															}>
 															+ Add Doc
 														</VSCodeButton>
 													)
@@ -606,12 +606,12 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									Name<span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 								</label>
 								<VSCodeTextField
+									disabled={isFormReadOnly}
 									id="expert-name"
-									value={newExpertName}
 									onChange={(e) => setNewExpertName((e.target as HTMLInputElement).value)}
 									placeholder="Expert Name"
 									style={{ width: "100%" }}
-									disabled={isFormReadOnly}
+									value={newExpertName}
 								/>
 								{nameError && (
 									<p style={{ color: "var(--vscode-errorForeground)", fontSize: "12px", marginTop: "4px" }}>
@@ -624,14 +624,14 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									Guidelines<span style={{ color: "var(--vscode-errorForeground)" }}>*</span>
 								</label>
 								<VSCodeTextArea
+									disabled={isFormReadOnly}
 									id="expert-prompt"
-									value={newExpertPrompt}
 									onChange={(e) => setNewExpertPrompt((e.target as HTMLTextAreaElement).value)}
 									placeholder="Enter Expert Guidelines"
 									resize="vertical"
 									rows={6}
-									disabled={isFormReadOnly}
 									style={{ width: "100%" }}
+									value={newExpertPrompt}
 								/>
 								<p className="description-text">
 									These guidelines will override the default HAI guidelines when this expert is selected.
@@ -649,15 +649,15 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								<label htmlFor="document-link">Document Link</label>
 								<div style={{ display: "flex", gap: "8px" }}>
 									<VSCodeTextField
+										disabled={isFormReadOnly || documentLinks.length >= 3}
 										id="document-link"
-										value={documentLink}
 										onChange={(e) => {
 											setDocumentLink((e.target as HTMLInputElement).value)
 											setDocumentLinkError(null)
 										}}
 										placeholder="https://example.com/document"
 										style={{ flexGrow: 1 }}
-										disabled={isFormReadOnly || documentLinks.length >= 3}
+										value={documentLink}
 									/>
 									<VSCodeButton
 										appearance="secondary"
@@ -727,8 +727,8 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 							<FormGroup>
 								<VSCodeCheckbox
 									checked={deepCrawl}
-									onChange={(e) => setDeepCrawl((e.target as HTMLInputElement).checked)}
-									disabled={isFormReadOnly || !isEmbeddingValid}>
+									disabled={isFormReadOnly || !isEmbeddingValid}
+									onChange={(e) => setDeepCrawl((e.target as HTMLInputElement).checked)}>
 									DeepCrawl
 								</VSCodeCheckbox>
 								<p className="description-text">
@@ -740,38 +740,38 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 									<FormGroup>
 										<label htmlFor="max-depth">Link Depth</label>
 										<VSCodeTextField
+											disabled={isFormReadOnly || !isEmbeddingValid}
 											id="max-depth"
-											value={maxDepth.toString()}
 											onChange={(e) => setMaxDepth(parseInt((e.target as HTMLInputElement).value) || 10)}
 											placeholder="10"
-											disabled={isFormReadOnly || !isEmbeddingValid}
 											style={{ width: "100%" }}
+											value={maxDepth.toString()}
 										/>
 										<p className="description-text">Sets the maximum link depth for the crawl.</p>
 									</FormGroup>
 									<FormGroup>
 										<label htmlFor="max-pages">Page Limit</label>
 										<VSCodeTextField
+											disabled={isFormReadOnly || !isEmbeddingValid}
 											id="max-pages"
-											value={maxPages.toString()}
 											onChange={(e) => setMaxPages(parseInt((e.target as HTMLInputElement).value) || 20)}
 											placeholder="10"
-											disabled={isFormReadOnly || !isEmbeddingValid}
 											style={{ width: "100%" }}
+											value={maxPages.toString()}
 										/>
 										<p className="description-text">Sets the maximum number of unique pages to crawl.</p>
 									</FormGroup>
 									<FormGroup>
 										<label htmlFor="max-timeout">Timeout</label>
 										<VSCodeTextField
+											disabled={isFormReadOnly || !isEmbeddingValid}
 											id="max-timeout"
-											value={crawlTimeout.toString()}
 											onChange={(e) =>
 												setCrawlTimeout(parseInt((e.target as HTMLInputElement).value) || 10_0000)
 											}
 											placeholder="10"
-											disabled={isFormReadOnly || !isEmbeddingValid}
 											style={{ width: "100%" }}
+											value={crawlTimeout.toString()}
 										/>
 										<p className="description-text">Sets the crawl timeout for each page.</p>
 									</FormGroup>

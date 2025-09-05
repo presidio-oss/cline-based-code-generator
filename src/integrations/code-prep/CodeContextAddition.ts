@@ -1,15 +1,15 @@
+import { createHash } from "node:crypto"
+import EventEmitter from "node:events"
 import { appendFileSync, createWriteStream, existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, dirname, extname, join } from "node:path"
-import EventEmitter from "node:events"
+import { buildApiHandler } from "@core/api"
+import { ApiStreamChunk } from "@core/api/transform/stream"
 import { isBinaryFileSync } from "isbinaryfile"
+import { Mode } from "@/shared/storage/types"
 import { ApiConfiguration } from "../../shared/api"
 import { HaiBuildContextOptions } from "../../shared/customApi"
-import { ApiStreamChunk } from "../../api/transform/stream"
-import { buildApiHandler } from "../../api"
-import { createDirectoryIfNotExists, ensureGitignorePattern, exponentialBackoff, getCodeFiles } from "./helper"
 import { HaiBuildDefaults } from "../../shared/haiDefaults"
-import { createHash } from "node:crypto"
-import { Mode } from "@/shared/storage/types"
+import { createDirectoryIfNotExists, ensureGitignorePattern, exponentialBackoff, getCodeFiles } from "./helper"
 
 export class CodeContextAdditionAgent extends EventEmitter {
 	private srcFolder!: string

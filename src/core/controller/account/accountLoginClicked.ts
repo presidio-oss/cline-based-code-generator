@@ -1,8 +1,6 @@
-import { Controller } from "../index"
-import { AuthService } from "@/services/auth/AuthService"
 import { EmptyRequest, String } from "@shared/proto/cline/common"
-
-const authService = AuthService.getInstance()
+import { AuthService } from "@/services/auth/AuthService"
+import { Controller } from "../index"
 
 /**
  * Handles the user clicking the login link in the UI.
@@ -13,5 +11,5 @@ const authService = AuthService.getInstance()
  * @returns The login URL as a string.
  */
 export async function accountLoginClicked(_controller: Controller, _: EmptyRequest): Promise<String> {
-	return await authService.createAuthRequest()
+	return await AuthService.getInstance().createAuthRequest()
 }

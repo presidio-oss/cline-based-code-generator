@@ -6,363 +6,396 @@ import { ProtoBusClient, Callbacks } from "./grpc-client-base"
 export class AccountServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.AccountService"
     static async accountLoginClicked(request: proto.cline.EmptyRequest): Promise<proto.cline.String> {
-		return this.makeRequest("accountLoginClicked", request)
+		return this.makeUnaryRequest("accountLoginClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.String.fromJSON)
 	}
     static async accountLogoutClicked(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("accountLogoutClicked", request)
+		return this.makeUnaryRequest("accountLogoutClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static subscribeToAuthStatusUpdate(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.AuthState>): ()=>void {
-		return this.makeStreamingRequest("subscribeToAuthStatusUpdate", request, callbacks)
+		return this.makeStreamingRequest("subscribeToAuthStatusUpdate", request, proto.cline.EmptyRequest.toJSON, proto.cline.AuthState.fromJSON, callbacks)
 	}
     static async authStateChanged(request: proto.cline.AuthStateChangedRequest): Promise<proto.cline.AuthState> {
-		return this.makeRequest("authStateChanged", request)
+		return this.makeUnaryRequest("authStateChanged", request, proto.cline.AuthStateChangedRequest.toJSON, proto.cline.AuthState.fromJSON)
 	}
     static async getUserCredits(request: proto.cline.EmptyRequest): Promise<proto.cline.UserCreditsData> {
-		return this.makeRequest("getUserCredits", request)
+		return this.makeUnaryRequest("getUserCredits", request, proto.cline.EmptyRequest.toJSON, proto.cline.UserCreditsData.fromJSON)
 	}
     static async getOrganizationCredits(request: proto.cline.GetOrganizationCreditsRequest): Promise<proto.cline.OrganizationCreditsData> {
-		return this.makeRequest("getOrganizationCredits", request)
+		return this.makeUnaryRequest("getOrganizationCredits", request, proto.cline.GetOrganizationCreditsRequest.toJSON, proto.cline.OrganizationCreditsData.fromJSON)
 	}
     static async getUserOrganizations(request: proto.cline.EmptyRequest): Promise<proto.cline.UserOrganizationsResponse> {
-		return this.makeRequest("getUserOrganizations", request)
+		return this.makeUnaryRequest("getUserOrganizations", request, proto.cline.EmptyRequest.toJSON, proto.cline.UserOrganizationsResponse.fromJSON)
 	}
     static async setUserOrganization(request: proto.cline.UserOrganizationUpdateRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("setUserOrganization", request)
+		return this.makeUnaryRequest("setUserOrganization", request, proto.cline.UserOrganizationUpdateRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async openrouterAuthClicked(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("openrouterAuthClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
 export class BrowserServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.BrowserService"
     static async getBrowserConnectionInfo(request: proto.cline.EmptyRequest): Promise<proto.cline.BrowserConnectionInfo> {
-		return this.makeRequest("getBrowserConnectionInfo", request)
+		return this.makeUnaryRequest("getBrowserConnectionInfo", request, proto.cline.EmptyRequest.toJSON, proto.cline.BrowserConnectionInfo.fromJSON)
 	}
     static async testBrowserConnection(request: proto.cline.StringRequest): Promise<proto.cline.BrowserConnection> {
-		return this.makeRequest("testBrowserConnection", request)
+		return this.makeUnaryRequest("testBrowserConnection", request, proto.cline.StringRequest.toJSON, proto.cline.BrowserConnection.fromJSON)
 	}
     static async discoverBrowser(request: proto.cline.EmptyRequest): Promise<proto.cline.BrowserConnection> {
-		return this.makeRequest("discoverBrowser", request)
+		return this.makeUnaryRequest("discoverBrowser", request, proto.cline.EmptyRequest.toJSON, proto.cline.BrowserConnection.fromJSON)
 	}
     static async getDetectedChromePath(request: proto.cline.EmptyRequest): Promise<proto.cline.ChromePath> {
-		return this.makeRequest("getDetectedChromePath", request)
+		return this.makeUnaryRequest("getDetectedChromePath", request, proto.cline.EmptyRequest.toJSON, proto.cline.ChromePath.fromJSON)
 	}
     static async updateBrowserSettings(request: proto.cline.UpdateBrowserSettingsRequest): Promise<proto.cline.Boolean> {
-		return this.makeRequest("updateBrowserSettings", request)
+		return this.makeUnaryRequest("updateBrowserSettings", request, proto.cline.UpdateBrowserSettingsRequest.toJSON, proto.cline.Boolean.fromJSON)
 	}
     static async relaunchChromeDebugMode(request: proto.cline.EmptyRequest): Promise<proto.cline.String> {
-		return this.makeRequest("relaunchChromeDebugMode", request)
+		return this.makeUnaryRequest("relaunchChromeDebugMode", request, proto.cline.EmptyRequest.toJSON, proto.cline.String.fromJSON)
 	}
 }
 export class CheckpointsServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.CheckpointsService"
     static async checkpointDiff(request: proto.cline.Int64Request): Promise<proto.cline.Empty> {
-		return this.makeRequest("checkpointDiff", request)
+		return this.makeUnaryRequest("checkpointDiff", request, proto.cline.Int64Request.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async checkpointRestore(request: proto.cline.CheckpointRestoreRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("checkpointRestore", request)
+		return this.makeUnaryRequest("checkpointRestore", request, proto.cline.CheckpointRestoreRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+}
+export class CommandsServiceClient extends ProtoBusClient {
+	static override serviceName: string = "cline.CommandsService"
+    static async addToCline(request: proto.cline.CommandContext): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("addToCline", request, proto.cline.CommandContext.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async fixWithCline(request: proto.cline.CommandContext): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("fixWithCline", request, proto.cline.CommandContext.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async explainWithCline(request: proto.cline.CommandContext): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("explainWithCline", request, proto.cline.CommandContext.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async improveWithCline(request: proto.cline.CommandContext): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("improveWithCline", request, proto.cline.CommandContext.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
 export class FileServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.FileService"
     static async copyToClipboard(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("copyToClipboard", request)
+		return this.makeUnaryRequest("copyToClipboard", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async openFile(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openFile", request)
+		return this.makeUnaryRequest("openFile", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async openImage(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openImage", request)
+		return this.makeUnaryRequest("openImage", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async openMention(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openMention", request)
+		return this.makeUnaryRequest("openMention", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async deleteRuleFile(request: proto.cline.RuleFileRequest): Promise<proto.cline.RuleFile> {
-		return this.makeRequest("deleteRuleFile", request)
+		return this.makeUnaryRequest("deleteRuleFile", request, proto.cline.RuleFileRequest.toJSON, proto.cline.RuleFile.fromJSON)
 	}
     static async createRuleFile(request: proto.cline.RuleFileRequest): Promise<proto.cline.RuleFile> {
-		return this.makeRequest("createRuleFile", request)
+		return this.makeUnaryRequest("createRuleFile", request, proto.cline.RuleFileRequest.toJSON, proto.cline.RuleFile.fromJSON)
 	}
     static async searchCommits(request: proto.cline.StringRequest): Promise<proto.cline.GitCommits> {
-		return this.makeRequest("searchCommits", request)
+		return this.makeUnaryRequest("searchCommits", request, proto.cline.StringRequest.toJSON, proto.cline.GitCommits.fromJSON)
 	}
     static async selectFiles(request: proto.cline.BooleanRequest): Promise<proto.cline.StringArrays> {
-		return this.makeRequest("selectFiles", request)
+		return this.makeUnaryRequest("selectFiles", request, proto.cline.BooleanRequest.toJSON, proto.cline.StringArrays.fromJSON)
 	}
     static async getRelativePaths(request: proto.cline.RelativePathsRequest): Promise<proto.cline.RelativePaths> {
-		return this.makeRequest("getRelativePaths", request)
+		return this.makeUnaryRequest("getRelativePaths", request, proto.cline.RelativePathsRequest.toJSON, proto.cline.RelativePaths.fromJSON)
 	}
     static async searchFiles(request: proto.cline.FileSearchRequest): Promise<proto.cline.FileSearchResults> {
-		return this.makeRequest("searchFiles", request)
+		return this.makeUnaryRequest("searchFiles", request, proto.cline.FileSearchRequest.toJSON, proto.cline.FileSearchResults.fromJSON)
 	}
     static async toggleClineRule(request: proto.cline.ToggleClineRuleRequest): Promise<proto.cline.ToggleClineRules> {
-		return this.makeRequest("toggleClineRule", request)
+		return this.makeUnaryRequest("toggleClineRule", request, proto.cline.ToggleClineRuleRequest.toJSON, proto.cline.ToggleClineRules.fromJSON)
 	}
     static async toggleCursorRule(request: proto.cline.ToggleCursorRuleRequest): Promise<proto.cline.ClineRulesToggles> {
-		return this.makeRequest("toggleCursorRule", request)
+		return this.makeUnaryRequest("toggleCursorRule", request, proto.cline.ToggleCursorRuleRequest.toJSON, proto.cline.ClineRulesToggles.fromJSON)
 	}
     static async toggleWindsurfRule(request: proto.cline.ToggleWindsurfRuleRequest): Promise<proto.cline.ClineRulesToggles> {
-		return this.makeRequest("toggleWindsurfRule", request)
+		return this.makeUnaryRequest("toggleWindsurfRule", request, proto.cline.ToggleWindsurfRuleRequest.toJSON, proto.cline.ClineRulesToggles.fromJSON)
 	}
     static async refreshRules(request: proto.cline.EmptyRequest): Promise<proto.cline.RefreshedRules> {
-		return this.makeRequest("refreshRules", request)
+		return this.makeUnaryRequest("refreshRules", request, proto.cline.EmptyRequest.toJSON, proto.cline.RefreshedRules.fromJSON)
 	}
     static async openTaskHistory(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openTaskHistory", request)
+		return this.makeUnaryRequest("openTaskHistory", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async toggleWorkflow(request: proto.cline.ToggleWorkflowRequest): Promise<proto.cline.ClineRulesToggles> {
-		return this.makeRequest("toggleWorkflow", request)
+		return this.makeUnaryRequest("toggleWorkflow", request, proto.cline.ToggleWorkflowRequest.toJSON, proto.cline.ClineRulesToggles.fromJSON)
 	}
-    static subscribeToWorkspaceUpdates(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.StringArray>): ()=>void {
-		return this.makeStreamingRequest("subscribeToWorkspaceUpdates", request, callbacks)
+    static async ifFileExistsRelativePath(request: proto.cline.StringRequest): Promise<proto.cline.BooleanResponse> {
+		return this.makeUnaryRequest("ifFileExistsRelativePath", request, proto.cline.StringRequest.toJSON, proto.cline.BooleanResponse.fromJSON)
+	}
+    static async openFileRelativePath(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("openFileRelativePath", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async openFocusChainFile(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("openFocusChainFile", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
 export class McpServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.McpService"
     static async toggleMcpServer(request: proto.cline.ToggleMcpServerRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("toggleMcpServer", request)
+		return this.makeUnaryRequest("toggleMcpServer", request, proto.cline.ToggleMcpServerRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async updateMcpTimeout(request: proto.cline.UpdateMcpTimeoutRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("updateMcpTimeout", request)
+		return this.makeUnaryRequest("updateMcpTimeout", request, proto.cline.UpdateMcpTimeoutRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async addRemoteMcpServer(request: proto.cline.AddRemoteMcpServerRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("addRemoteMcpServer", request)
+		return this.makeUnaryRequest("addRemoteMcpServer", request, proto.cline.AddRemoteMcpServerRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async downloadMcp(request: proto.cline.StringRequest): Promise<proto.cline.McpDownloadResponse> {
-		return this.makeRequest("downloadMcp", request)
+		return this.makeUnaryRequest("downloadMcp", request, proto.cline.StringRequest.toJSON, proto.cline.McpDownloadResponse.fromJSON)
 	}
     static async restartMcpServer(request: proto.cline.StringRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("restartMcpServer", request)
+		return this.makeUnaryRequest("restartMcpServer", request, proto.cline.StringRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async deleteMcpServer(request: proto.cline.StringRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("deleteMcpServer", request)
+		return this.makeUnaryRequest("deleteMcpServer", request, proto.cline.StringRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async toggleToolAutoApprove(request: proto.cline.ToggleToolAutoApproveRequest): Promise<proto.cline.McpServers> {
-		return this.makeRequest("toggleToolAutoApprove", request)
+		return this.makeUnaryRequest("toggleToolAutoApprove", request, proto.cline.ToggleToolAutoApproveRequest.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static async refreshMcpMarketplace(request: proto.cline.EmptyRequest): Promise<proto.cline.McpMarketplaceCatalog> {
-		return this.makeRequest("refreshMcpMarketplace", request)
+		return this.makeUnaryRequest("refreshMcpMarketplace", request, proto.cline.EmptyRequest.toJSON, proto.cline.McpMarketplaceCatalog.fromJSON)
 	}
     static async openMcpSettings(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openMcpSettings", request)
+		return this.makeUnaryRequest("openMcpSettings", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static subscribeToMcpMarketplaceCatalog(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.McpMarketplaceCatalog>): ()=>void {
-		return this.makeStreamingRequest("subscribeToMcpMarketplaceCatalog", request, callbacks)
+		return this.makeStreamingRequest("subscribeToMcpMarketplaceCatalog", request, proto.cline.EmptyRequest.toJSON, proto.cline.McpMarketplaceCatalog.fromJSON, callbacks)
 	}
     static async getLatestMcpServers(request: proto.cline.Empty): Promise<proto.cline.McpServers> {
-		return this.makeRequest("getLatestMcpServers", request)
+		return this.makeUnaryRequest("getLatestMcpServers", request, proto.cline.Empty.toJSON, proto.cline.McpServers.fromJSON)
 	}
     static subscribeToMcpServers(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.McpServers>): ()=>void {
-		return this.makeStreamingRequest("subscribeToMcpServers", request, callbacks)
+		return this.makeStreamingRequest("subscribeToMcpServers", request, proto.cline.EmptyRequest.toJSON, proto.cline.McpServers.fromJSON, callbacks)
 	}
 }
 export class ModelsServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.ModelsService"
     static async getOllamaModels(request: proto.cline.StringRequest): Promise<proto.cline.StringArray> {
-		return this.makeRequest("getOllamaModels", request)
+		return this.makeUnaryRequest("getOllamaModels", request, proto.cline.StringRequest.toJSON, proto.cline.StringArray.fromJSON)
 	}
     static async getLmStudioModels(request: proto.cline.StringRequest): Promise<proto.cline.StringArray> {
-		return this.makeRequest("getLmStudioModels", request)
+		return this.makeUnaryRequest("getLmStudioModels", request, proto.cline.StringRequest.toJSON, proto.cline.StringArray.fromJSON)
 	}
     static async getVsCodeLmModels(request: proto.cline.EmptyRequest): Promise<proto.cline.VsCodeLmModelsArray> {
-		return this.makeRequest("getVsCodeLmModels", request)
+		return this.makeUnaryRequest("getVsCodeLmModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.VsCodeLmModelsArray.fromJSON)
 	}
     static async refreshOpenRouterModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
-		return this.makeRequest("refreshOpenRouterModels", request)
+		return this.makeUnaryRequest("refreshOpenRouterModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
 	}
     static async refreshHuggingFaceModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
-		return this.makeRequest("refreshHuggingFaceModels", request)
+		return this.makeUnaryRequest("refreshHuggingFaceModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
 	}
     static async refreshOpenAiModels(request: proto.cline.OpenAiModelsRequest): Promise<proto.cline.StringArray> {
-		return this.makeRequest("refreshOpenAiModels", request)
+		return this.makeUnaryRequest("refreshOpenAiModels", request, proto.cline.OpenAiModelsRequest.toJSON, proto.cline.StringArray.fromJSON)
+	}
+    static async refreshVercelAiGatewayModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
+		return this.makeUnaryRequest("refreshVercelAiGatewayModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
 	}
     static async refreshRequestyModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
-		return this.makeRequest("refreshRequestyModels", request)
+		return this.makeUnaryRequest("refreshRequestyModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
 	}
     static subscribeToOpenRouterModels(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.OpenRouterCompatibleModelInfo>): ()=>void {
-		return this.makeStreamingRequest("subscribeToOpenRouterModels", request, callbacks)
+		return this.makeStreamingRequest("subscribeToOpenRouterModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON, callbacks)
 	}
     static async updateApiConfigurationProto(request: proto.cline.UpdateApiConfigurationRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateApiConfigurationProto", request)
+		return this.makeUnaryRequest("updateApiConfigurationProto", request, proto.cline.UpdateApiConfigurationRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async validateApiConfigurationProto(request: proto.cline.UpdateApiConfigurationRequest): Promise<proto.cline.Boolean> {
-		return this.makeRequest("validateApiConfigurationProto", request)
+		return this.makeUnaryRequest("validateApiConfigurationProto", request, proto.cline.UpdateApiConfigurationRequest.toJSON, proto.cline.Boolean.fromJSON)
 	}
     static async updateEmbeddingConfigurationProto(request: proto.cline.UpdateEmbeddingConfigurationRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateEmbeddingConfigurationProto", request)
+		return this.makeUnaryRequest("updateEmbeddingConfigurationProto", request, proto.cline.UpdateEmbeddingConfigurationRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async validateEmbeddingConfigurationProto(request: proto.cline.UpdateEmbeddingConfigurationRequest): Promise<proto.cline.Boolean> {
-		return this.makeRequest("validateEmbeddingConfigurationProto", request)
+		return this.makeUnaryRequest("validateEmbeddingConfigurationProto", request, proto.cline.UpdateEmbeddingConfigurationRequest.toJSON, proto.cline.Boolean.fromJSON)
 	}
     static async refreshGroqModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
-		return this.makeRequest("refreshGroqModels", request)
+		return this.makeUnaryRequest("refreshGroqModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
+	}
+    static async refreshBasetenModels(request: proto.cline.EmptyRequest): Promise<proto.cline.OpenRouterCompatibleModelInfo> {
+		return this.makeUnaryRequest("refreshBasetenModels", request, proto.cline.EmptyRequest.toJSON, proto.cline.OpenRouterCompatibleModelInfo.fromJSON)
+	}
+    static async getSapAiCoreModels(request: proto.cline.SapAiCoreModelsRequest): Promise<proto.cline.StringArray> {
+		return this.makeUnaryRequest("getSapAiCoreModels", request, proto.cline.SapAiCoreModelsRequest.toJSON, proto.cline.StringArray.fromJSON)
 	}
 }
 export class SlashServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.SlashService"
     static async reportBug(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("reportBug", request)
+		return this.makeUnaryRequest("reportBug", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async condense(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("condense", request)
+		return this.makeUnaryRequest("condense", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
 export class StateServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.StateService"
     static async getLatestState(request: proto.cline.EmptyRequest): Promise<proto.cline.State> {
-		return this.makeRequest("getLatestState", request)
+		return this.makeUnaryRequest("getLatestState", request, proto.cline.EmptyRequest.toJSON, proto.cline.State.fromJSON)
 	}
     static async updateTerminalConnectionTimeout(request: proto.cline.UpdateTerminalConnectionTimeoutRequest): Promise<proto.cline.UpdateTerminalConnectionTimeoutResponse> {
-		return this.makeRequest("updateTerminalConnectionTimeout", request)
+		return this.makeUnaryRequest("updateTerminalConnectionTimeout", request, proto.cline.UpdateTerminalConnectionTimeoutRequest.toJSON, proto.cline.UpdateTerminalConnectionTimeoutResponse.fromJSON)
 	}
     static async updateTerminalReuseEnabled(request: proto.cline.BooleanRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateTerminalReuseEnabled", request)
+		return this.makeUnaryRequest("updateTerminalReuseEnabled", request, proto.cline.BooleanRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async updateDefaultTerminalProfile(request: proto.cline.StringRequest): Promise<proto.cline.TerminalProfileUpdateResponse> {
-		return this.makeRequest("updateDefaultTerminalProfile", request)
+		return this.makeUnaryRequest("updateDefaultTerminalProfile", request, proto.cline.StringRequest.toJSON, proto.cline.TerminalProfileUpdateResponse.fromJSON)
 	}
     static async getAvailableTerminalProfiles(request: proto.cline.EmptyRequest): Promise<proto.cline.TerminalProfiles> {
-		return this.makeRequest("getAvailableTerminalProfiles", request)
+		return this.makeUnaryRequest("getAvailableTerminalProfiles", request, proto.cline.EmptyRequest.toJSON, proto.cline.TerminalProfiles.fromJSON)
 	}
     static subscribeToState(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.State>): ()=>void {
-		return this.makeStreamingRequest("subscribeToState", request, callbacks)
+		return this.makeStreamingRequest("subscribeToState", request, proto.cline.EmptyRequest.toJSON, proto.cline.State.fromJSON, callbacks)
 	}
     static async toggleFavoriteModel(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("toggleFavoriteModel", request)
+		return this.makeUnaryRequest("toggleFavoriteModel", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async resetState(request: proto.cline.ResetStateRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("resetState", request)
+		return this.makeUnaryRequest("resetState", request, proto.cline.ResetStateRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async togglePlanActModeProto(request: proto.cline.TogglePlanActModeRequest): Promise<proto.cline.Boolean> {
-		return this.makeRequest("togglePlanActModeProto", request)
+		return this.makeUnaryRequest("togglePlanActModeProto", request, proto.cline.TogglePlanActModeRequest.toJSON, proto.cline.Boolean.fromJSON)
 	}
     static async updateAutoApprovalSettings(request: proto.cline.AutoApprovalSettingsRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateAutoApprovalSettings", request)
+		return this.makeUnaryRequest("updateAutoApprovalSettings", request, proto.cline.AutoApprovalSettingsRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async updateSettings(request: proto.cline.UpdateSettingsRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateSettings", request)
+		return this.makeUnaryRequest("updateSettings", request, proto.cline.UpdateSettingsRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async updateTelemetrySetting(request: proto.cline.TelemetrySettingRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("updateTelemetrySetting", request)
+		return this.makeUnaryRequest("updateTelemetrySetting", request, proto.cline.TelemetrySettingRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async setWelcomeViewCompleted(request: proto.cline.BooleanRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("setWelcomeViewCompleted", request)
+		return this.makeUnaryRequest("setWelcomeViewCompleted", request, proto.cline.BooleanRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async manageIndex(request: proto.cline.ManageIndexRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("manageIndex", request)
+		return this.makeUnaryRequest("manageIndex", request, proto.cline.ManageIndexRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async manageExperts(request: proto.cline.ManageExpertsRequest): Promise<proto.cline.ManageExpertsResponse> {
-		return this.makeRequest("manageExperts", request)
+		return this.makeUnaryRequest("manageExperts", request, proto.cline.ManageExpertsRequest.toJSON, proto.cline.ManageExpertsResponse.fromJSON)
 	}
 }
 export class TaskServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.TaskService"
     static async cancelTask(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("cancelTask", request)
+		return this.makeUnaryRequest("cancelTask", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async clearTask(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("clearTask", request)
+		return this.makeUnaryRequest("clearTask", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async getTotalTasksSize(request: proto.cline.EmptyRequest): Promise<proto.cline.Int64> {
-		return this.makeRequest("getTotalTasksSize", request)
+		return this.makeUnaryRequest("getTotalTasksSize", request, proto.cline.EmptyRequest.toJSON, proto.cline.Int64.fromJSON)
 	}
     static async deleteTasksWithIds(request: proto.cline.StringArrayRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("deleteTasksWithIds", request)
+		return this.makeUnaryRequest("deleteTasksWithIds", request, proto.cline.StringArrayRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async newTask(request: proto.cline.NewTaskRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("newTask", request)
+		return this.makeUnaryRequest("newTask", request, proto.cline.NewTaskRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async showTaskWithId(request: proto.cline.StringRequest): Promise<proto.cline.TaskResponse> {
-		return this.makeRequest("showTaskWithId", request)
+		return this.makeUnaryRequest("showTaskWithId", request, proto.cline.StringRequest.toJSON, proto.cline.TaskResponse.fromJSON)
 	}
     static async exportTaskWithId(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("exportTaskWithId", request)
+		return this.makeUnaryRequest("exportTaskWithId", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async toggleTaskFavorite(request: proto.cline.TaskFavoriteRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("toggleTaskFavorite", request)
+		return this.makeUnaryRequest("toggleTaskFavorite", request, proto.cline.TaskFavoriteRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async getTaskHistory(request: proto.cline.GetTaskHistoryRequest): Promise<proto.cline.TaskHistoryArray> {
-		return this.makeRequest("getTaskHistory", request)
+		return this.makeUnaryRequest("getTaskHistory", request, proto.cline.GetTaskHistoryRequest.toJSON, proto.cline.TaskHistoryArray.fromJSON)
 	}
     static async askResponse(request: proto.cline.AskResponseRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("askResponse", request)
+		return this.makeUnaryRequest("askResponse", request, proto.cline.AskResponseRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async taskFeedback(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("taskFeedback", request)
+		return this.makeUnaryRequest("taskFeedback", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async taskCompletionViewChanges(request: proto.cline.Int64Request): Promise<proto.cline.Empty> {
-		return this.makeRequest("taskCompletionViewChanges", request)
+		return this.makeUnaryRequest("taskCompletionViewChanges", request, proto.cline.Int64Request.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async executeQuickWin(request: proto.cline.ExecuteQuickWinRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("executeQuickWin", request)
+		return this.makeUnaryRequest("executeQuickWin", request, proto.cline.ExecuteQuickWinRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async deleteAllTaskHistory(request: proto.cline.EmptyRequest): Promise<proto.cline.DeleteAllTaskHistoryCount> {
-		return this.makeRequest("deleteAllTaskHistory", request)
+		return this.makeUnaryRequest("deleteAllTaskHistory", request, proto.cline.EmptyRequest.toJSON, proto.cline.DeleteAllTaskHistoryCount.fromJSON)
 	}
 }
 export class UiServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.UiService"
     static async scrollToSettings(request: proto.cline.StringRequest): Promise<proto.cline.KeyValuePair> {
-		return this.makeRequest("scrollToSettings", request)
+		return this.makeUnaryRequest("scrollToSettings", request, proto.cline.StringRequest.toJSON, proto.cline.KeyValuePair.fromJSON)
 	}
     static async onDidShowAnnouncement(request: proto.cline.EmptyRequest): Promise<proto.cline.Boolean> {
-		return this.makeRequest("onDidShowAnnouncement", request)
+		return this.makeUnaryRequest("onDidShowAnnouncement", request, proto.cline.EmptyRequest.toJSON, proto.cline.Boolean.fromJSON)
 	}
-    static subscribeToAddToInput(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.String>): ()=>void {
-		return this.makeStreamingRequest("subscribeToAddToInput", request, callbacks)
+    static subscribeToAddToInput(request: proto.cline.StringRequest, callbacks: Callbacks<proto.cline.String>): ()=>void {
+		return this.makeStreamingRequest("subscribeToAddToInput", request, proto.cline.StringRequest.toJSON, proto.cline.String.fromJSON, callbacks)
 	}
     static subscribeToMcpButtonClicked(request: proto.cline.WebviewProviderTypeRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToMcpButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToMcpButtonClicked", request, proto.cline.WebviewProviderTypeRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToHistoryButtonClicked(request: proto.cline.WebviewProviderTypeRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToHistoryButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToHistoryButtonClicked", request, proto.cline.WebviewProviderTypeRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToChatButtonClicked(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToChatButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToChatButtonClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToAccountButtonClicked(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToAccountButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToAccountButtonClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToExpertsButtonClicked(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToExpertsButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToExpertsButtonClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToSettingsButtonClicked(request: proto.cline.WebviewProviderTypeRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToSettingsButtonClicked", request, callbacks)
+		return this.makeStreamingRequest("subscribeToSettingsButtonClicked", request, proto.cline.WebviewProviderTypeRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToPartialMessage(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.ClineMessage>): ()=>void {
-		return this.makeStreamingRequest("subscribeToPartialMessage", request, callbacks)
-	}
-    static subscribeToTheme(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.String>): ()=>void {
-		return this.makeStreamingRequest("subscribeToTheme", request, callbacks)
+		return this.makeStreamingRequest("subscribeToPartialMessage", request, proto.cline.EmptyRequest.toJSON, proto.cline.ClineMessage.fromJSON, callbacks)
 	}
     static async initializeWebview(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("initializeWebview", request)
+		return this.makeUnaryRequest("initializeWebview", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static subscribeToRelinquishControl(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToRelinquishControl", request, callbacks)
+		return this.makeStreamingRequest("subscribeToRelinquishControl", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToFocusChatInput(request: proto.cline.StringRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToFocusChatInput", request, callbacks)
+		return this.makeStreamingRequest("subscribeToFocusChatInput", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static subscribeToDidBecomeVisible(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
-		return this.makeStreamingRequest("subscribeToDidBecomeVisible", request, callbacks)
+		return this.makeStreamingRequest("subscribeToDidBecomeVisible", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
     static async getWebviewHtml(request: proto.cline.EmptyRequest): Promise<proto.cline.String> {
-		return this.makeRequest("getWebviewHtml", request)
+		return this.makeUnaryRequest("getWebviewHtml", request, proto.cline.EmptyRequest.toJSON, proto.cline.String.fromJSON)
 	}
     static async openUrl(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openUrl", request)
+		return this.makeUnaryRequest("openUrl", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
     static async showToast(request: proto.cline.ShowToastRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("showToast", request)
+		return this.makeUnaryRequest("showToast", request, proto.cline.ShowToastRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async openWalkthrough(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("openWalkthrough", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
 export class WebServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.WebService"
     static async checkIsImageUrl(request: proto.cline.StringRequest): Promise<proto.cline.IsImageUrl> {
-		return this.makeRequest("checkIsImageUrl", request)
+		return this.makeUnaryRequest("checkIsImageUrl", request, proto.cline.StringRequest.toJSON, proto.cline.IsImageUrl.fromJSON)
 	}
     static async fetchOpenGraphData(request: proto.cline.StringRequest): Promise<proto.cline.OpenGraphData> {
-		return this.makeRequest("fetchOpenGraphData", request)
+		return this.makeUnaryRequest("fetchOpenGraphData", request, proto.cline.StringRequest.toJSON, proto.cline.OpenGraphData.fromJSON)
 	}
     static async openInBrowser(request: proto.cline.StringRequest): Promise<proto.cline.Empty> {
-		return this.makeRequest("openInBrowser", request)
+		return this.makeUnaryRequest("openInBrowser", request, proto.cline.StringRequest.toJSON, proto.cline.Empty.fromJSON)
 	}
 }
