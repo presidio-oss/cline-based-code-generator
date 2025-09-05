@@ -27,11 +27,23 @@ export const buildSystemPrompt = async (
 	if (providerInfo.customPrompt === "compact" && isLocalModelFamily(providerInfo.providerId)) {
 		return SYSTEM_PROMPT_COMPACT(cwd, supportsBrowserUse, mcpHub, browserSettings, focusChainSettings)
 	}
+
 	// New prompts per family can be added as granularly as we like by adding a folder in the "families" folder
 	// We then discriminate between families with a functions in the utils.
 	if (isNextGenModelFamily(apiHandlerModel.id)) {
-		return SYSTEM_PROMPT_NEXT_GEN(cwd, supportsBrowserUse, mcpHub, browserSettings, focusChainSettings)
+		return SYSTEM_PROMPT_NEXT_GEN(
+			cwd,
+			supportsBrowserUse,
+			mcpHub,
+			browserSettings,
+			focusChainSettings,
+			supportsCodeIndex,
+			expertPrompt,
+			isDeepCrawlEnabled,
+			expertName,
+		)
 	}
+
 	return haiSystemPrompt(
 		cwd,
 		supportsBrowserUse,

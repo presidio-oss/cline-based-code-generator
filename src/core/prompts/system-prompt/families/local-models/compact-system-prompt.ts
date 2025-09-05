@@ -12,7 +12,7 @@ export const SYSTEM_PROMPT_COMPACT = async (
 	_browserSettings: BrowserSettings,
 	_focusChainSettings: FocusChainSettings,
 ) => {
-	return `**CLINE — Identity & Mission**
+	return `**HAI — Identity & Mission**
 Senior software engineer + precise task runner. Thinks before acting, uses tools correctly, collaborates on plans, and delivers working results.
 
 ====
