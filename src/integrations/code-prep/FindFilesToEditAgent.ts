@@ -1,6 +1,15 @@
+import { basename, join } from "node:path"
+import { buildApiHandler } from "@core/api"
+import type { BedrockEmbeddings } from "@langchain/aws"
 import { FaissStore } from "@langchain/community/vectorstores/faiss"
+import { OllamaEmbeddings } from "@langchain/ollama"
+import type { OpenAIEmbeddings } from "@langchain/openai"
+import { Mode } from "@/shared/storage/types"
+import { buildEmbeddingHandler } from "../../embedding"
 import { ApiConfiguration } from "../../shared/api"
 import { HaiBuildContextOptions } from "../../shared/customApi"
+import { EmbeddingConfiguration } from "../../shared/embeddings"
+import { ensureFaissPlatformDeps } from "../../utils/faiss"
 import {
 	findFilesInDirectory,
 	getApiStreamResponse,
@@ -8,15 +17,6 @@ import {
 	getFolderStructureString,
 	readAndProcessGitignore,
 } from "./helper"
-import type { OpenAIEmbeddings } from "@langchain/openai"
-import type { BedrockEmbeddings } from "@langchain/aws"
-import { basename, join } from "node:path"
-import { buildApiHandler } from "../../api"
-import { ensureFaissPlatformDeps } from "../../utils/faiss"
-import { EmbeddingConfiguration } from "../../shared/embeddings"
-import { OllamaEmbeddings } from "@langchain/ollama"
-import { buildEmbeddingHandler } from "../../embedding"
-import { Mode } from "@/shared/storage/types"
 
 export class FindFilesToEditAgent {
 	private srcFolder: string

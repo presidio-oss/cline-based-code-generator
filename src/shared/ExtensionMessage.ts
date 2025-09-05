@@ -1,27 +1,30 @@
 // type that represents json data that is sent from extension to webview, called ExtensionMessage and has 'type' enum which can be 'plusButtonClicked' or 'settingsButtonClicked' or 'hello'
-import { ApiConfiguration } from "./api"
-import { EmbeddingConfiguration } from "./embeddings"
+
 import { AutoApprovalSettings } from "./AutoApprovalSettings"
+import { ApiConfiguration } from "./api"
 import { BrowserSettings } from "./BrowserSettings"
-import { Mode, OpenaiReasoningEffort } from "./storage/types"
-import { HistoryItem } from "./HistoryItem"
-import { TelemetrySetting } from "./TelemetrySetting"
 import { ClineRulesToggles } from "./cline-rules"
-import { UserInfo } from "./UserInfo"
-import { McpDisplayMode } from "./McpDisplayMode"
 import { HaiBuildContextOptions, HaiBuildIndexProgress } from "./customApi"
+import { EmbeddingConfiguration } from "./embeddings"
+import { FocusChainSettings } from "./FocusChainSettings"
+import { HistoryItem } from "./HistoryItem"
+import { McpDisplayMode } from "./McpDisplayMode"
+import { Mode, OpenaiReasoningEffort } from "./storage/types"
+import { TelemetrySetting } from "./TelemetrySetting"
+import { UserInfo } from "./UserInfo"
 
 // webview will hold state
 export interface ExtensionMessage {
 	type: "grpc_response" // New type for gRPC responses
+	grpc_response?: GrpcResponse
+}
 
-	grpc_response?: {
-		message?: any // JSON serialized protobuf message
-		request_id: string // Same ID as the request
-		error?: string // Optional error message
-		is_streaming?: boolean // Whether this is part of a streaming response
-		sequence_number?: number // For ordering chunks in streaming responses
-	}
+export type GrpcResponse = {
+	message?: any // JSON serialized protobuf message
+	request_id: string // Same ID as the request
+	error?: string // Optional error message
+	is_streaming?: boolean // Whether this is part of a streaming response
+	sequence_number?: number // For ordering chunks in streaming responses
 }
 
 export type Platform = "aix" | "darwin" | "freebsd" | "linux" | "openbsd" | "sunos" | "win32" | "unknown"
@@ -41,6 +44,7 @@ export interface ExtensionState {
 	checkpointTrackerErrorMessage?: string
 	clineMessages: ClineMessage[]
 	currentTaskItem?: HistoryItem
+	currentFocusChainChecklist?: string | null
 	mcpMarketplaceEnabled?: boolean
 	mcpDisplayMode: McpDisplayMode
 	planActSeparateModelsSetting: boolean
@@ -64,6 +68,11 @@ export interface ExtensionState {
 	localCursorRulesToggles: ClineRulesToggles
 	localWindsurfRulesToggles: ClineRulesToggles
 	mcpResponsesCollapsed?: boolean
+	strictPlanModeEnabled?: boolean
+	useAutoCondense?: boolean
+	focusChainSettings: FocusChainSettings
+	focusChainFeatureFlagEnabled?: boolean
+	customPrompt?: string
 
 	// TAG:HAI
 	enableInlineEdit: boolean
@@ -107,6 +116,7 @@ export type ClineAsk =
 	| "use_mcp_server"
 	| "new_task"
 	| "condense"
+	| "summarize_task"
 	| "report_bug"
 
 export type ClineSay =
@@ -137,6 +147,7 @@ export type ClineSay =
 	| "checkpoint_created"
 	| "load_mcp_documentation"
 	| "info" // Added for general informational messages like retry status
+	| "task_progress"
 
 export interface ClineSayTool {
 	tool:
@@ -148,11 +159,13 @@ export interface ClineSayTool {
 		| "listCodeDefinitionNames"
 		| "searchFiles"
 		| "webFetch"
+		| "summarizeTask"
 
 		// TAG:HAI
 		| "findRelevantFiles"
 		| "codeSecurityScan"
 		| "customExpertContext"
+
 	path?: string
 	diff?: string
 	content?: string

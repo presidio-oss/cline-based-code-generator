@@ -1,3 +1,4 @@
+import { IHaiClineTask } from "@shared/hai-task"
 import type { Boolean, EmptyRequest } from "@shared/proto/cline/common"
 import { useEffect, useState } from "react"
 import AccountView from "./components/account/AccountView"
@@ -11,7 +12,6 @@ import { useClineAuth } from "./context/ClineAuthContext"
 import { useExtensionState } from "./context/ExtensionStateContext"
 import { Providers } from "./Providers"
 import { UiServiceClient } from "./services/grpc-client"
-import { IHaiClineTask } from "@shared/hai-task"
 
 const AppContent = () => {
 	const {
@@ -65,29 +65,29 @@ const AppContent = () => {
 	}
 
 	return (
-		<div className="flex h-full w-full">
+		<div className="flex h-screen w-full flex-col">
 			{showSettings && <SettingsView onDone={hideSettings} />}
 			{showHistory && <HistoryView onDone={hideHistory} />}
 			{showMcp && <McpView initialTab={mcpTab} onDone={closeMcpView} />}
 			{showAccount && (
 				<AccountView
-					onDone={hideAccount}
-					clineUser={clineUser}
-					organizations={organizations}
 					activeOrganization={activeOrganization}
+					clineUser={clineUser}
+					onDone={hideAccount}
+					organizations={organizations}
 				/>
 			)}
 			{showExperts && <ExpertsView onDone={hideExperts} />}
 			{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 			<ChatView
-				showHistoryView={navigateToHistory}
-				isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
-				showAnnouncement={showAnnouncement}
 				hideAnnouncement={hideAnnouncement}
+				isHidden={showSettings || showHistory || showMcp || showAccount || showExperts}
 				onTaskSelect={(selectedTask) => {
 					setSelectedTask(selectedTask)
 				}}
 				selectedHaiTask={selectedTask}
+				showAnnouncement={showAnnouncement}
+				showHistoryView={navigateToHistory}
 			/>
 		</div>
 	)

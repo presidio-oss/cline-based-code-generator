@@ -1,13 +1,13 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs"
 import { basename, join } from "node:path"
-import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from "@langchain/openai"
+import { ApiStream } from "@core/api/transform/stream"
 import { BedrockEmbeddings } from "@langchain/aws"
-import { ApiStream } from "../../api/transform/stream"
-import { azureOpenAIApiVersion, EmbeddingConfiguration } from "../../shared/embeddings"
+import { OllamaEmbeddings } from "@langchain/ollama"
+import { AzureOpenAIEmbeddings, OpenAIEmbeddings } from "@langchain/openai"
+import ignore from "ignore"
 // @ts-ignore
 import walk from "ignore-walk"
-import ignore from "ignore"
-import { OllamaEmbeddings } from "@langchain/ollama"
+import { azureOpenAIApiVersion, EmbeddingConfiguration } from "../../shared/embeddings"
 
 /**
  * Recursively retrieves all code files from a given source folder,
@@ -308,7 +308,7 @@ export async function exponentialBackoff<T>(operation: () => T, maxRetries: numb
 		} catch (error) {
 			attempt++
 			if (attempt < maxRetries) {
-				const delay = Math.pow(2, attempt) * baseDelay
+				const delay = 2 ** attempt * baseDelay
 				console.warn(`Attempt ${attempt} failed. Retrying in ${delay}ms...`, error)
 				await new Promise((resolve) => setTimeout(resolve, delay))
 			} else {

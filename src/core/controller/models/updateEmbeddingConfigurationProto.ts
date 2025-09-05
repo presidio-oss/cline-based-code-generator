@@ -1,8 +1,7 @@
-import type { Controller } from "../index"
 import { Empty } from "@shared/proto/cline/common"
 import { UpdateEmbeddingConfigurationRequest } from "@shared/proto/cline/models"
-import { updateEmbeddingConfiguration } from "../../storage/state"
 import { convertProtoToEmbeddingConfiguration } from "@shared/proto-conversions/models/embedding-configuration-conversion"
+import type { Controller } from "../index"
 
 /**
  * Updates Embedding configuration
@@ -24,7 +23,7 @@ export async function updateEmbeddingConfigurationProto(
 		const appEmbeddingConfiguration = convertProtoToEmbeddingConfiguration(request.embeddingConfiguration)
 
 		// Update the embedding configuration in storage
-		await updateEmbeddingConfiguration(controller.context, appEmbeddingConfiguration)
+		controller.cacheService.setEmbeddingConfiguration(appEmbeddingConfiguration)
 
 		// Post updated state to webview
 		await controller.postStateToWebview()

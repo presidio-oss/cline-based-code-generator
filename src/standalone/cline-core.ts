@@ -1,28 +1,37 @@
-import { activate } from "@/extension"
-import { Controller } from "@core/controller"
 import { ExternalDiffViewProvider } from "@hosts/external/ExternalDiffviewProvider"
 import { ExternalWebviewProvider } from "@hosts/external/ExternalWebviewProvider"
 import { ExternalHostBridgeClientManager } from "@hosts/external/host-bridge-client-manager"
-import { HostProvider } from "@/hosts/host-provider"
 import { WebviewProviderType } from "@shared/webview/types"
-import { v4 as uuidv4 } from "uuid"
-import { log } from "./utils"
-import { extensionContext, postMessage } from "./vscode-context"
-import { startProtobusService } from "./protobus-service"
+import { initialize, tearDown } from "@/common"
 import { WebviewProvider } from "@/core/webview"
+import { AuthHandler } from "@/hosts/external/AuthHandler"
+import { HostProvider } from "@/hosts/host-provider"
 import { DiffViewProvider } from "@/integrations/editor/DiffViewProvider"
+import { startProtobusService, waitForHostBridgeReady } from "./protobus-service"
+import { log } from "./utils"
+import { extensionContext } from "./vscode-context"
 
 async function main() {
 	log("\n\n\nStarting hai-core service...\n\n\n")
+
+	try {
+		await waitForHostBridgeReady()
+		log("HostBridge is serving; continuing startup")
+	} catch (err) {
+		log(`ERROR: HostBridge error: ${String(err)}`)
+		process.exit(1)
+	}
 
 	setupHostProvider()
 
 	// Set up global error handlers to prevent process crashes
 	setupGlobalErrorHandlers()
 
-	activate(extensionContext)
-	const controller = new Controller(extensionContext, postMessage, uuidv4())
-	startProtobusService(controller)
+	const webviewProvider = await initialize(extensionContext)
+
+	AuthHandler.getInstance().setEnabled(true)
+
+	startProtobusService(webviewProvider.controller)
 }
 
 function setupHostProvider() {
@@ -32,8 +41,11 @@ function setupHostProvider() {
 	const createDiffView = (): DiffViewProvider => {
 		return new ExternalDiffViewProvider()
 	}
+	const getCallbackUri = (): Promise<string> => {
+		return AuthHandler.getInstance().getCallbackUri()
+	}
 
-	HostProvider.initialize(createWebview, createDiffView, new ExternalHostBridgeClientManager(), log)
+	HostProvider.initialize(createWebview, createDiffView, new ExternalHostBridgeClientManager(), log, getCallbackUri)
 }
 
 /**
@@ -70,6 +82,8 @@ function setupGlobalErrorHandlers() {
 
 	process.on("SIGTERM", () => {
 		log("Received SIGTERM, shutting down gracefully...")
+		tearDown()
+
 		process.exit(0)
 	})
 }

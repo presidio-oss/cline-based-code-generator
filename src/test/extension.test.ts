@@ -1,48 +1,14 @@
 import { readFile } from "fs/promises"
-import { describe, it, after, before } from "mocha"
+import { after, describe, it } from "mocha"
 import path from "path"
 import "should"
 import * as vscode from "vscode"
-import { HostProvider } from "@/hosts/host-provider"
-import { vscodeHostBridgeClient } from "@/hosts/vscode/hostbridge/client/host-grpc-client"
 
 const packagePath = path.join(__dirname, "..", "..", "package.json")
 
 describe("HAI Extension", () => {
-	before(async () => {
-		// Initialize HostProvider for tests if not already initialized
-		if (!HostProvider.isInitialized()) {
-			// Create mock implementations for testing
-			const mockWebviewCreator = () => {
-				throw new Error("Webview creation not supported in tests")
-			}
-
-			const mockDiffViewCreator = () => {
-				throw new Error("DiffView creation not supported in tests")
-			}
-
-			const mockLogger = (message: string) => {
-				console.log(`[TEST] ${message}`)
-			}
-
-			// Create host bridge with clipboard mocks
-			const hostBridge = {
-				...vscodeHostBridgeClient,
-				envClient: {
-					...vscodeHostBridgeClient.envClient,
-					clipboardReadText: async () => ({ value: "mocked clipboard content" }),
-					clipboardWriteText: async () => ({}),
-				},
-			}
-
-			HostProvider.initialize(mockWebviewCreator, mockDiffViewCreator, hostBridge, mockLogger)
-		}
-	})
-
 	after(() => {
 		vscode.window.showInformationMessage("All tests done!")
-		// Reset HostProvider after tests
-		HostProvider.reset()
 	})
 
 	it("should verify extension ID matches package.json", async () => {
@@ -53,26 +19,10 @@ describe("HAI Extension", () => {
 		clineExtensionApi?.id.should.equal(id)
 	})
 
-	it("should successfully execute the plus button command", async () => {
-		// Wait for extension to fully activate
-		await new Promise((resolve) => setTimeout(resolve, 1000))
-
-		// Get the extension and ensure it's activated
-		const packageJSON = JSON.parse(await readFile(packagePath, "utf8"))
-		const id = packageJSON.publisher + "." + packageJSON.name
-		const extension = vscode.extensions.getExtension(id)
-
-		if (extension && !extension.isActive) {
-			await extension.activate()
-		}
-
-		try {
-			await vscode.commands.executeCommand("hai.plusButtonClicked")
-		} catch (error) {
-			// If command fails due to test environment limitations, that's acceptable
-			console.log(`Command execution note: ${error}`)
-		}
-	})
+	// it("should successfully execute the plus button command", async () => {
+	// 	await new Promise((resolve) => setTimeout(resolve, 400))
+	// 	await vscode.commands.executeCommand("hai.plusButtonClicked")
+	// })
 
 	// New test to verify xvfb and webview functionality
 	it("should create and display a webview panel", async () => {

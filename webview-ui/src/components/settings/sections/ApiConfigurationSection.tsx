@@ -1,15 +1,16 @@
+import { UpdateSettingsRequest } from "@shared/proto/cline/state"
+import { Mode } from "@shared/storage/types"
 import { VSCodeCheckbox } from "@vscode/webview-ui-toolkit/react"
-import { TabButton } from "../../mcp/configuration/McpConfigurationView"
-import ApiOptions from "../ApiOptions"
-import Section from "../Section"
+import { useState } from "react"
 import { useExtensionState } from "@/context/ExtensionStateContext"
 import { StateServiceClient } from "@/services/grpc-client"
-import { UpdateSettingsRequest } from "@shared/proto/cline/state"
-import { useState } from "react"
+import { TabButton } from "../../mcp/configuration/McpConfigurationView"
+import ApiOptions from "../ApiOptions"
+import EmbeddingOptions from "../EmbeddingOptions"
+import Section from "../Section"
 import { syncModeConfigurations } from "../utils/providerUtils"
 import { useApiConfigurationHandlers } from "../utils/useApiConfigurationHandlers"
-import { Mode } from "@shared/storage/types"
-import EmbeddingOptions from "../EmbeddingOptions"
+
 interface ApiConfigurationSectionProps {
 	renderSectionHeader: (tabId: string) => JSX.Element | null
 }
@@ -27,9 +28,9 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 					<div className="rounded-md mb-5 bg-[var(--vscode-panel-background)]">
 						<div className="flex gap-[1px] mb-[10px] -mt-2 border-0 border-b border-solid border-[var(--vscode-panel-border)]">
 							<TabButton
+								disabled={currentTab === "plan"}
 								isActive={currentTab === "plan"}
 								onClick={() => setCurrentTab("plan")}
-								disabled={currentTab === "plan"}
 								style={{
 									opacity: 1,
 									cursor: "pointer",
@@ -37,9 +38,9 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 								Plan Mode
 							</TabButton>
 							<TabButton
+								disabled={currentTab === "act"}
 								isActive={currentTab === "act"}
 								onClick={() => setCurrentTab("act")}
-								disabled={currentTab === "act"}
 								style={{
 									opacity: 1,
 									cursor: "pointer",
@@ -50,11 +51,11 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 
 						{/* Content container */}
 						<div className="-mb-3">
-							<ApiOptions showModelOptions={true} currentMode={currentTab} />
+							<ApiOptions currentMode={currentTab} showModelOptions={true} />
 						</div>
 					</div>
 				) : (
-					<ApiOptions showModelOptions={true} currentMode={mode} />
+					<ApiOptions currentMode={mode} showModelOptions={true} />
 				)}
 
 				{renderSectionHeader("embedding-config")}
@@ -65,8 +66,8 @@ const ApiConfigurationSection = ({ renderSectionHeader }: ApiConfigurationSectio
 
 				<div className="mb-[5px]">
 					<VSCodeCheckbox
-						className="mb-[5px]"
 						checked={planActSeparateModelsSetting}
+						className="mb-[5px]"
 						onChange={async (e: any) => {
 							const checked = e.target.checked === true
 							try {

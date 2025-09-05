@@ -219,6 +219,9 @@ EOF
 
 ## Basic PR Commands
 ```bash
+# Get current PR number
+gh pr view --json number -q .number
+
 # List open PRs
 gh pr list
 
@@ -328,7 +331,7 @@ Hey, the PR looks good overall but I'm concerned about removing those timeouts. 
 Could you add back the timeouts after focusing the sidebar? Something like:
 
 ```typescript
-await vscode.commands.executeCommand("claude-dev.SidebarProvider.focus")
+await vscode.commands.executeCommand("hai.SidebarProvider.focus")
 await setTimeoutPromise(100)  // Give UI time to update
 visibleWebview = WebviewProvider.getSidebarInstance()
 ```

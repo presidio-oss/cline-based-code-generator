@@ -1,7 +1,7 @@
 import { Controller } from "@core/controller"
-import { HAIAPI } from "./hai"
 import { sendChatButtonClickedEvent } from "@core/controller/ui/subscribeToChatButtonClicked"
 import { HostProvider } from "@/hosts/host-provider"
+import { HAIAPI } from "./hai"
 
 export function createHAIAPI(sidebarController: Controller): HAIAPI {
 	const api: HAIAPI = {

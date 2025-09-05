@@ -1,23 +1,27 @@
+import { FocusChainSettings } from "@/shared/FocusChainSettings"
 import type { McpHub } from "../../services/mcp/McpHub"
 import type { BrowserSettings } from "../../shared/BrowserSettings"
+import { ApiHandlerModel, ApiProviderInfo } from "../api"
 import { SYSTEM_PROMPT as haiSystemPromptV1 } from "./system.hai.v1"
 import { SYSTEM_PROMPT as haiSystemPromptV2 } from "./system.hai.v2"
 import { SYSTEM_PROMPT as haiSystemPromptV3 } from "./system.hai.v3"
-import { SYSTEM_PROMPT as haiDefaultSystemPrompt } from "./system"
+import { SYSTEM_PROMPT_GENERIC } from "./system-prompt/generic-system-prompt"
 
 export const haiSystemPrompt = (
 	cwd: string,
 	supportsBrowserUse: boolean,
 	mcpHub: McpHub,
 	browserSettings: BrowserSettings,
-	isNextGenModel: boolean = false,
+	_apiHandlerModel: ApiHandlerModel,
+	focusChainSettings: FocusChainSettings,
+	_providerInfo: ApiProviderInfo,
 
 	// TAG:HAI
 	supportsCodeIndex: boolean,
-	version?: string,
 	expertPrompt?: string,
 	isDeepCrawlEnabled?: boolean,
 	expertName?: string,
+	version?: string,
 ) => {
 	switch (version) {
 		case "v1":
@@ -26,9 +30,7 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
-				isNextGenModel,
-
-				// TAG:HAI
+				focusChainSettings,
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
@@ -40,9 +42,7 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
-				isNextGenModel,
-
-				// TAG:HAI
+				focusChainSettings,
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
@@ -54,23 +54,19 @@ export const haiSystemPrompt = (
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
-				isNextGenModel,
-
-				// TAG:HAI
+				focusChainSettings,
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,
 				expertName,
 			)
 		default:
-			return haiDefaultSystemPrompt(
+			return SYSTEM_PROMPT_GENERIC(
 				cwd,
 				supportsBrowserUse,
 				mcpHub,
 				browserSettings,
-				isNextGenModel,
-
-				// TAG:HAI
+				focusChainSettings,
 				supportsCodeIndex,
 				expertPrompt,
 				isDeepCrawlEnabled,

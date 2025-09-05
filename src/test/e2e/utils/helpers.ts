@@ -20,10 +20,6 @@ export class E2ETestHelper {
 	// Instance properties for caching
 	private cachedFrame: Frame | null = null
 
-	constructor() {
-		// Initialize any instance-specific state if needed
-	}
-
 	// Path utilities
 	public static escapeToPath(text: string): string {
 		return text.trim().toLowerCase().replaceAll(/\W/g, "_")
@@ -99,7 +95,7 @@ export class E2ETestHelper {
 		}
 	}
 
-	public static async signin(webview: Frame): Promise<void> {
+	public async signin(webview: Frame): Promise<void> {
 		const byokButton = webview.getByRole("button", {
 			name: "Use your own API key",
 		})
@@ -124,11 +120,11 @@ export class E2ETestHelper {
 	}
 
 	public static async runCommandPalette(page: Page, command: string): Promise<void> {
-		await page.locator("li").filter({ hasText: "[Extension Development Host]" }).first().click()
+		const editorMenu = page.locator("li").filter({ hasText: "[Extension Development Host]" }).first()
+		await editorMenu.click({ delay: 100 })
 		const editorSearchBar = page.getByRole("textbox", {
 			name: "Search files by name (append",
 		})
-		await expect(editorSearchBar).toBeVisible()
 		await editorSearchBar.click({ delay: 100 }) // Ensure focus
 		await editorSearchBar.fill(`>${command}`)
 		await page.keyboard.press("Enter")
@@ -141,11 +137,11 @@ export class E2ETestHelper {
 }
 
 /**
- * NOTE: Use the `e2e` test fixture for all E2E tests to test the Cline extension.
+ * NOTE: Use the `e2e` test fixture for all E2E tests to test the HAI extension.
  *
- * Extended Playwright test configuration for Cline E2E testing.
+ * Extended Playwright test configuration for HAI E2E testing.
  *
- * This test configuration provides a comprehensive setup for end-to-end testing of the Cline VS Code extension,
+ * This test configuration provides a comprehensive setup for end-to-end testing of the HAI VS Code extension,
  * including server mocking, temporary directories, VS Code instance management, and helper utilities.
  *
  * @extends test - Base Playwright test with multiple fixture extensions
@@ -158,8 +154,8 @@ export class E2ETestHelper {
  * - `openVSCode`: Function that returns a Promise resolving to an ElectronApplication instance
  * - `app`: ElectronApplication instance with automatic cleanup
  * - `helper`: E2ETestHelper instance for test utilities
- * - `page`: Playwright Page object representing the main VS Code window with Cline sidebar opened
- * - `sidebar`: Playwright Frame object representing the Cline extension's sidebar iframe
+ * - `page`: Playwright Page object representing the main VS Code window with HAI sidebar opened
+ * - `sidebar`: Playwright Frame object representing the HAI extension's sidebar iframe
  *
  * @returns Extended test object with all fixtures available for E2E test scenarios:
  * - **server**: Automatically starts and manages a ClineApiServerMock instance
@@ -169,8 +165,8 @@ export class E2ETestHelper {
  * - **openVSCode**: Factory function that launches VS Code with proper configuration for testing
  * - **app**: Manages the VS Code ElectronApplication lifecycle with automatic cleanup
  * - **helper**: Provides E2ETestHelper utilities for test operations
- * - **page**: Configures the main VS Code window with notifications disabled and Cline sidebar open
- * - **sidebar**: Provides access to the Cline extension's sidebar frame
+ * - **page**: Configures the main VS Code window with notifications disabled and HAI sidebar open
+ * - **sidebar**: Provides access to the HAI extension's sidebar frame
  *
  * @example
  * ```typescript
@@ -181,7 +177,7 @@ export class E2ETestHelper {
  *
  * @remarks
  * - Automatically handles VS Code download and setup
- * - Installs the Cline extension in development mode
+ * - Installs the HAI extension in development mode
  * - Records test videos for debugging
  * - Performs cleanup of temporary directories after each test
  * - Configures VS Code with disabled updates, workspace trust, and welcome screens
@@ -273,7 +269,6 @@ export const e2e = test
 	.extend({
 		page: async ({ app }, use) => {
 			const page = await app.firstWindow()
-			await E2ETestHelper.runCommandPalette(page, "notifications: toggle do not disturb")
 			await use(page)
 		},
 	})
@@ -287,9 +282,3 @@ export const e2e = test
 
 // Backward compatibility exports
 export const getResultsDir = E2ETestHelper.getResultsDir
-export const getSidebar = (page: Page) => new E2ETestHelper().getSidebar(page)
-export const rmForRetries = E2ETestHelper.rmForRetries
-export const signin = E2ETestHelper.signin
-export const openClineSidebar = E2ETestHelper.openClineSidebar
-export const runCommandPalette = E2ETestHelper.runCommandPalette
-export const waitUntil = E2ETestHelper.waitUntil

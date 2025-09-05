@@ -1,12 +1,12 @@
-import { updateGlobalState, updateWorkspaceState } from "@/core/storage/state"
-import { Controller } from ".."
 import { Empty } from "@shared/proto/cline/common"
 import { ManageIndexRequest } from "@shared/proto/cline/state"
-import * as vscode from "vscode"
-import { HaiBuildDefaults } from "@/shared/haiDefaults"
-import { fileExistsAtPath } from "@/utils/fs"
 import fs from "fs/promises"
 import * as path from "path"
+import { ShowMessageRequest, ShowMessageType } from "@/generated/nice-grpc/host/window"
+import { HostProvider } from "@/hosts/host-provider"
+import { HaiBuildDefaults } from "@/shared/haiDefaults"
+import { fileExistsAtPath } from "@/utils/fs"
+import { Controller } from ".."
 
 /**
  * Manages index operations (start, stop, reset)
@@ -19,7 +19,6 @@ export async function manageIndex(controller: Controller, request: ManageIndexRe
 		// Handle start index operation
 		if (request.startIndex) {
 			console.log("Starting index operation")
-			await updateGlobalState(controller.context, "codeIndexUserConfirmation", true)
 			controller.codeIndexAbortController = new AbortController()
 			controller.codeIndexBackground(undefined, undefined, true)
 		}
@@ -33,21 +32,30 @@ export async function manageIndex(controller: Controller, request: ManageIndexRe
 		// Handle reset index operation
 		if (request.resetIndex) {
 			console.log("Re-indexing workspace")
-			const resetIndex = await vscode.window.showWarningMessage(
-				"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning.",
-				"Yes",
-				"No",
-			)
+			const message =
+				"Are you sure you want to reindex this workspace? This will erase all existing indexed data and restart the indexing process from the beginning."
+			const resetIndex = (
+				await HostProvider.window.showMessage(
+					ShowMessageRequest.create({
+						type: ShowMessageType.WARNING,
+						message,
+						options: {
+							items: ["Yes", "No"],
+						},
+					}),
+				)
+			).selectedOption
 			if (resetIndex === "Yes") {
 				const haiFolderPath = path.join(controller.vsCodeWorkSpaceFolderFsPath, HaiBuildDefaults.defaultContextDirectory)
 				if (await fileExistsAtPath(haiFolderPath)) {
 					await fs.rmdir(haiFolderPath, { recursive: true })
 				}
 				controller.codeIndexAbortController = new AbortController()
-				await updateWorkspaceState(controller.context, "buildIndexProgress", {
+				controller.cacheService.setWorkspaceState("buildIndexProgress", {
 					progress: 0,
 					type: "codeIndex",
 					isInProgress: false,
+					ts: "",
 				})
 				controller.codeIndexBackground(undefined, undefined, true)
 			}

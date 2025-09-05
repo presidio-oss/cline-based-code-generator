@@ -41,6 +41,7 @@ enum ClineAsk {
   NEW_TASK = 13;
   CONDENSE = 14;
   REPORT_BUG = 15;
+  SUMMARIZE_TASK = 16;
 }
 
 // Enum for ClineSay types
@@ -72,6 +73,7 @@ enum ClineSay {
   CHECKPOINT_CREATED = 24;
   LOAD_MCP_DOCUMENTATION = 25;
   INFO = 26;
+  TASK_PROGRESS = 27;
 }
 
 // Enum for ClineSayTool tool types
@@ -241,7 +243,7 @@ service UiService {
   rpc onDidShowAnnouncement(EmptyRequest) returns (Boolean);
   
   // Subscribe to addToInput events (when user adds content via context menu)
-  rpc subscribeToAddToInput(EmptyRequest) returns (stream String);
+  rpc subscribeToAddToInput(StringRequest) returns (stream String);
   
   // Subscribe to MCP button clicked events
   rpc subscribeToMcpButtonClicked(WebviewProviderTypeRequest) returns (stream Empty);
@@ -261,11 +263,8 @@ service UiService {
   // Subscribe to settings button clicked events
   rpc subscribeToSettingsButtonClicked(WebviewProviderTypeRequest) returns (stream Empty);
   
-  // Subscribe to partial message updates (streaming Cline messages as they're built)
+  // Subscribe to partial message updates (streaming HAI messages as they're built)
   rpc subscribeToPartialMessage(EmptyRequest) returns (stream ClineMessage);
-  
-  // Subscribe to theme change events
-  rpc subscribeToTheme(EmptyRequest) returns (stream String);
   
   // Initialize webview when it launches
   rpc initializeWebview(EmptyRequest) returns (Empty);
@@ -287,4 +286,7 @@ service UiService {
   
   // Shows a toast notification with the specified message and type
   rpc showToast(ShowToastRequest) returns (Empty);
+  
+  // Opens the HAI walkthrough
+  rpc openWalkthrough(EmptyRequest) returns (Empty);
 }

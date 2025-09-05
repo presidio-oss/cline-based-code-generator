@@ -1,12 +1,12 @@
+import { fileExistsAtPath } from "@utils/fs"
 import fs from "fs/promises"
 import { join } from "path"
-import { fileExistsAtPath } from "@utils/fs"
 import { GIT_DISABLED_SUFFIX } from "./CheckpointGitOperations"
 
 /**
  * CheckpointExclusions Module
  *
- * A specialized module within Cline's Checkpoints system that manages file exclusion rules
+ * A specialized module within HAI's Checkpoints system that manages file exclusion rules
  * for the checkpoint tracking process. It provides:
  *
  * File Filtering:
@@ -96,7 +96,6 @@ function getBuildArtifactPatterns(): string[] {
 		"node_modules/",
 		"obj/",
 		"out/",
-		"pkg/",
 		"pycache/",
 		"target/dependency/",
 		"temp/",

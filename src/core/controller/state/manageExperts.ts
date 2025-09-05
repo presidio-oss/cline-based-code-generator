@@ -1,11 +1,10 @@
-import { openFile } from "@/integrations/misc/open-file"
-import { Controller, EXPERT_PROMPT_URI_SCHEME } from ".."
 import { ManageExpertsRequest, ManageExpertsResponse } from "@shared/proto/cline/state"
+import { ShowMessageType } from "@shared/proto/index.host"
 import { convertProtoToLocalExpertData } from "@shared/proto-conversions/experts/experts-conversion"
 import * as vscode from "vscode"
-import { getAllExtensionState, updateGlobalState } from "@/core/storage/state"
 import { HostProvider } from "@/hosts/host-provider"
-import { ShowMessageType } from "@shared/proto/index.host"
+import { openFile } from "@/integrations/misc/open-file"
+import { Controller, EXPERT_PROMPT_URI_SCHEME } from ".."
 
 /**
  * Manages experts operations (loadDefaultExperts, loadExperts)
@@ -77,13 +76,13 @@ export async function manageExperts(controller: Controller, request: ManageExper
 		// Handle deleteExpert operation
 		if (request.deleteExpert) {
 			const expertToDelete = request.deleteExpert.name
-			const { expertName } = await getAllExtensionState(controller.context, controller.workspaceId)
+			const expertName = controller.cacheService.getGlobalStateKey("expertName")
 			const expertManager = await controller.getExpertManager()
 			await expertManager.deleteExpert(controller.vsCodeWorkSpaceFolderFsPath, expertToDelete)
 			if (expertName === expertToDelete) {
-				await updateGlobalState(controller.context, "expertName", undefined)
-				await updateGlobalState(controller.context, "expertPrompt", undefined)
-				await updateGlobalState(controller.context, "isDeepCrawlEnabled", false)
+				controller.cacheService.setGlobalState("expertName", undefined)
+				controller.cacheService.setGlobalState("expertPrompt", undefined)
+				controller.cacheService.setGlobalState("isDeepCrawlEnabled", false)
 			}
 		}
 
@@ -91,9 +90,9 @@ export async function manageExperts(controller: Controller, request: ManageExper
 			const expertName = request.selectExpert.name
 			const expertPrompt = request.selectExpert.prompt
 			const isDeepCrawlEnabled = request.selectExpert.deepCrawl
-			await updateGlobalState(controller.context, "expertPrompt", expertPrompt || undefined)
-			await updateGlobalState(controller.context, "expertName", expertName || undefined)
-			await updateGlobalState(controller.context, "isDeepCrawlEnabled", isDeepCrawlEnabled)
+			controller.cacheService.setGlobalState("expertPrompt", expertPrompt || undefined)
+			controller.cacheService.setGlobalState("expertName", expertName || undefined)
+			controller.cacheService.setGlobalState("isDeepCrawlEnabled", isDeepCrawlEnabled)
 			if (!isDeepCrawlEnabled) {
 				await controller.updateExpertPrompt(expertPrompt, expertName)
 			}
@@ -128,6 +127,8 @@ export async function manageExperts(controller: Controller, request: ManageExper
 				request.addDocumentLink.url,
 			)
 		}
+
+		await controller.postStateToWebview()
 
 		return ManageExpertsResponse.create({
 			experts,

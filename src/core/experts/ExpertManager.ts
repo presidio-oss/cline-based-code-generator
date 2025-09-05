@@ -1,16 +1,18 @@
-import * as vscode from "vscode"
-import * as path from "path"
 import fs from "fs/promises"
+import * as path from "path"
 import { v4 as uuidv4 } from "uuid"
-import { DocumentLink, ExpertData, ExpertDataSchema, DocumentStatus } from "../../shared/experts"
-import { GlobalFileNames } from "../../global-constants"
+import * as vscode from "vscode"
+import { ShowMessageType } from "@/generated/grpc-js/host/window"
+import { HostProvider } from "@/hosts/host-provider"
 import { EmbeddingConfiguration } from "@/shared/embeddings"
-import { fileExistsAtPath } from "../../utils/fs"
+import { GlobalFileNames } from "../../global-constants"
 import { UrlContentFetcher } from "../../services/browser/UrlContentFetcher"
-import { ExpertFileManager } from "./ExpertFileManager"
+import { DocumentLink, DocumentStatus, ExpertData, ExpertDataSchema } from "../../shared/experts"
+import { fileExistsAtPath } from "../../utils/fs"
+import { CacheService } from "../storage/CacheService"
 import { DocumentProcessor } from "./DocumentProcessor"
+import { ExpertFileManager } from "./ExpertFileManager"
 import { VectorStoreManager } from "./VectorStoreManager"
-import { getAllExtensionState } from "../storage/state"
 
 /**
  * Manages experts, coordinating between file operations, document processing,
@@ -19,6 +21,7 @@ import { getAllExtensionState } from "../storage/state"
 export class ExpertManager {
 	private extensionContext: vscode.ExtensionContext
 	private workspaceId: string
+	private cacheService: CacheService
 	private fileManager: ExpertFileManager
 	private documentProcessor: DocumentProcessor
 	private vectorStoreManager?: VectorStoreManager
@@ -26,11 +29,12 @@ export class ExpertManager {
 	/**
 	 * Create a new ExpertManager
 	 */
-	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string) {
+	constructor(extensionContext: vscode.ExtensionContext, workspaceId: string, cacheService: CacheService) {
 		this.extensionContext = extensionContext
 		this.workspaceId = workspaceId
+		this.cacheService = cacheService
 		this.fileManager = new ExpertFileManager()
-		this.documentProcessor = new DocumentProcessor(extensionContext, workspaceId)
+		this.documentProcessor = new DocumentProcessor(extensionContext, workspaceId, cacheService)
 
 		// No embedding initialization here
 	}
@@ -258,11 +262,12 @@ export class ExpertManager {
 
 		if (isDeepCrawl) {
 			// For deepcrawl experts, use faiss status file
-			let faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
+			const faissStatusData = await this.fileManager.readStatusFile(faissStatusFilePath)
 
 			// Check max links
 			if (faissStatusData.length >= 3) {
-				vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
+				const message = "Maximum of 3 document links allowed. Additional links cannot be added."
+				await HostProvider.window.showMessage({ type: ShowMessageType.WARNING, message })
 				return
 			}
 
@@ -285,11 +290,12 @@ export class ExpertManager {
 			)
 		} else {
 			// For regular experts, use docs status file
-			let statusData = await this.fileManager.readStatusFile(statusFilePath)
+			const statusData = await this.fileManager.readStatusFile(statusFilePath)
 
 			// Check if the maximum number of document links is reached
 			if (statusData.length >= 3) {
-				vscode.window.showWarningMessage("Maximum of 3 document links allowed. Additional links cannot be added.")
+				const message = "Maximum of 3 document links allowed. Additional links cannot be added."
+				await HostProvider.window.showMessage({ type: ShowMessageType.WARNING, message })
 				return
 			}
 
@@ -371,7 +377,7 @@ export class ExpertManager {
 			return { experts: [], selectedExpert: null }
 		}
 
-		const { expertName } = await getAllExtensionState(this.extensionContext, this.workspaceId)
+		const expertName = this.cacheService.getGlobalStateKey("expertName")
 
 		const expertsDir = `${workspacePath}/${GlobalFileNames.experts}`
 		try {
@@ -470,9 +476,8 @@ export class ExpertManager {
 							selectedExpert = validExpert
 						}
 					} else {
-						vscode.window.showWarningMessage(
-							`Invalid expert data for ${folder}: ${validationResult.error.issues.map((i) => i.message).join(", ")}`,
-						)
+						const message = `Invalid expert data for ${folder}: ${validationResult.error.issues.map((i) => i.message).join(", ")}`
+						await HostProvider.window.showMessage({ type: ShowMessageType.WARNING, message })
 					}
 				} catch (err) {
 					console.error(`Error reading expert folder ${folder}:`, err)
@@ -585,7 +590,7 @@ export class ExpertManager {
 	): Promise<DocumentLink[]> {
 		try {
 			// Read status or initialize it
-			let statusLinks = await this.fileManager.readStatusFile(statusFilePath)
+			const statusLinks = await this.fileManager.readStatusFile(statusFilePath)
 
 			if (statusLinks.length === 0) {
 				// Process links from metadata, ensure they have filenames
@@ -741,9 +746,9 @@ export class ExpertManager {
 	 */
 	async loadDefaultExperts(): Promise<{ experts: ExpertData[]; selectedExpert: ExpertData | null }> {
 		const expertsDir = path.join(this.extensionContext.extensionPath, GlobalFileNames.defaultExperts)
-		let experts: ExpertData[] = []
+		const experts: ExpertData[] = []
 		let selectedExpert: ExpertData | null = null
-		const { expertName } = await getAllExtensionState(this.extensionContext, this.workspaceId)
+		const expertName = this.cacheService.getGlobalStateKey("expertName")
 
 		try {
 			const directoryEntries = await fs.readdir(expertsDir, { withFileTypes: true })
@@ -759,7 +764,7 @@ export class ExpertManager {
 				const iconPath = path.join(folderPath, ExpertFileManager.ICON)
 
 				// Read prompt
-				let prompt = await this.fileManager.readExpertPrompt(promptPath)
+				const prompt = await this.fileManager.readExpertPrompt(promptPath)
 				if (!prompt || !prompt.trim()) {
 					console.warn(`Empty prompt for ${folderName}, skipping...`)
 					continue

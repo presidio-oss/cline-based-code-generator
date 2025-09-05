@@ -75,6 +75,6 @@ function getEnvironmentConfig(env: Environment): EnvironmentConfig {
 const CLINE_ENVIRONMENT = getClineEnv()
 const _configCache = getEnvironmentConfig(CLINE_ENVIRONMENT)
 
-console.info("Cline environment:", CLINE_ENVIRONMENT)
+console.info("HAI environment:", CLINE_ENVIRONMENT)
 
 export const clineEnvConfig = _configCache

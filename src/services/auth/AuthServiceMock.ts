@@ -1,43 +1,36 @@
 import { String } from "@shared/proto/cline/common"
-import type vscode from "vscode"
 import { clineEnvConfig } from "@/config"
+import { Controller } from "@/core/controller"
 import { WebviewProvider } from "@/core/webview"
 import type { UserResponse } from "@/shared/ClineAccount"
-import { AuthService, type ServiceConfig } from "./AuthService"
+import { AuthService } from "./AuthService"
 
 export class AuthServiceMock extends AuthService {
-	protected constructor(context: vscode.ExtensionContext, config: ServiceConfig, authProvider?: any) {
-		super(context, config, authProvider)
+	protected constructor(controller: Controller) {
+		super(controller)
 
 		if (process?.env?.CLINE_ENVIRONMENT !== "local") {
 			throw new Error("AuthServiceMock should only be used in local environment for testing purposes.")
 		}
 
-		this._config = Object.assign({ URI: clineEnvConfig.apiBaseUrl }, config)
-
-		const providerName = "firebase"
-		this._setProvider(providerName)
-
-		this._context = context
+		this._config = { URI: clineEnvConfig.apiBaseUrl }
+		this._setProvider("firebase")
+		this._controller = controller
 	}
 
 	/**
 	 * Gets the singleton instance of AuthServiceMock.
 	 */
-	public static override getInstance(
-		context?: vscode.ExtensionContext,
-		config?: ServiceConfig,
-		authProvider?: any,
-	): AuthServiceMock {
+	public static override getInstance(controller?: Controller): AuthServiceMock {
 		if (!AuthServiceMock.instance) {
-			if (!context) {
-				console.warn("Extension context was not provided to AuthServiceMock.getInstance, using default context")
-				context = {} as vscode.ExtensionContext
+			if (!controller) {
+				console.error("Extension controller was not provided to AuthServiceMock.getInstance")
+				throw new Error("Extension controller was not provided to AuthServiceMock.getInstance")
 			}
-			AuthServiceMock.instance = new AuthServiceMock(context, config || {}, authProvider)
+			AuthServiceMock.instance = new AuthServiceMock(controller)
 		}
-		if (context !== undefined) {
-			AuthServiceMock.instance.context = context
+		if (controller !== undefined) {
+			AuthServiceMock.instance.controller = controller
 		}
 		return AuthServiceMock.instance
 	}

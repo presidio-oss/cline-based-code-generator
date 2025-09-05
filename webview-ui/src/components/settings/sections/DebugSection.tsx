@@ -1,7 +1,7 @@
-import { useExtensionState } from "@/context/ExtensionStateContext"
-import Section from "../Section"
 import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
 import { useState } from "react"
+import { useExtensionState } from "@/context/ExtensionStateContext"
+import Section from "../Section"
 
 interface DebugSectionProps {
 	onResetState: (resetGlobalState?: boolean) => Promise<void>
@@ -25,12 +25,13 @@ const DebugSection = ({ onResetState, renderSectionHeader }: DebugSectionProps) 
 				{/* <VSCodeButton
 					onClick={() => onResetState()}
 					className="mt-[5px] w-auto"
+					onClick={() => onResetState()}
 					style={{ backgroundColor: "var(--vscode-errorForeground)", color: "black" }}>
 					Reset Workspace State
 				</VSCodeButton> */}
 				<VSCodeButton
-					onClick={() => onResetState(true)}
 					className="mt-[5px] w-auto"
+					onClick={() => onResetState(true)}
 					style={{ backgroundColor: "var(--vscode-errorForeground)", color: "black" }}>
 					Reset State
 				</VSCodeButton>
@@ -39,9 +40,9 @@ const DebugSection = ({ onResetState, renderSectionHeader }: DebugSectionProps) 
 				</p>
 				<div style={{ position: "relative" }}>
 					<VSCodeButton
-						style={{ position: "absolute", top: "24px", right: "18px", padding: "4px 8px" }}
+						appearance="icon"
 						onClick={handleCopy}
-						appearance="icon">
+						style={{ position: "absolute", top: "24px", right: "18px", padding: "4px 8px" }}>
 						<span className="codicon codicon-copy" style={{ marginRight: "4px" }}></span>
 						{showCopied ? "Copied!" : "Copy"}
 					</VSCodeButton>
