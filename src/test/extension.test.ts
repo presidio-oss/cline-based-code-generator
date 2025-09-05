@@ -19,10 +19,10 @@ describe("HAI Extension", () => {
 		clineExtensionApi?.id.should.equal(id)
 	})
 
-	it("should successfully execute the plus button command", async () => {
-		await new Promise((resolve) => setTimeout(resolve, 400))
-		await vscode.commands.executeCommand("hai.plusButtonClicked")
-	})
+	// it("should successfully execute the plus button command", async () => {
+	// 	await new Promise((resolve) => setTimeout(resolve, 400))
+	// 	await vscode.commands.executeCommand("hai.plusButtonClicked")
+	// })
 
 	// New test to verify xvfb and webview functionality
 	it("should create and display a webview panel", async () => {

@@ -41,7 +41,7 @@ export function withRetry(options: RetryOptions = {}) {
 					let delay: number
 					if (retryAfter) {
 						// Handle both delta-seconds and Unix timestamp formats
-						const retryValue = parseInt(retryAfter, 10)
+						const retryValue = parseFloat(retryAfter)
 						if (retryValue > Date.now() / 1000) {
 							// Unix timestamp
 							delay = retryValue * 1000 - Date.now()
