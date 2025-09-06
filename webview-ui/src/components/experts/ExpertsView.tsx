@@ -64,7 +64,6 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 						setDefaultExperts(message.grpc_response.message.experts)
 					}
 					if (message.grpc_response?.message?.key === "customExpertsLoaded") {
-						console.log("Custom experts loaded:", message.grpc_response.message.experts)
 						setCustomExperts(message.grpc_response.message.experts)
 					}
 			}
@@ -734,6 +733,33 @@ const ExpertsView: React.FC<ExpertsViewProps> = ({ onDone }) => {
 								<p className="description-text">
 									Enabling deep crawl can explore websites beyond a single page by following internal links.
 								</p>
+								<div
+									className="info-message"
+									style={{
+										display: "flex",
+										alignItems: "flex-start",
+										gap: "8px",
+										color: "var(--vscode-foreground)",
+										fontSize: "12px",
+										padding: "8px",
+										backgroundColor: "var(--vscode-editorWidget-background)",
+										border: "1px solid var(--vscode-widget-border)",
+										borderRadius: "4px",
+										marginBottom: "16px",
+									}}>
+									<i
+										className="codicon codicon-info"
+										style={{
+											fontSize: "14px",
+											marginTop: "2px",
+											color: "var(--vscode-textLink-foreground)",
+										}}
+									/>
+									<span>
+										Please note: Experts feature won't work when 'Auto Compact' is enabled or when using a
+										local LLM model.
+									</span>
+								</div>
 							</FormGroup>
 							{deepCrawl && (
 								<>
