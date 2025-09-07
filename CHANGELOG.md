@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.9.0]
+
+### Added
+
+- Merged changes from Cline 3.26.6 (see [changelog](https://github.com/cline/cline/blob/main/CHANGELOG.md#3266)).
+
 ## [3.8.0]
 
 ### Added
