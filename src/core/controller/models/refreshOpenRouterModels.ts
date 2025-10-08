@@ -6,7 +6,12 @@ import axios from "axios"
 import cloneDeep from "clone-deep"
 import fs from "fs/promises"
 import path from "path"
-import { CLAUDE_SONNET_4_1M_TIERS, clineMicrowaveAlphaModelInfo, openRouterClaudeSonnet41mModelId } from "@/shared/api"
+import {
+	CLAUDE_SONNET_1M_TIERS,
+	clineMicrowaveAlphaModelInfo,
+	openRouterClaudeSonnet41mModelId,
+	openRouterClaudeSonnet451mModelId,
+} from "@/shared/api"
 import { Controller } from ".."
 
 type OpenRouterSupportedParams =
@@ -109,6 +114,8 @@ export async function refreshOpenRouterModels(
 				})
 
 				switch (rawModel.id) {
+					case "anthropic/claude-sonnet-4.5":
+					case "anthropic/claude-4.5-sonnet":
 					case "anthropic/claude-sonnet-4":
 					case "anthropic/claude-3-7-sonnet":
 					case "anthropic/claude-3-7-sonnet:beta":
@@ -204,11 +211,14 @@ export async function refreshOpenRouterModels(
 				models[rawModel.id] = modelInfo
 
 				// add custom :1m model variant
-				if (rawModel.id === "anthropic/claude-sonnet-4") {
-					const claudeSonnet41mModelInfo = cloneDeep(modelInfo)
-					claudeSonnet41mModelInfo.contextWindow = 1_000_000 // limiting providers to those that support 1m context window
-					claudeSonnet41mModelInfo.tiers = CLAUDE_SONNET_4_1M_TIERS
-					models[openRouterClaudeSonnet41mModelId] = claudeSonnet41mModelInfo
+				if (rawModel.id === "anthropic/claude-sonnet-4" || rawModel.id === "anthropic/claude-sonnet-4.5") {
+					const claudeSonnet1mModelInfo = cloneDeep(modelInfo)
+					claudeSonnet1mModelInfo.contextWindow = 1_000_000 // limiting providers to those that support 1m context window
+					claudeSonnet1mModelInfo.tiers = CLAUDE_SONNET_1M_TIERS
+					// sonnet 4
+					models[openRouterClaudeSonnet41mModelId] = claudeSonnet1mModelInfo
+					// sonnet 4.5
+					models[openRouterClaudeSonnet451mModelId] = claudeSonnet1mModelInfo
 				}
 			}
 
