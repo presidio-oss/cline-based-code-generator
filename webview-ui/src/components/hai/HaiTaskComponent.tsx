@@ -20,6 +20,18 @@ interface HaiTaskComponentProps {
 }
 
 const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, description, task, onTaskSelect, onTaskClick }) => {
+	// Helper function to strip HTML tags
+	const sanitizeHtml = (html: string): string => {
+		const tmp = document.createElement("DIV")
+		tmp.innerHTML = html
+		return tmp.textContent || tmp.innerText || ""
+	}
+
+	// Get clean versions for use in copy and execute
+	const cleanId = sanitizeHtml(id)
+	const cleanName = sanitizeHtml(name)
+	const cleanDescription = sanitizeHtml(description)
+
 	return (
 		<div
 			style={{
@@ -103,9 +115,9 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 					appearance="icon"
 					onClick={() => {
 						onTaskSelect({
-							context: `${name}: ${description}`,
+							context: `${cleanName}: ${cleanDescription}`,
 							...task.original,
-							id: `${prdId}-${id}-${task.original.id}`,
+							id: `${prdId}-${cleanId}-${task.original.id}`,
 						})
 					}}
 					title="Execute Task">
@@ -113,7 +125,7 @@ const HaiTaskComponent: React.FC<HaiTaskComponentProps> = ({ id, prdId, name, de
 				</VSCodeButton>
 				<CopyClipboard
 					onCopyContent={() => {
-						return `Task (${task.original.id}): ${task.original.list}\nAcceptance: ${task.original.acceptance}\n\nContext:\nStory (${id}): ${name}\nStory Acceptance: ${description}\n`
+						return `Task (${task.original.id}): ${task.original.list}\nAcceptance: ${task.original.acceptance}\n\nContext:\nStory (${cleanId}): ${cleanName}\nStory Acceptance: ${cleanDescription}\n`
 					}}
 					title="Copy Task"
 				/>
