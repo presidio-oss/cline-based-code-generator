@@ -189,6 +189,7 @@ export async function readStateFromDisk(context: ExtensionContext) {
 	// TAG:HAI - Get HAI-specific workspace state values
 	const buildContextOptions = context.workspaceState.get("buildContextOptions") as any | undefined
 	const buildIndexProgress = context.workspaceState.get("buildIndexProgress") as any | undefined
+	const haiConfig = context.workspaceState.get("haiConfig") as { folder?: string; ts?: string } | undefined
 
 	// Get mode-related configurations
 	const mode = context.globalState.get("mode") as Mode | undefined
@@ -465,6 +466,7 @@ export async function readStateFromDisk(context: ExtensionContext) {
 			expertName,
 			isDeepCrawlEnabled,
 		},
+		haiConfig,
 
 		// Embedding configuration
 		embeddingConfiguration: {
