@@ -46,8 +46,6 @@ export async function loadHaiTasks(controller: Controller, request: HaiTasksLoad
 
 			const fileUri = await vscode.window.showOpenDialog(options)
 			if (fileUri && fileUri[0]) {
-				console.log("Selected folder: " + fileUri[0].fsPath)
-
 				const ts = getFormattedDateTime()
 				await fetchTaskFromSelectedFolder(controller, fileUri[0].fsPath, ts)
 				await controller.context.globalState.update("haiConfig", { folder: fileUri[0].fsPath, ts })

@@ -71,7 +71,6 @@ const AppContent = () => {
 	useEffect(() => {
 		const unsubscribe = UiServiceClient.subscribeToHaiTaskData({} as EmptyRequest, {
 			onResponse: (data) => {
-				console.log("[DEBUG] Received HAI task data:", data)
 				// Convert proto stories back to IHaiStory format
 				const stories: IHaiStory[] = data.stories.map((story) => ({
 					id: story.id,
