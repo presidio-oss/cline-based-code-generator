@@ -212,6 +212,7 @@ const AppContent = () => {
 					)}
 					{/* Do not conditionally load ChatView, it's expensive and there's state we don't want to lose (user input, disableInput, askResponse promise, etc.) */}
 					<ChatView
+						haiConfigFolder={haiConfigFolder}
 						hideAnnouncement={hideAnnouncement}
 						isHidden={showSettings || showHistory || showMcp || showAccount || showExperts || showHaiTaskList}
 						onTaskSelect={(selectedTask) => {

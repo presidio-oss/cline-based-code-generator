@@ -398,6 +398,9 @@ export class UiServiceClient extends ProtoBusClient {
     static subscribeToHaiTaskData(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.HaiTaskDataResponse>): ()=>void {
 		return this.makeStreamingRequest("subscribeToHaiTaskData", request, proto.cline.EmptyRequest.toJSON, proto.cline.HaiTaskDataResponse.fromJSON, callbacks)
 	}
+    static async updateTaskStatus(request: proto.cline.UpdateTaskStatusRequest): Promise<proto.cline.UpdateTaskStatusResponse> {
+		return this.makeUnaryRequest("updateTaskStatus", request, proto.cline.UpdateTaskStatusRequest.toJSON, proto.cline.UpdateTaskStatusResponse.fromJSON)
+	}
 }
 export class WebServiceClient extends ProtoBusClient {
 	static override serviceName: string = "cline.WebService"

@@ -267,6 +267,20 @@ message HaiTaskDataResponse {
   string timestamp = 3;
 }
 
+// Request to update task status
+message UpdateTaskStatusRequest {
+  Metadata metadata = 1;
+  string folder_path = 2;
+  string task_id = 3;
+  string status = 4;
+}
+
+// Response for task status update
+message UpdateTaskStatusResponse {
+  bool success = 1;
+  string message = 2;
+}
+
 // UiService provides methods for managing UI interactions
 service UiService {
   // Scrolls to a specific settings section in the settings view
@@ -334,4 +348,7 @@ service UiService {
 
   // Subscribe to HAI task data updates (streams task data when available)
   rpc subscribeToHaiTaskData(EmptyRequest) returns (stream HaiTaskDataResponse);
+
+  // Update the status of a HAI task
+  rpc updateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
 }
