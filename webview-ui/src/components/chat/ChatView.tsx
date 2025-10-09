@@ -5,7 +5,9 @@ import type { ClineApiReqInfo, ClineMessage } from "@shared/ExtensionMessage"
 import { getApiMetrics } from "@shared/getApiMetrics"
 import { IHaiClineTask } from "@shared/hai-task"
 import { BooleanRequest, StringRequest } from "@shared/proto/cline/common"
-import { useCallback, useEffect, useMemo } from "react"
+import type { UpdateTaskStatusRequest } from "@shared/proto/cline/ui"
+import { VSCodeButton } from "@vscode/webview-ui-toolkit/react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useMount } from "react-use"
 import { normalizeApiConfiguration } from "@/components/settings/utils/providerUtils"
 import { useExtensionState } from "@/context/ExtensionStateContext"
@@ -39,10 +41,12 @@ interface ChatViewProps {
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
 	showHistoryView: () => void
+	showHaiTaskListView: () => void
 
 	// TAG:HAI
 	onTaskSelect: (task: IHaiClineTask | null) => void
 	selectedHaiTask: IHaiClineTask | null
+	haiConfigFolder: string
 }
 
 // Use constants from the imported module
@@ -56,8 +60,10 @@ const ChatView = ({
 	showAnnouncement,
 	hideAnnouncement,
 	showHistoryView,
+	showHaiTaskListView,
 	onTaskSelect,
 	selectedHaiTask,
+	haiConfigFolder,
 }: ChatViewProps) => {
 	const {
 		version,
@@ -114,11 +120,25 @@ const ChatView = ({
 		textAreaRef,
 	} = chatState
 
-	// TAG:HAI
+	// TAG:HAI - Track last successfully executed task ID
+	const [lastSuccessfullyExecutedTaskId, setLastSuccessfullyExecutedTaskId] = useState<string | undefined>(undefined)
+
+	// TAG:HAI - Set input value when task is selected
 	useEffect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
 		selectedHaiTask && setInputValue(`Task: ${selectedHaiTask.list} ${selectedHaiTask.acceptance} ${selectedHaiTask.context}`)
 	}, [selectedHaiTask])
+
+	// TAG:HAI - Track when a task completes successfully
+	useEffect(() => {
+		if (selectedHaiTask && messages.length > 0) {
+			const lastMessage = messages[messages.length - 1]
+			// Check if the last message is a completion_result (task completed)
+			if ((lastMessage.ask === "completion_result" || lastMessage.say === "completion_result") && !lastMessage.partial) {
+				setLastSuccessfullyExecutedTaskId(selectedHaiTask.id)
+			}
+		}
+	}, [messages, selectedHaiTask])
 
 	useEffect(() => {
 		const handleCopy = async (e: ClipboardEvent) => {
@@ -414,7 +434,11 @@ const ChatView = ({
 								use MCP to create new tools and extend my own capabilities.
 							</p>
 						</div>
-						<QuickActions onTaskSelect={onTaskSelect} showHistoryView={showHistoryView} />
+						<QuickActions
+							onTaskSelect={onTaskSelect}
+							showHaiTaskListView={showHaiTaskListView}
+							showHistoryView={showHistoryView}
+						/>
 					</div>
 				)}
 				{task && (
@@ -430,6 +454,47 @@ const ChatView = ({
 			</div>
 			<footer className="bg-[var(--vscode-sidebar-background)]" style={{ gridRow: "2" }}>
 				<AutoApproveBar />
+				{/* TAG:HAI - Mark task as completed UI */}
+				{selectedHaiTask?.id &&
+					lastSuccessfullyExecutedTaskId &&
+					selectedHaiTask?.id === lastSuccessfullyExecutedTaskId &&
+					!enableButtons && (
+						<div style={{ padding: "12px 15px 0px" }}>
+							<p style={{ margin: "0px 0px 6px" }}>Do you want to mark this task as completed?</p>
+							<div style={{ display: "flex" }}>
+								<VSCodeButton
+									appearance="primary"
+									onClick={async () => {
+										try {
+											const request: UpdateTaskStatusRequest = {
+												metadata: {},
+												folderPath: haiConfigFolder,
+												taskId: selectedHaiTask?.id,
+												status: "Completed",
+											}
+											await UiServiceClient.updateTaskStatus(request)
+											setLastSuccessfullyExecutedTaskId(undefined)
+										} catch (error) {
+											console.error("Failed to mark task as completed:", error)
+										}
+									}}
+									style={{
+										marginRight: "6px",
+										flexGrow: 1,
+									}}>
+									Yes
+								</VSCodeButton>
+								<VSCodeButton
+									appearance="secondary"
+									onClick={() => setLastSuccessfullyExecutedTaskId(undefined)}
+									style={{
+										flexGrow: 1,
+									}}>
+									No
+								</VSCodeButton>
+							</div>
+						</div>
+					)}
 				<ActionButtons
 					chatState={chatState}
 					messageHandlers={messageHandlers}

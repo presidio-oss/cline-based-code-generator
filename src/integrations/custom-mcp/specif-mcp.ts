@@ -4,7 +4,7 @@ export const specifMcp = {
 	name: "Specifai MCP Server",
 	author: "Presidio",
 	description:
-		"Comprehensive Specifai project integration enabling document access, content retrieval, metadata extraction, versioning support, and seamless interoperability with any MCP-compatible AI assistant",
+		"Access and interact with AI-generated project requirements from HAI Specifai. Retrieve BRDs, PRDs, user stories, tasks, and search across all specification documents to enhance your development workflow with structured requirements management.",
 	codiconIcon: "codicon codicon-extensions",
 	logoUrl: "https://avatars.githubusercontent.com/u/188236679",
 	category: "developer-tools",

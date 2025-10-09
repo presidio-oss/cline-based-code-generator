@@ -230,6 +230,12 @@
 				"category": "HAI"
 			},
 			{
+				"command": "hai.haiBuildTaskListClicked",
+				"title": "HAI Tasks",
+				"icon": "$(checklist)",
+				"category": "HAI Build"
+			},
+			{
 				"command": "hai.expertsButtonClicked",
 				"title": "Experts",
 				"icon": "$(robot)",
@@ -266,23 +272,28 @@
 					"when": "view == hai.SidebarProvider"
 				},
 				{
+					"command": "hai.haiBuildTaskListClicked",
+					"group": "navigation@2",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
 					"command": "hai.mcpButtonClicked",
-					"group": "navigation@2",
-					"when": "view == hai.SidebarProvider"
-				},
-				{
-					"command": "hai.expertsButtonClicked",
-					"group": "navigation@2",
-					"when": "view == hai.SidebarProvider"
-				},
-				{
-					"command": "hai.historyButtonClicked",
 					"group": "navigation@3",
 					"when": "view == hai.SidebarProvider"
 				},
 				{
-					"command": "hai.popoutButtonClicked",
+					"command": "hai.expertsButtonClicked",
+					"group": "navigation@3",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
+					"command": "hai.historyButtonClicked",
 					"group": "navigation@4",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
+					"command": "hai.popoutButtonClicked",
+					"group": "navigation@5",
 					"when": "view == hai.SidebarProvider"
 				},
 				{
@@ -298,23 +309,28 @@
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				},
 				{
+					"command": "hai.haiBuildTaskListClicked",
+					"group": "navigation@2",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
 					"command": "hai.expertsButtonClicked",
-					"group": "navigation@2",
-					"when": "activeWebviewPanelId == hai.TabPanelProvider"
-				},
-				{
-					"command": "hai.mcpButtonClicked",
-					"group": "navigation@2",
-					"when": "activeWebviewPanelId == hai.TabPanelProvider"
-				},
-				{
-					"command": "hai.historyButtonClicked",
 					"group": "navigation@3",
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				},
 				{
-					"command": "hai.popoutButtonClicked",
+					"command": "hai.mcpButtonClicked",
+					"group": "navigation@3",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.historyButtonClicked",
 					"group": "navigation@4",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
+				{
+					"command": "hai.popoutButtonClicked",
+					"group": "navigation@5",
 					"when": "activeWebviewPanelId == hai.TabPanelProvider"
 				},
 				{

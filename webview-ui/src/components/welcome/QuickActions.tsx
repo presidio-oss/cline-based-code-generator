@@ -1,11 +1,12 @@
-import { memo } from "react"
 import { IHaiClineTask } from "@shared/hai-task"
+import { memo } from "react"
 import { FEATURE_TILES, MAIN_CARDS } from "../../utils/constants"
 import QuickActionTile from "./QuickActionTile"
 
 interface QuickActionProps {
 	onTaskSelect: (task: IHaiClineTask) => void
 	showHistoryView: () => void
+	showHaiTaskListView: () => void
 }
 
 const createHaiTask = (title: string, description: string, context: string): IHaiClineTask => ({
@@ -16,15 +17,23 @@ const createHaiTask = (title: string, description: string, context: string): IHa
 	status: "",
 })
 
-const QuickActions = ({ onTaskSelect, showHistoryView }: QuickActionProps) => {
+const QuickActions = ({ onTaskSelect, showHistoryView, showHaiTaskListView }: QuickActionProps) => {
 	const handleCardClick = (cardName: string) => {
 		const messageTypes = {
 			"View Conversation": "openHistory",
+			"View Hai Tasks": "openHaiTasks",
 		} as const
 
 		const messageType = messageTypes[cardName as keyof typeof messageTypes]
-		if (messageType) {
-			showHistoryView()
+		switch (messageType) {
+			case "openHistory":
+				showHistoryView()
+				break
+			case "openHaiTasks":
+				showHaiTaskListView()
+				break
+			default:
+				console.warn(`Unhandled card name: ${cardName}`)
 		}
 	}
 
@@ -43,12 +52,12 @@ const QuickActions = ({ onTaskSelect, showHistoryView }: QuickActionProps) => {
 			<div style={{ padding: "0px 20px 0 20px" }}>
 				{MAIN_CARDS.map((card) => (
 					<QuickActionTile
-						key={card.name}
 						className="getting-started-item"
-						icon={card.icon}
-						title={card.title}
 						description={card.description}
+						icon={card.icon}
+						key={card.name}
 						onClick={() => handleCardClick(card.name)}
+						title={card.title}
 					/>
 				))}
 
@@ -83,11 +92,11 @@ const QuickActions = ({ onTaskSelect, showHistoryView }: QuickActionProps) => {
 				<div className="tiles-container">
 					{FEATURE_TILES.map((tile) => (
 						<QuickActionTile
-							key={tile.title}
-							icon={tile.icon}
-							title={tile.title}
 							description={tile.description}
+							icon={tile.icon}
+							key={tile.title}
 							onClick={() => onTaskSelect(createHaiTask(tile.title, tile.description, tile.context))}
+							title={tile.title}
 						/>
 					))}
 				</div>

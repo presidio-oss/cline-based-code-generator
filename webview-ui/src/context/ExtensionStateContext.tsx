@@ -54,6 +54,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	showHistory: boolean
 	showAccount: boolean
 	showExperts: boolean
+	showHaiTaskList: boolean
 	showAnnouncement: boolean
 
 	// Setters
@@ -88,6 +89,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	navigateToHistory: () => void
 	navigateToAccount: () => void
 	navigateToExperts: () => void
+	navigateToHaiTaskList: () => void
 	navigateToChat: () => void
 
 	// Hide functions
@@ -95,6 +97,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	hideHistory: () => void
 	hideAccount: () => void
 	hideExperts: () => void
+	hideHaiTaskList: () => void
 	hideAnnouncement: () => void
 	closeMcpView: () => void
 
@@ -102,8 +105,15 @@ interface ExtensionStateContextType extends ExtensionState {
 	onRelinquishControl: (callback: () => void) => () => void
 
 	// TAG:HAI
+	haiConfig: { [key in string]: any }
+	detailedStory: any | null
+	detailedTask: any | null
 	setEnableInlineEdit: (value: boolean) => void
 	setBuildContextOptions: (value: HaiBuildContextOptions) => void
+	setHaiConfig: (value: { [key in string]: any }) => void
+	setDetailedStory: (value: any | null) => void
+	setDetailedTask: (value: any | null) => void
+	setShowHaiTaskList: (value: boolean) => void
 }
 
 const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -121,6 +131,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [showHistory, setShowHistory] = useState(false)
 	const [showAccount, setShowAccount] = useState(false)
 	const [showExperts, setShowExperts] = useState(false)
+	const [showHaiTaskList, setShowHaiTaskList] = useState(false)
 	const [showAnnouncement, setShowAnnouncement] = useState(false)
 
 	// Helper for MCP view
@@ -134,6 +145,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const hideHistory = useCallback(() => setShowHistory(false), [setShowHistory])
 	const hideAccount = useCallback(() => setShowAccount(false), [setShowAccount])
 	const hideExperts = useCallback(() => setShowExperts(false), [setShowExperts])
+	const hideHaiTaskList = useCallback(() => setShowHaiTaskList(false), [setShowHaiTaskList])
 	const hideAnnouncement = useCallback(() => setShowAnnouncement(false), [setShowAnnouncement])
 
 	// Navigation functions
@@ -143,12 +155,13 @@ export const ExtensionStateContextProvider: React.FC<{
 			setShowHistory(false)
 			setShowAccount(false)
 			setShowExperts(false)
+			setShowHaiTaskList(false)
 			if (tab) {
 				setMcpTab(tab)
 			}
 			setShowMcp(true)
 		},
-		[setShowMcp, setMcpTab, setShowSettings, setShowHistory, setShowAccount, setShowExperts],
+		[setShowMcp, setMcpTab, setShowSettings, setShowHistory, setShowAccount, setShowExperts, setShowHaiTaskList],
 	)
 
 	const navigateToSettings = useCallback(() => {
@@ -156,32 +169,45 @@ export const ExtensionStateContextProvider: React.FC<{
 		closeMcpView()
 		setShowAccount(false)
 		setShowExperts(false)
+		setShowHaiTaskList(false)
 		setShowSettings(true)
-	}, [setShowSettings, setShowHistory, closeMcpView, setShowAccount, setShowExperts])
+	}, [setShowSettings, setShowHistory, closeMcpView, setShowAccount, setShowExperts, setShowHaiTaskList])
 
 	const navigateToHistory = useCallback(() => {
 		setShowSettings(false)
 		closeMcpView()
 		setShowAccount(false)
 		setShowExperts(false)
+		setShowHaiTaskList(false)
 		setShowHistory(true)
-	}, [setShowSettings, closeMcpView, setShowAccount, setShowExperts, setShowHistory])
+	}, [setShowSettings, closeMcpView, setShowAccount, setShowExperts, setShowHaiTaskList, setShowHistory])
 
 	const navigateToAccount = useCallback(() => {
 		setShowSettings(false)
 		closeMcpView()
 		setShowHistory(false)
 		setShowExperts(false)
+		setShowHaiTaskList(false)
 		setShowAccount(true)
-	}, [setShowSettings, closeMcpView, setShowHistory, setShowExperts, setShowAccount])
+	}, [setShowSettings, closeMcpView, setShowHistory, setShowExperts, setShowHaiTaskList, setShowAccount])
 
 	const navigateToExperts = useCallback(() => {
 		setShowSettings(false)
 		closeMcpView()
 		setShowHistory(false)
 		setShowAccount(false)
+		setShowHaiTaskList(false)
 		setShowExperts(true)
-	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowExperts])
+	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowHaiTaskList, setShowExperts])
+
+	const navigateToHaiTaskList = useCallback(() => {
+		setShowSettings(false)
+		closeMcpView()
+		setShowHistory(false)
+		setShowAccount(false)
+		setShowExperts(false)
+		setShowHaiTaskList(true)
+	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowExperts, setShowHaiTaskList])
 
 	const navigateToChat = useCallback(() => {
 		setShowSettings(false)
@@ -189,7 +215,8 @@ export const ExtensionStateContextProvider: React.FC<{
 		setShowHistory(false)
 		setShowAccount(false)
 		setShowExperts(false)
-	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowExperts])
+		setShowHaiTaskList(false)
+	}, [setShowSettings, closeMcpView, setShowHistory, setShowAccount, setShowExperts, setShowHaiTaskList])
 
 	const [state, setState] = useState<ExtensionState>({
 		version: "",
@@ -254,6 +281,11 @@ export const ExtensionStateContextProvider: React.FC<{
 	const [mcpServers, setMcpServers] = useState<McpServer[]>([])
 	const [mcpMarketplaceCatalog, setMcpMarketplaceCatalog] = useState<McpMarketplaceCatalog>({ items: [] })
 
+	// TAG:HAI - Add HAI-specific state
+	const [haiConfig, setHaiConfig] = useState<{ [key in string]: any }>({})
+	const [detailedStory, setDetailedStory] = useState<any | null>(null)
+	const [detailedTask, setDetailedTask] = useState<any | null>(null)
+
 	// References to store subscription cancellation functions
 	const stateSubscriptionRef = useRef<(() => void) | null>(null)
 
@@ -264,6 +296,7 @@ export const ExtensionStateContextProvider: React.FC<{
 	const chatButtonUnsubscribeRef = useRef<(() => void) | null>(null)
 	const accountButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const expertsButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
+	const haiBuildTaskListClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const settingsButtonClickedSubscriptionRef = useRef<(() => void) | null>(null)
 	const partialMessageUnsubscribeRef = useRef<(() => void) | null>(null)
 	const mcpMarketplaceUnsubscribeRef = useRef<(() => void) | null>(null)
@@ -540,6 +573,24 @@ export const ExtensionStateContextProvider: React.FC<{
 			},
 		})
 
+		// Set up HAI Build Task List button clicked subscription
+		haiBuildTaskListClickedSubscriptionRef.current = UiServiceClient.subscribeToHaiBuildTaskListClicked(
+			EmptyRequest.create(),
+			{
+				onResponse: () => {
+					// When HAI Build Task List button is clicked, navigate to task list view
+					console.log("[DEBUG] Received HAI Build Task List button clicked event from gRPC stream")
+					navigateToHaiTaskList()
+				},
+				onError: (error) => {
+					console.error("Error in HAI Build Task List button clicked subscription:", error)
+				},
+				onComplete: () => {
+					console.log("HAI Build Task List button clicked subscription completed")
+				},
+			},
+		)
+
 		// Fetch available terminal profiles on launch
 		StateServiceClient.getAvailableTerminalProfiles(EmptyRequest.create({}))
 			.then((response) => {
@@ -607,6 +658,10 @@ export const ExtensionStateContextProvider: React.FC<{
 				expertsButtonClickedSubscriptionRef.current()
 				expertsButtonClickedSubscriptionRef.current = null
 			}
+			if (haiBuildTaskListClickedSubscriptionRef.current) {
+				haiBuildTaskListClickedSubscriptionRef.current()
+				haiBuildTaskListClickedSubscriptionRef.current = null
+			}
 			if (settingsButtonClickedSubscriptionRef.current) {
 				settingsButtonClickedSubscriptionRef.current()
 				settingsButtonClickedSubscriptionRef.current = null
@@ -644,7 +699,15 @@ export const ExtensionStateContextProvider: React.FC<{
 				didBecomeVisibleUnsubscribeRef.current = null
 			}
 		}
-	}, [])
+	}, [
+		navigateToMcp,
+		navigateToSettings,
+		navigateToHistory,
+		navigateToAccount,
+		navigateToExperts,
+		navigateToHaiTaskList,
+		navigateToChat,
+	])
 
 	const refreshOpenRouterModels = useCallback(() => {
 		ModelsServiceClient.refreshOpenRouterModels(EmptyRequest.create({}))
@@ -679,6 +742,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		showHistory,
 		showAccount,
 		showExperts,
+		showHaiTaskList,
 		showAnnouncement,
 		globalClineRulesToggles: state.globalClineRulesToggles || {},
 		localClineRulesToggles: state.localClineRulesToggles || {},
@@ -695,6 +759,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		navigateToHistory,
 		navigateToAccount,
 		navigateToExperts,
+		navigateToHaiTaskList,
 		navigateToChat,
 
 		// Hide functions
@@ -702,6 +767,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		hideHistory,
 		hideAccount,
 		hideExperts,
+		hideHaiTaskList,
 		hideAnnouncement,
 		setShowAnnouncement,
 		setShouldShowAnnouncement: (value) =>
@@ -755,6 +821,9 @@ export const ExtensionStateContextProvider: React.FC<{
 		setUserInfo: (userInfo?: UserInfo) => setState((prevState) => ({ ...prevState, userInfo })),
 
 		// TAG:HAI
+		haiConfig,
+		detailedStory,
+		detailedTask,
 		setEnableInlineEdit: (value) =>
 			setState((prevState) => ({
 				...prevState,
@@ -765,6 +834,10 @@ export const ExtensionStateContextProvider: React.FC<{
 				...prevState,
 				buildContextOptions: value,
 			})),
+		setHaiConfig,
+		setDetailedStory,
+		setDetailedTask,
+		setShowHaiTaskList,
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>
