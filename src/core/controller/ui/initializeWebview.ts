@@ -223,6 +223,22 @@ export async function initializeWebview(controller: Controller, _request: EmptyR
 		// Silently refresh MCP marketplace catalog
 		controller.silentlyRefreshMcpMarketplace()
 
+		// TAG:HAI - Restore HAI tasks if available
+		const haiConfig = controller.cacheService.getWorkspaceStateKey("haiConfig")
+		if (haiConfig?.folder) {
+			// Import loadHaiTasks to restore tasks
+			const { loadHaiTasks } = await import("./loadHaiTasks")
+			try {
+				await loadHaiTasks(controller, {
+					metadata: {},
+					folderPath: haiConfig.folder,
+					loadDefault: true,
+				})
+			} catch (error) {
+				console.error("Failed to restore HAI tasks on initialization:", error)
+			}
+		}
+
 		// Initialize telemetry service with user's current setting
 		controller.getStateToPostToWebview().then((state) => {
 			const { telemetrySetting } = state

@@ -1095,6 +1095,7 @@ export class CacheService {
 			// TAG:HAI - HAI-specific workspace state fields
 			buildContextOptions: buildContextOptions,
 			buildIndexProgress: buildIndexProgress,
+			haiConfig: state.haiConfig,
 		} satisfies Partial<LocalState>
 
 		Object.assign(this.workspaceStateCache, workspaceStateFields)

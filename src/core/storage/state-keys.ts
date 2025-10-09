@@ -213,6 +213,7 @@ export type LocalStateKey =
 	| "workflowToggles"
 	| "buildContextOptions"
 	| "buildIndexProgress"
+	| "haiConfig"
 
 export interface GlobalState {
 	awsRegion: string | undefined
@@ -418,4 +419,5 @@ export interface LocalState {
 	// TAG:HAI
 	buildContextOptions: HaiBuildContextOptions
 	buildIndexProgress: HaiBuildIndexProgress
+	haiConfig: { folder?: string; ts?: string } | undefined
 }

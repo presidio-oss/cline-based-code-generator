@@ -29,12 +29,12 @@ export async function loadHaiTasks(controller: Controller, request: HaiTasksLoad
 			// Load from the provided path (refresh case)
 			const ts = getFormattedDateTime()
 			await fetchTaskFromSelectedFolder(controller, folderPath, ts)
-			await controller.context.globalState.update("haiConfig", { folder: folderPath, ts })
+			controller.cacheService.setWorkspaceState("haiConfig", { folder: folderPath, ts })
 		} else if (folderPath) {
 			// Load from specific path
 			const ts = getFormattedDateTime()
 			await fetchTaskFromSelectedFolder(controller, folderPath, ts)
-			await controller.context.globalState.update("haiConfig", { folder: folderPath, ts })
+			controller.cacheService.setWorkspaceState("haiConfig", { folder: folderPath, ts })
 		} else {
 			// Show folder picker
 			const options: vscode.OpenDialogOptions = {
@@ -48,7 +48,7 @@ export async function loadHaiTasks(controller: Controller, request: HaiTasksLoad
 			if (fileUri && fileUri[0]) {
 				const ts = getFormattedDateTime()
 				await fetchTaskFromSelectedFolder(controller, fileUri[0].fsPath, ts)
-				await controller.context.globalState.update("haiConfig", { folder: fileUri[0].fsPath, ts })
+				controller.cacheService.setWorkspaceState("haiConfig", { folder: fileUri[0].fsPath, ts })
 			}
 		}
 
