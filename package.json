@@ -230,6 +230,12 @@
 				"category": "HAI"
 			},
 			{
+				"command": "hai.haiBuildTaskListClicked",
+				"title": "HAI Tasks",
+				"icon": "$(checklist)",
+				"category": "HAI Build"
+			},
+			{
 				"command": "hai.expertsButtonClicked",
 				"title": "Experts",
 				"icon": "$(robot)",
@@ -266,6 +272,11 @@
 					"when": "view == hai.SidebarProvider"
 				},
 				{
+					"command": "hai.haiBuildTaskListClicked",
+					"group": "navigation@1",
+					"when": "view == hai.SidebarProvider"
+				},
+				{
 					"command": "hai.mcpButtonClicked",
 					"group": "navigation@2",
 					"when": "view == hai.SidebarProvider"
@@ -292,6 +303,11 @@
 				}
 			],
 			"editor/title": [
+				{
+					"command": "hai.haiBuildTaskListClicked",
+					"group": "navigation@1",
+					"when": "activeWebviewPanelId == hai.TabPanelProvider"
+				},
 				{
 					"command": "hai.plusButtonClicked",
 					"group": "navigation@1",

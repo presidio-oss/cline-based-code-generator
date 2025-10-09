@@ -9,6 +9,7 @@ import * as vscode from "vscode"
 import { sendAccountButtonClickedEvent } from "./core/controller/ui/subscribeToAccountButtonClicked"
 import { sendChatButtonClickedEvent } from "./core/controller/ui/subscribeToChatButtonClicked"
 import { sendExpertsButtonClickedEvent } from "./core/controller/ui/subscribeToExpertsButtonClicked"
+import { sendHaiBuildTaskListClickedEvent } from "./core/controller/ui/subscribeToHaiBuildTaskListClicked"
 import { sendHistoryButtonClickedEvent } from "./core/controller/ui/subscribeToHistoryButtonClicked"
 import { sendMcpButtonClickedEvent } from "./core/controller/ui/subscribeToMcpButtonClicked"
 import { sendSettingsButtonClickedEvent } from "./core/controller/ui/subscribeToSettingsButtonClicked"
@@ -223,6 +224,27 @@ export async function activate(context: vscode.ExtensionContext) {
 				for (const instance of tabInstances) {
 					instance?.controller.initializeExpertManagerEmbeddings()
 					sendExpertsButtonClickedEvent(instance.controller.id)
+				}
+			}
+		}),
+	)
+
+	context.subscriptions.push(
+		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", (webview: any) => {
+			console.log("[DEBUG] haiBuildTaskListClicked", webview)
+
+			const isSidebar = !webview
+			if (isSidebar) {
+				const sidebarInstance = WebviewProvider.getSidebarInstance()
+				if (sidebarInstance) {
+					// Send event to sidebar controller
+					sendHaiBuildTaskListClickedEvent(sidebarInstance.controller.id)
+				}
+			} else {
+				// Send to all tab instances
+				const tabInstances = WebviewProvider.getTabInstances()
+				for (const instance of tabInstances) {
+					sendHaiBuildTaskListClickedEvent(instance.controller.id)
 				}
 			}
 		}),

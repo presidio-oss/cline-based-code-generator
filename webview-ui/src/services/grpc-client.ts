@@ -356,6 +356,9 @@ export class UiServiceClient extends ProtoBusClient {
     static subscribeToExpertsButtonClicked(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
 		return this.makeStreamingRequest("subscribeToExpertsButtonClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
+    static subscribeToHaiBuildTaskListClicked(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
+		return this.makeStreamingRequest("subscribeToHaiBuildTaskListClicked", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
+	}
     static subscribeToSettingsButtonClicked(request: proto.cline.WebviewProviderTypeRequest, callbacks: Callbacks<proto.cline.Empty>): ()=>void {
 		return this.makeStreamingRequest("subscribeToSettingsButtonClicked", request, proto.cline.WebviewProviderTypeRequest.toJSON, proto.cline.Empty.fromJSON, callbacks)
 	}
@@ -385,6 +388,15 @@ export class UiServiceClient extends ProtoBusClient {
 	}
     static async openWalkthrough(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
 		return this.makeUnaryRequest("openWalkthrough", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async loadHaiTasks(request: proto.cline.HaiTasksLoadRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("loadHaiTasks", request, proto.cline.HaiTasksLoadRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static async resetHaiTasks(request: proto.cline.EmptyRequest): Promise<proto.cline.Empty> {
+		return this.makeUnaryRequest("resetHaiTasks", request, proto.cline.EmptyRequest.toJSON, proto.cline.Empty.fromJSON)
+	}
+    static subscribeToHaiTaskData(request: proto.cline.EmptyRequest, callbacks: Callbacks<proto.cline.HaiTaskDataResponse>): ()=>void {
+		return this.makeStreamingRequest("subscribeToHaiTaskData", request, proto.cline.EmptyRequest.toJSON, proto.cline.HaiTaskDataResponse.fromJSON, callbacks)
 	}
 }
 export class WebServiceClient extends ProtoBusClient {

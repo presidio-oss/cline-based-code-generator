@@ -39,6 +39,7 @@ interface ChatViewProps {
 	showAnnouncement: boolean
 	hideAnnouncement: () => void
 	showHistoryView: () => void
+	showHaiTaskListView: () => void
 
 	// TAG:HAI
 	onTaskSelect: (task: IHaiClineTask | null) => void
@@ -56,6 +57,7 @@ const ChatView = ({
 	showAnnouncement,
 	hideAnnouncement,
 	showHistoryView,
+	showHaiTaskListView,
 	onTaskSelect,
 	selectedHaiTask,
 }: ChatViewProps) => {
@@ -414,7 +416,11 @@ const ChatView = ({
 								use MCP to create new tools and extend my own capabilities.
 							</p>
 						</div>
-						<QuickActions onTaskSelect={onTaskSelect} showHistoryView={showHistoryView} />
+						<QuickActions
+							onTaskSelect={onTaskSelect}
+							showHaiTaskListView={showHaiTaskListView}
+							showHistoryView={showHistoryView}
+						/>
 					</div>
 				)}
 				{task && (
