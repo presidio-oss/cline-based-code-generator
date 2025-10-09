@@ -23,18 +23,12 @@ function getFormattedDateTime(): string {
  */
 export async function loadHaiTasks(controller: Controller, request: HaiTasksLoadRequest): Promise<Empty> {
 	try {
-		const { folderPath, loadDefault } = request
+		const { folderPath } = request
+		let selectedFolderPath: string | undefined
 
-		if (loadDefault && folderPath) {
-			// Load from the provided path (refresh case)
-			const ts = getFormattedDateTime()
-			await fetchTaskFromSelectedFolder(controller, folderPath, ts)
-			controller.cacheService.setWorkspaceState("haiConfig", { folder: folderPath, ts })
-		} else if (folderPath) {
-			// Load from specific path
-			const ts = getFormattedDateTime()
-			await fetchTaskFromSelectedFolder(controller, folderPath, ts)
-			controller.cacheService.setWorkspaceState("haiConfig", { folder: folderPath, ts })
+		if (folderPath) {
+			// Load from the provided path (either refresh case or specific path)
+			selectedFolderPath = folderPath
 		} else {
 			// Show folder picker
 			const options: vscode.OpenDialogOptions = {
@@ -46,10 +40,14 @@ export async function loadHaiTasks(controller: Controller, request: HaiTasksLoad
 
 			const fileUri = await vscode.window.showOpenDialog(options)
 			if (fileUri && fileUri[0]) {
-				const ts = getFormattedDateTime()
-				await fetchTaskFromSelectedFolder(controller, fileUri[0].fsPath, ts)
-				controller.cacheService.setWorkspaceState("haiConfig", { folder: fileUri[0].fsPath, ts })
+				selectedFolderPath = fileUri[0].fsPath
 			}
+		}
+
+		if (selectedFolderPath) {
+			const ts = getFormattedDateTime()
+			await fetchTaskFromSelectedFolder(controller, selectedFolderPath, ts)
+			controller.cacheService.setWorkspaceState("haiConfig", { folder: selectedFolderPath, ts })
 		}
 
 		return Empty.create({})
