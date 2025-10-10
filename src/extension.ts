@@ -230,13 +230,31 @@ export async function activate(context: vscode.ExtensionContext) {
 	)
 
 	context.subscriptions.push(
-		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", (webview: any) => {
+		vscode.commands.registerCommand("hai.haiBuildTaskListClicked", async (webview: any) => {
 			console.log("[DEBUG] haiBuildTaskListClicked", webview)
 
 			const isSidebar = !webview
 			if (isSidebar) {
 				const sidebarInstance = WebviewProvider.getSidebarInstance()
 				if (sidebarInstance) {
+					// Refresh HAI tasks before opening the task list
+					const haiConfig = sidebarInstance.controller.cacheService.getWorkspaceStateKey("haiConfig") as {
+						folder?: string
+						ts?: string
+					}
+					if (haiConfig?.folder) {
+						// Dynamically import loadHaiTasks to reload tasks from the cached folder path
+						const { loadHaiTasks } = await import("./core/controller/ui/loadHaiTasks")
+						try {
+							await loadHaiTasks(sidebarInstance.controller, {
+								metadata: {},
+								folderPath: haiConfig.folder,
+								loadDefault: true,
+							})
+						} catch (error) {
+							console.error("Failed to refresh HAI tasks:", error)
+						}
+					}
 					// Send event to sidebar controller
 					sendHaiBuildTaskListClickedEvent(sidebarInstance.controller.id)
 				}
@@ -244,6 +262,24 @@ export async function activate(context: vscode.ExtensionContext) {
 				// Send to all tab instances
 				const tabInstances = WebviewProvider.getTabInstances()
 				for (const instance of tabInstances) {
+					// Refresh HAI tasks before opening the task list
+					const haiConfig = instance.controller.cacheService.getWorkspaceStateKey("haiConfig") as {
+						folder?: string
+						ts?: string
+					}
+					if (haiConfig?.folder) {
+						// Dynamically import loadHaiTasks to reload tasks from the cached folder path
+						const { loadHaiTasks } = await import("./core/controller/ui/loadHaiTasks")
+						try {
+							await loadHaiTasks(instance.controller, {
+								metadata: {},
+								folderPath: haiConfig.folder,
+								loadDefault: true,
+							})
+						} catch (error) {
+							console.error("Failed to refresh HAI tasks:", error)
+						}
+					}
 					sendHaiBuildTaskListClickedEvent(instance.controller.id)
 				}
 			}
