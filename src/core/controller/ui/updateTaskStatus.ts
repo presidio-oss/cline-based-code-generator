@@ -75,8 +75,8 @@ export async function updateTaskStatus(
 	}
 
 	// Parse task ID to extract PRD ID, User Story ID, and Task ID
-	// Expected format: PRD1-US1-TASK1 or 1-US1-TASK1
-	const taskIdMatch = taskId.match(/^(?:PRD)?(\d+)-US(\d+)-TASK(\d+)$/)
+	// Expected format: PRD1-US1-TASK1 or 1-US1-TASK1 or US1-TASK1 (if PRD ID is missing)
+	const taskIdMatch = taskId.match(/^(?:(?:PRD)?(\d+)-)?US(\d+)-TASK(\d+)$/)
 
 	if (!taskIdMatch) {
 		return UpdateTaskStatusResponse.create({
@@ -86,6 +86,15 @@ export async function updateTaskStatus(
 	}
 
 	const [, prdId, usId, taskIdNum] = taskIdMatch
+
+	// If prdId is missing from the task ID, we need to find it from the user story ID
+	if (!prdId) {
+		return UpdateTaskStatusResponse.create({
+			success: false,
+			message: `PRD ID is missing from task ID: ${taskId}. Cannot determine which PRD file to update.`,
+		})
+	}
+
 	const prdFeatureFilePath = path.join(folderPath, "PRD", `PRD${prdId}-feature.json`)
 
 	try {
