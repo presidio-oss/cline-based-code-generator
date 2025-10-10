@@ -227,7 +227,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 											onTaskSelect({
 												context: `${story?.name}: ${story?.description}`,
 												...task.original,
-												id: `${story?.id}-${task.original.id}`,
+												id: `PRD${story?.prdId}-${story?.id}-${task.original.id}`,
 											})
 										}}
 										title="Execute Task">
@@ -270,7 +270,7 @@ const DetailedView: React.FC<DetailedViewProps> = ({ task, story, onTaskSelect, 
 								onTaskSelect({
 									context: `${story?.name}: ${story?.description}`,
 									...selectedTask,
-									id: `${story?.id}-${selectedTask.id}`,
+									id: `PRD${story?.prdId}-${story?.id}-${selectedTask.id}`,
 								})
 							}}>
 							Execute Task

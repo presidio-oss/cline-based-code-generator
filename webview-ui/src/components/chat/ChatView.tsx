@@ -123,6 +123,11 @@ const ChatView = ({
 	// TAG:HAI - Track last successfully executed task ID
 	const [lastSuccessfullyExecutedTaskId, setLastSuccessfullyExecutedTaskId] = useState<string | undefined>(undefined)
 
+	// TAG:HAI - Reset lastSuccessfullyExecutedTaskId when task changes (new task started or task cleared)
+	useEffect(() => {
+		setLastSuccessfullyExecutedTaskId(undefined)
+	}, [task?.ts])
+
 	// TAG:HAI - Set input value when task is selected
 	useEffect(() => {
 		// eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -466,14 +471,20 @@ const ChatView = ({
 									appearance="primary"
 									onClick={async () => {
 										try {
+											setLastSuccessfullyExecutedTaskId(undefined)
+
 											const request: UpdateTaskStatusRequest = {
 												metadata: {},
 												folderPath: haiConfigFolder,
 												taskId: selectedHaiTask?.id,
 												status: "Completed",
 											}
-											await UiServiceClient.updateTaskStatus(request)
-											setLastSuccessfullyExecutedTaskId(undefined)
+											const response = await UiServiceClient.updateTaskStatus(request)
+											if (response.success) {
+												onTaskSelect(null)
+											} else {
+												console.error("Failed to mark task as completed:", response.message)
+											}
 										} catch (error) {
 											console.error("Failed to mark task as completed:", error)
 										}
@@ -486,7 +497,10 @@ const ChatView = ({
 								</VSCodeButton>
 								<VSCodeButton
 									appearance="secondary"
-									onClick={() => setLastSuccessfullyExecutedTaskId(undefined)}
+									onClick={() => {
+										setLastSuccessfullyExecutedTaskId(undefined)
+										onTaskSelect(null)
+									}}
 									style={{
 										flexGrow: 1,
 									}}>
