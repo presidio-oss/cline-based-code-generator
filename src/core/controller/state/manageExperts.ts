@@ -91,8 +91,8 @@ export async function manageExperts(controller: Controller, request: ManageExper
 			const expertPrompt = request.selectExpert.prompt
 			const isDeepCrawlEnabled = request.selectExpert.deepCrawl
 
-			// If name is empty string, user selected "Default" - clear the expert selection
-			if (expertName === "") {
+			// If name is empty/falsy (empty string, null, undefined), user selected "Default" - clear the expert selection
+			if (!expertName) {
 				controller.cacheService.setGlobalState("expertPrompt", undefined)
 				controller.cacheService.setGlobalState("expertName", undefined)
 				controller.cacheService.setGlobalState("isDeepCrawlEnabled", false)
