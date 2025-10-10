@@ -240,7 +240,8 @@ const ChatView = ({
 	// handleFocusChange is already provided by chatState
 
 	// Use message handlers hook
-	const messageHandlers = useMessageHandlers(messages, chatState)
+	// TAG:HAI - Pass onTaskSelect to clear selectedHaiTask when starting new task
+	const messageHandlers = useMessageHandlers(messages, chatState, onTaskSelect)
 
 	const { selectedModelInfo } = useMemo(() => {
 		return normalizeApiConfiguration(apiConfiguration, mode)

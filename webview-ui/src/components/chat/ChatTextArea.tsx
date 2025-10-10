@@ -1354,7 +1354,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const handleExpertSelect = useCallback((expert: ExpertData | null) => {
 			setSelectedExpert(expert)
 			setShowExpertsSelector(false)
-			manageExperts("selectExpert", expert)
+			// When expert is null (Default selected), we need to send an empty expert object to clear the selection
+			if (expert === null) {
+				manageExperts("selectExpert", { name: "", prompt: "", deepCrawl: false })
+			} else {
+				manageExperts("selectExpert", expert)
+			}
 		}, [])
 
 		const handleExpertsButtonClick = useCallback(() => {

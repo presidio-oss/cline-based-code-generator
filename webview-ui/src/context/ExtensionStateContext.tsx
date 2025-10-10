@@ -103,6 +103,7 @@ interface ExtensionStateContextType extends ExtensionState {
 
 	// Event callbacks
 	onRelinquishControl: (callback: () => void) => () => void
+	onChatButtonClicked: (callback: () => void) => () => void
 
 	// TAG:HAI
 	haiConfig: { [key in string]: any }
@@ -306,12 +307,20 @@ export const ExtensionStateContextProvider: React.FC<{
 
 	// Add ref for callbacks
 	const relinquishControlCallbacks = useRef<Set<() => void>>(new Set())
+	const chatButtonClickedCallbacks = useRef<Set<() => void>>(new Set())
 
 	// Create hook function
 	const onRelinquishControl = useCallback((callback: () => void) => {
 		relinquishControlCallbacks.current.add(callback)
 		return () => {
 			relinquishControlCallbacks.current.delete(callback)
+		}
+	}, [])
+
+	const onChatButtonClicked = useCallback((callback: () => void) => {
+		chatButtonClickedCallbacks.current.add(callback)
+		return () => {
+			chatButtonClickedCallbacks.current.delete(callback)
 		}
 	}, [])
 	const mcpServersSubscriptionRef = useRef<(() => void) | null>(null)
@@ -414,6 +423,10 @@ export const ExtensionStateContextProvider: React.FC<{
 			onResponse: () => {
 				// When chat button is clicked, navigate to chat
 				console.log("[DEBUG] Received chat button clicked event from gRPC stream")
+				// TAG:HAI - Call all registered callbacks (e.g., to clear selected task)
+				chatButtonClickedCallbacks.current.forEach((callback) => {
+					callback()
+				})
 				navigateToChat()
 			},
 			onError: (error) => {
@@ -818,6 +831,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		setTotalTasksSize,
 		refreshOpenRouterModels,
 		onRelinquishControl,
+		onChatButtonClicked,
 		setUserInfo: (userInfo?: UserInfo) => setState((prevState) => ({ ...prevState, userInfo })),
 
 		// TAG:HAI

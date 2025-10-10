@@ -1,4 +1,5 @@
 import type { ClineMessage } from "@shared/ExtensionMessage"
+import { IHaiClineTask } from "@shared/hai-task"
 import { EmptyRequest, StringRequest } from "@shared/proto/cline/common"
 import { AskResponseRequest, NewTaskRequest } from "@shared/proto/cline/task"
 import { useCallback } from "react"
@@ -10,7 +11,11 @@ import type { ChatState, MessageHandlers } from "../types/chatTypes"
  * Custom hook for managing message handlers
  * Handles sending messages, button clicks, and task management
  */
-export function useMessageHandlers(messages: ClineMessage[], chatState: ChatState): MessageHandlers {
+export function useMessageHandlers(
+	messages: ClineMessage[],
+	chatState: ChatState,
+	onTaskSelect?: (task: IHaiClineTask | null) => void,
+): MessageHandlers {
 	const {
 		setInputValue,
 		activeQuote,
@@ -100,8 +105,12 @@ export function useMessageHandlers(messages: ClineMessage[], chatState: ChatStat
 	// Start a new task
 	const startNewTask = useCallback(async () => {
 		setActiveQuote(null)
+		// TAG:HAI - Clear selected HAI task when starting a new task
+		if (onTaskSelect) {
+			onTaskSelect(null)
+		}
 		await TaskServiceClient.clearTask(EmptyRequest.create({}))
-	}, [setActiveQuote])
+	}, [setActiveQuote, onTaskSelect])
 
 	// Clear input state helper
 	const clearInputState = useCallback(() => {

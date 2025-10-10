@@ -40,6 +40,7 @@ const AppContent = () => {
 		hideExperts,
 		hideHaiTaskList,
 		hideAnnouncement,
+		onChatButtonClicked,
 	} = useExtensionState()
 
 	// TAG:HAI
@@ -51,6 +52,14 @@ const AppContent = () => {
 	const [detailedStory, setDetailedStory] = useState<IHaiStory | null>(null)
 
 	const { clineUser, organizations, activeOrganization } = useClineAuth()
+
+	// TAG:HAI - Clear selected task when chat button (plus button) is clicked
+	useEffect(() => {
+		const cleanup = onChatButtonClicked(() => {
+			setSelectedTask(null)
+		})
+		return cleanup
+	}, [onChatButtonClicked])
 
 	useEffect(() => {
 		if (shouldShowAnnouncement) {
