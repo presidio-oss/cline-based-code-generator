@@ -1,5 +1,11 @@
 # Changelog
 
+## [3.10.0]
+
+### Added
+
+- Added 'HAI Tasks' module with enhancement and bug fixes.
+
 ## [3.9.1]
 
 ### Added
